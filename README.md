@@ -6,6 +6,9 @@ stok + nilai rupiah di dashboard.
 
 Prototype untuk AI Innovation Challenge COMPFEST 18.
 
+**Anggota tim baru: baca [docs/CATATAN-TIM.md](docs/CATATAN-TIM.md) dulu** — peta modul,
+keputusan desain + alasannya, mode hitung, parameter tuning, dan daftar pekerjaan tersisa.
+
 ## Install
 
 ```bash
@@ -30,7 +33,8 @@ python scripts/poc_track.py video_rak.mp4
 # 1. Daftarkan barang (3-5 foto per barang, sudut beda)
 python scripts/demo_scan.py enroll --nama "Indomie Goreng" --harga 3200 --qty 40 --foto f1.jpg f2.jpg f3.jpg
 
-# 2. Scan video rak
+# 2. Scan video rak (default count_mode=line, khusus rekaman sweep;
+#    kamera statis pakai --count-mode track — lihat docs/CATATAN-TIM.md)
 python scripts/demo_scan.py scan --video rak1.mp4
 
 # 3. Laporan terakhir
