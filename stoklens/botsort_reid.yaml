@@ -1,0 +1,24 @@
+# Tracker config StokLens — BoT-SORT dengan ReID, anti ID-pecah.
+#
+# Beda dari default ultralytics (botsort.yaml):
+#   with_reid: True   -> sambungkan ID putus pakai kemiripan visual, bukan cuma posisi.
+#                        Penting saat barang ketutupan sebentar / blur sesaat.
+#   track_buffer: 60  -> track yang "hilang" ditahan 60 frame (±2 detik @30fps)
+#                        sebelum dianggap mati. Default 30 terlalu cepat untuk
+#                        sweep gudang; barang ketutupan tangan/tiang jadi ID baru.
+#   gmc_method: sparseOptFlow -> kompensasi gerakan kamera (global motion
+#                        compensation) — wajib karena kamera kita selalu bergerak.
+#
+# Dipakai otomatis oleh scan.run_scan(); override via run_scan(tracker="...").
+tracker_type: botsort
+track_high_thresh: 0.25
+track_low_thresh: 0.1
+new_track_thresh: 0.25
+track_buffer: 60
+match_thresh: 0.8
+fuse_score: True
+gmc_method: sparseOptFlow
+proximity_thresh: 0.5
+appearance_thresh: 0.25
+with_reid: True
+model: auto
