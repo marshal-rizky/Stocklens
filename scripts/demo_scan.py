@@ -33,6 +33,8 @@ def main():
     s = sub.add_parser("scan")
     s.add_argument("--video", required=True)
     s.add_argument("--guided-product-id", type=int, default=None)
+    s.add_argument("--count-mode", choices=["line", "track"], default="line",
+                   help="line: rekaman sweep (anti dobel); track: kamera statis")
 
     r = sub.add_parser("report")
     r.add_argument("--scan-id", type=int, default=None)
@@ -48,7 +50,8 @@ def main():
     elif args.cmd == "scan":
         from stoklens.scan import run_scan
         sid = run_scan(con, _embedder(), args.video,
-                       guided_product_id=args.guided_product_id)
+                       guided_product_id=args.guided_product_id,
+                       count_mode=args.count_mode)
         print(f"Scan selesai: id={sid}")
         print(json.dumps(build_report(db.get_report_rows(con, sid)),
                          indent=2, ensure_ascii=False))
