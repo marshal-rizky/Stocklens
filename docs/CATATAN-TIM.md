@@ -102,7 +102,25 @@ modul murni, jangan ditanam di `scan.py`.
 7. **Brute-force cosine numpy, bukan FAISS/sqlite-vec**: untuk ≤ ratusan SKU tidak perlu
    (YAGNI). Revisit kalau katalog ribuan.
 
-## Mode hitung — WAJIB paham sebelum demo
+## Mode foto vs video — pilih capture yang tepat
+
+| | 📷 Foto (default toko kecil) | 🎥 Video (gudang besar) |
+|---|---|---|
+| Cara | 1 foto per sub-segmen rak (berbatas tiang/sekat) | Sweep satu arah per segmen |
+| Dobel hitung | Dalam 1 foto: mustahil. Antar foto: jangan overlap (SOP) + review `per_foto` di UI | Ditangani tracking + ReID + line-crossing |
+| Biaya/kuota | ±3 MB per foto | ±75 MB per segmen |
+| OCR expired | Tajam (foto diam) ✅ | Sering blur ⚠️ |
+| Kecepatan capture | Lebih lambat (framing per foto) | Cepat (30 dtk/segmen) |
+| Modul | `photo.py` (`scan_photos`) | `scan.py` (`run_scan`) |
+
+SOP foto: 1 foto = 1 sub-segmen dengan batas fisik; mulai foto berikutnya DARI batas
+tersebut, jangan tumpang tindih; ambil close-up terpisah untuk tanggal expired.
+
+```bash
+python scripts/demo_scan.py scan-foto --foto rak1a.jpg rak1b.jpg --lokasi "Rak 1"
+```
+
+## Mode hitung video — WAJIB paham sebelum demo
 
 | Mode | Kapan | Perilaku |
 |---|---|---|
@@ -160,6 +178,7 @@ Desain UI dibuat di Google Stitch → export HTML/CSS. Cara masuk ke repo:
    | `POST /api/opname-manual` | Opname tanpa video `{items:[{product_id, qty_fisik}], lokasi_rak, terapkan}` → laporan selisih |
    | `POST /products` (multipart) | Enrollment barang: nama, harga_modal, qty_awal, fotos[] |
    | `POST /scans` (multipart) | Opname via video: video, lokasi_rak |
+   | `POST /api/scans-foto` (multipart) | Opname via foto: fotos[], lokasi_rak, guided_product_id?, read_expiry? |
    | `GET /report/{scan_id}` | Laporan opname JSON |
    | `GET /api/export/stok.csv` | Export buku stok CSV |
 3. Pertahankan token desain (warna primary `#2563EB`, CTA `#F97316`, touch target ≥48dp, angka rupiah
