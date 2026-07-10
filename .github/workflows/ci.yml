@@ -16,6 +16,6 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install deps ringan (tanpa torch stack)
-        run: pip install numpy opencv-python-headless fastapi httpx python-multipart pytest
+        run: pip install numpy opencv-python-headless pillow fastapi httpx python-multipart pytest
       - name: Test cepat
         run: pytest -v
