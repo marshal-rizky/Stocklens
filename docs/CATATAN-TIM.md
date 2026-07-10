@@ -131,6 +131,28 @@ Catat SETIAP perubahan + hasilnya (video uji → hitungan vs manual) di sheet uj
 Satu arah • 1 rak per 5–8 detik • jarak 50–80 cm tegak lurus • 1 segmen = 1 klip •
 pause 1 detik di tumpukan padat • cahaya cukup • 1080p 30fps tanpa zoom.
 
+## Alur kerja Git (repo: github.com/marshal-rizky/Stocklens)
+
+1. **Jangan commit langsung ke `main`.** Bikin branch per fitur: `git checkout -b fitur/nama-fitur`.
+2. Sebelum mulai kerja: `git pull origin main` dulu — mulai dari kode terbaru.
+3. Commit kecil & sering, push, buka **Pull Request** — minimal 1 orang lain melihat sebelum merge.
+4. PR hanya boleh merge kalau **CI hijau** (pytest jalan otomatis di GitHub Actions).
+5. Branch umur pendek (1–3 hari). Kalau `main` sudah maju: `git pull origin main` ke branch-mu, selesaikan konflik di situ, jalankan `pytest`, baru merge.
+6. **Yang TIDAK boleh masuk git** (sudah di-.gitignore, jangan di-force): `*.db`, bobot model `*.pt`, video/foto uji, dataset. Share lewat Drive/Roboflow.
+7. Pembagian kerja ikuti batas file/folder (lihat peta modul) — dua orang di file yang sama = ngobrol dulu di grup.
+
+## Integrasi UI dari Google Stitch
+
+Desain UI dibuat di Google Stitch → export HTML/CSS. Cara masuk ke repo:
+
+1. Hasil export ditaruh di `stoklens/webui/` (branch `fitur/ui-*`), JANGAN ganti `api.py` langsung.
+2. Stitch menghasilkan desain statis — datanya masih dummy. Integrasi = sambungkan ke endpoint JSON
+   (`GET /api/dashboard`, `GET /api/products`, dst — lihat plan UI di folder study ketua tim).
+3. Pertahankan token desain (warna primary `#2563EB`, CTA `#F97316`, touch target ≥48dp, angka rupiah
+   `tabular-nums`) supaya konsisten dengan design doc — kirim token ini ke prompt Stitch sekalian.
+4. Checklist sebelum PR: tidak ada horizontal scroll di 360px, form tidak ketutup keyboard,
+   dark mode kebaca, tombol minimal 48dp.
+
 ## Pekerjaan tersisa (ambil, tulis nama di grup)
 
 1. **Uji PoC** (bisa hari ini, tanpa dataset): rekam video rak/lemari →
