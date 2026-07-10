@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# Data lokal — JANGAN pernah commit (binary = tidak bisa di-merge)
+*.db
+*.sqlite*
+
+# Bobot model (download otomatis / hasil training — share via Drive/Colab, bukan git)
+*.pt
+*.pth
+*.onnx
+
+# Video & foto uji / dataset (share via Drive/Roboflow, bukan git)
+*.mp4
+*.avi
+*.mov
+*.mkv
+dataset/
+runs/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
