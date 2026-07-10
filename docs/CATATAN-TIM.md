@@ -147,7 +147,21 @@ Desain UI dibuat di Google Stitch → export HTML/CSS. Cara masuk ke repo:
 
 1. Hasil export ditaruh di `stoklens/webui/` (branch `fitur/ui-*`), JANGAN ganti `api.py` langsung.
 2. Stitch menghasilkan desain statis — datanya masih dummy. Integrasi = sambungkan ke endpoint JSON
-   (`GET /api/dashboard`, `GET /api/products`, dst — lihat plan UI di folder study ketua tim).
+   yang SUDAH JADI di `stoklens/api.py` (semua sudah ada test-nya di `tests/test_api_ui.py`,
+   contoh bentuk request/response bisa dilihat di situ):
+
+   | Endpoint | Fungsi |
+   |---|---|
+   | `GET /api/dashboard` | KPI beranda: nilai_stok_rp, potensi_laba_rp, stok_menipis[], scan_terakhir |
+   | `GET /api/products` | List barang + qty + margin_pct |
+   | `GET /api/products/{id}` | Detail + ledger (kartu stok) |
+   | `PATCH /api/products/{id}` | Edit nama/harga_modal/harga_jual/stok_minimum |
+   | `POST /api/adjustments` | Penyesuaian stok manual `{product_id, delta, alasan}` |
+   | `POST /api/opname-manual` | Opname tanpa video `{items:[{product_id, qty_fisik}], lokasi_rak, terapkan}` → laporan selisih |
+   | `POST /products` (multipart) | Enrollment barang: nama, harga_modal, qty_awal, fotos[] |
+   | `POST /scans` (multipart) | Opname via video: video, lokasi_rak |
+   | `GET /report/{scan_id}` | Laporan opname JSON |
+   | `GET /api/export/stok.csv` | Export buku stok CSV |
 3. Pertahankan token desain (warna primary `#2563EB`, CTA `#F97316`, touch target ≥48dp, angka rupiah
    `tabular-nums`) supaya konsisten dengan design doc — kirim token ini ke prompt Stitch sekalian.
 4. Checklist sebelum PR: tidak ada horizontal scroll di 360px, form tidak ketutup keyboard,

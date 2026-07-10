@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS products(
   nama TEXT NOT NULL UNIQUE,
   harga_modal INTEGER NOT NULL,
   harga_jual INTEGER,
+  stok_minimum INTEGER DEFAULT 0,
   embedding BLOB NOT NULL,
   foto_refs TEXT NOT NULL DEFAULT '[]',
   created_at TEXT DEFAULT (datetime('now'))
@@ -19,6 +20,7 @@ CREATE TABLE IF NOT EXISTS scans(
   tanggal TEXT DEFAULT (datetime('now')),
   lokasi_rak TEXT,
   video_ref TEXT,
+  tipe TEXT DEFAULT 'video',
   status TEXT DEFAULT 'selesai'
 );
 CREATE TABLE IF NOT EXISTS scan_items(
@@ -35,15 +37,29 @@ CREATE TABLE IF NOT EXISTS stock_ledger(
   product_id INTEGER NOT NULL REFERENCES products(id),
   qty_tercatat INTEGER NOT NULL,
   sumber TEXT DEFAULT 'manual',
+  alasan TEXT,
   tanggal_update TEXT DEFAULT (datetime('now'))
 );
 """
+
+# Migrasi kolom untuk DB lama (SCHEMA pakai IF NOT EXISTS, jadi tabel lama
+# tidak otomatis dapat kolom baru). Aman dijalankan berulang.
+_MIGRATIONS = [
+    "ALTER TABLE products ADD COLUMN stok_minimum INTEGER DEFAULT 0",
+    "ALTER TABLE scans ADD COLUMN tipe TEXT DEFAULT 'video'",
+    "ALTER TABLE stock_ledger ADD COLUMN alasan TEXT",
+]
 
 
 def connect(path) -> sqlite3.Connection:
     con = sqlite3.connect(path)
     con.row_factory = sqlite3.Row
     con.executescript(SCHEMA)
+    for m in _MIGRATIONS:
+        try:
+            con.execute(m)
+        except sqlite3.OperationalError:
+            pass  # kolom sudah ada
     return con
 
 
@@ -66,12 +82,47 @@ def all_products(con):
     ]
 
 
-def set_stock(con, product_id, qty, sumber="manual"):
+def set_stock(con, product_id, qty, sumber="manual", alasan=None):
     con.execute(
-        "INSERT INTO stock_ledger(product_id, qty_tercatat, sumber) VALUES(?,?,?)",
-        (product_id, qty, sumber),
+        "INSERT INTO stock_ledger(product_id, qty_tercatat, sumber, alasan)"
+        " VALUES(?,?,?,?)",
+        (product_id, qty, sumber, alasan),
     )
     con.commit()
+
+
+def get_product(con, product_id):
+    r = con.execute("SELECT * FROM products WHERE id=?", (product_id,)).fetchone()
+    if r is None:
+        return None
+    d = dict(r)
+    d.pop("embedding", None)  # BLOB tidak untuk API
+    return d
+
+
+# Kolom yang boleh diedit user via API — embedding dkk dikelola sistem.
+EDITABLE_FIELDS = {"nama", "harga_modal", "harga_jual", "stok_minimum"}
+
+
+def update_product(con, product_id, **fields):
+    bad = set(fields) - EDITABLE_FIELDS
+    if bad:
+        raise ValueError(f"Field tidak boleh diedit: {sorted(bad)}")
+    if not fields:
+        return
+    cols = ", ".join(f"{k}=?" for k in fields)
+    con.execute(f"UPDATE products SET {cols} WHERE id=?",
+                (*fields.values(), product_id))
+    con.commit()
+
+
+def get_ledger(con, product_id, limit=50):
+    rows = con.execute(
+        "SELECT qty_tercatat, sumber, alasan, tanggal_update FROM stock_ledger"
+        " WHERE product_id=? ORDER BY id DESC LIMIT ?",
+        (product_id, limit),
+    ).fetchall()
+    return [dict(r) for r in rows]
 
 
 def get_stock_map(con):
@@ -83,9 +134,10 @@ def get_stock_map(con):
     return {r["product_id"]: r["qty_tercatat"] for r in rows}
 
 
-def add_scan(con, video_ref=None, lokasi_rak=None):
+def add_scan(con, video_ref=None, lokasi_rak=None, tipe="video"):
     cur = con.execute(
-        "INSERT INTO scans(video_ref, lokasi_rak) VALUES(?,?)", (video_ref, lokasi_rak)
+        "INSERT INTO scans(video_ref, lokasi_rak, tipe) VALUES(?,?,?)",
+        (video_ref, lokasi_rak, tipe),
     )
     con.commit()
     return cur.lastrowid
@@ -126,3 +178,11 @@ def get_report_rows(con, scan_id):
 def latest_scan_id(con):
     row = con.execute("SELECT MAX(id) AS mid FROM scans").fetchone()
     return row["mid"]
+
+
+def get_scan(con, scan_id):
+    r = con.execute(
+        "SELECT id, tanggal, lokasi_rak, tipe, status FROM scans WHERE id=?",
+        (scan_id,),
+    ).fetchone()
+    return dict(r) if r else None
