@@ -44,7 +44,8 @@ def _rp(n):
     return f"Rp{n:,.0f}".replace(",", ".")
 
 
-def create_app(db_path="stoklens.db", embedder=None):
+def create_app(db_path="stoklens.db", embedder=None, photo_detector=None):
+    """photo_detector: fn(image_bgr)->boxes untuk mode foto; None = YOLO asli."""
     app = FastAPI(title="StokLens")
 
     def con():
@@ -84,6 +85,27 @@ def create_app(db_path="stoklens.db", embedder=None):
     @app.get("/report/{scan_id}")
     def report(scan_id: int):
         return build_report(db.get_report_rows(con(), scan_id))
+
+    @app.post("/api/scans-foto")
+    async def api_scan_foto(fotos: list[UploadFile], lokasi_rak: str = Form(None),
+                            guided_product_id: int = Form(None),
+                            read_expiry: bool = Form(True)):
+        import cv2
+        import numpy as np
+        from .photo import scan_photos
+        images = []
+        for f in fotos:
+            img = cv2.imdecode(np.frombuffer(await f.read(), np.uint8),
+                               cv2.IMREAD_COLOR)
+            if img is None:
+                raise HTTPException(400, f"File bukan gambar valid: {f.filename}")
+            images.append(img)
+        c = con()
+        sid = scan_photos(c, get_embedder(), images, detector=photo_detector,
+                          guided_product_id=guided_product_id,
+                          lokasi_rak=lokasi_rak, read_expiry=read_expiry)
+        return {"scan_id": sid,
+                "report": build_report(db.get_report_rows(c, sid))}
 
     # ---------- JSON API untuk UI mobile ----------
 
