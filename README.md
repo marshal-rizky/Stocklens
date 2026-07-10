@@ -33,8 +33,11 @@ python scripts/poc_track.py video_rak.mp4
 # 1. Daftarkan barang (3-5 foto per barang, sudut beda)
 python scripts/demo_scan.py enroll --nama "Indomie Goreng" --harga 3200 --qty 40 --foto f1.jpg f2.jpg f3.jpg
 
-# 2. Scan video rak (default count_mode=line, khusus rekaman sweep;
-#    kamera statis pakai --count-mode track — lihat docs/CATATAN-TIM.md)
+# 2a. Opname via FOTO (mode default untuk toko kecil — 1 foto per sub-segmen rak)
+python scripts/demo_scan.py scan-foto --foto rak1a.jpg rak1b.jpg --lokasi "Rak 1"
+
+# 2b. Opname via VIDEO sweep (gudang besar; default count_mode=line,
+#     kamera statis pakai --count-mode track — lihat docs/CATATAN-TIM.md)
 python scripts/demo_scan.py scan --video rak1.mp4
 
 # 3. Laporan terakhir

@@ -36,6 +36,12 @@ def main():
     s.add_argument("--count-mode", choices=["line", "track"], default="line",
                    help="line: rekaman sweep (anti dobel); track: kamera statis")
 
+    sf = sub.add_parser("scan-foto",
+                        help="opname via foto per sub-segmen (mode default toko kecil)")
+    sf.add_argument("--foto", nargs="+", required=True)
+    sf.add_argument("--guided-product-id", type=int, default=None)
+    sf.add_argument("--lokasi", default=None)
+
     r = sub.add_parser("report")
     r.add_argument("--scan-id", type=int, default=None)
 
@@ -53,6 +59,14 @@ def main():
                        guided_product_id=args.guided_product_id,
                        count_mode=args.count_mode)
         print(f"Scan selesai: id={sid}")
+        print(json.dumps(build_report(db.get_report_rows(con, sid)),
+                         indent=2, ensure_ascii=False))
+    elif args.cmd == "scan-foto":
+        from stoklens.photo import scan_photos
+        sid = scan_photos(con, _embedder(), args.foto,
+                          guided_product_id=args.guided_product_id,
+                          lokasi_rak=args.lokasi)
+        print(f"Scan foto selesai: id={sid}")
         print(json.dumps(build_report(db.get_report_rows(con, sid)),
                          indent=2, ensure_ascii=False))
     elif args.cmd == "report":
