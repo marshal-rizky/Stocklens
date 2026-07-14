@@ -27,6 +27,17 @@ function rp(n) {
 }
 
 /**
+ * Escape karakter HTML supaya aman disisipkan lewat innerHTML.
+ * @param {string} s
+ * @returns {string}
+ */
+function escapeHtml(s) {
+  const div = document.createElement("div");
+  div.textContent = s;
+  return div.innerHTML;
+}
+
+/**
  * Panggil JSON API. Kalau respons gagal, tampilkan toast error lalu lempar.
  * @param {string} path
  * @param {RequestInit} [opts]

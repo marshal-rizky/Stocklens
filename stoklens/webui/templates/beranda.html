@@ -1,4 +1,37 @@
 {% extends "base.html" %}
+{% block title %}Beranda - StokLens{% endblock %}
 {% block content %}
-<h1>Halaman Beranda</h1>
+<h1>Beranda</h1>
+
+<div id="konten-utama">
+  <section class="kpi-grid" aria-label="Ringkasan stok">
+    <a class="card kpi-card skeleton" id="kpi-nilai" href="/ui/barang">
+      <span class="kpi-label">Nilai stok</span>
+      <span class="kpi-angka tabular" data-slot="angka"></span>
+    </a>
+    <div class="card kpi-card skeleton" id="kpi-laba">
+      <span class="kpi-label">Potensi laba</span>
+      <span class="kpi-angka tabular accent-pos" data-slot="angka"></span>
+    </div>
+    <a class="card kpi-card skeleton" id="kpi-opname" href="/ui/laporan">
+      <span class="kpi-label">Opname terakhir</span>
+      <span class="kpi-angka tabular accent-neg" data-slot="angka"></span>
+      <span class="kpi-sub" data-slot="sub"></span>
+    </a>
+  </section>
+
+  <section aria-labelledby="peringatan-judul">
+    <h2 id="peringatan-judul">Peringatan</h2>
+    <div id="peringatan"></div>
+  </section>
+</div>
+
+<div id="onboarding" class="card onboarding hidden">
+  <p>Mulai dengan daftarkan barang pertama Anda.</p>
+  <a class="btn btn-cta" href="/ui/barang">Tambah barang</a>
+</div>
+{% endblock %}
+
+{% block skrip %}
+<script src="/static/beranda.js"></script>
 {% endblock %}

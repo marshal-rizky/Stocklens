@@ -43,3 +43,11 @@ def test_static_tokens_css(tmp_path):
 def test_json_api_masih_jalan(tmp_path):
     client = _client(tmp_path)
     assert client.get("/api/products").status_code == 200
+
+
+def test_beranda_punya_kpi_dan_peringatan(tmp_path):
+    client = _client(tmp_path)
+    r = client.get("/ui/beranda")
+    assert r.status_code == 200
+    for id_ in ("kpi-nilai", "kpi-laba", "kpi-opname", "peringatan"):
+        assert f'id="{id_}"' in r.text
