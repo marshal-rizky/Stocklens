@@ -19,9 +19,21 @@ body {
 
 a { color: inherit; }
 
+a.card {
+  display: block;
+  text-decoration: none;
+}
+
 .tabular {
   font-variant-numeric: tabular-nums;
 }
+
+.hidden {
+  display: none !important;
+}
+
+.accent-pos { color: var(--pos); }
+.accent-neg { color: var(--neg); }
 
 /* ---------- Kartu ---------- */
 
@@ -137,6 +149,133 @@ a { color: inherit; }
   .fab:active {
     transform: none;
   }
+}
+
+/* ---------- Skeleton (loading) ---------- */
+
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  min-height: 64px;
+}
+
+.skeleton > * {
+  visibility: hidden;
+}
+
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, var(--border) 25%, var(--bg) 50%, var(--border) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after {
+    animation: none;
+  }
+}
+
+/* ---------- KPI (Beranda) ---------- */
+
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 16px 0;
+}
+
+.kpi-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.kpi-label {
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+.kpi-angka {
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.kpi-sub {
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+/* ---------- Peringatan (Beranda) ---------- */
+
+.peringatan-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.peringatan-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 48px;
+  padding: 12px;
+}
+
+.peringatan-item .nama {
+  font-weight: 600;
+}
+
+.peringatan-aman {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--pos);
+  padding: 12px 0;
+}
+
+.peringatan-aman svg {
+  width: 20px;
+  height: 20px;
+  stroke: currentColor;
+  flex-shrink: 0;
+}
+
+/* ---------- Badge ---------- */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.badge-neg { background: var(--neg); color: var(--on-accent); }
+.badge-pos { background: var(--pos); color: var(--on-accent); }
+
+/* ---------- Onboarding (empty state global) ---------- */
+
+.onboarding {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  margin-top: 16px;
 }
 
 /* ---------- Toast ---------- */
