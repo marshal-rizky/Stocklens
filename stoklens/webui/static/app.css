@@ -278,6 +278,87 @@ a.card {
   margin-top: 16px;
 }
 
+/* ---------- Empty state (daftar barang) ---------- */
+
+.empty-state {
+  text-align: center;
+  color: var(--text-2);
+  padding: 32px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+/* ---------- Pencarian (Barang) ---------- */
+
+.search-wrap {
+  margin: 12px 0;
+}
+
+.search-wrap label {
+  display: block;
+  font-size: 14px;
+  color: var(--text-2);
+  margin-bottom: 4px;
+}
+
+.search-input {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 16px;
+}
+
+/* ---------- Daftar barang ---------- */
+
+.produk-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.produk-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.produk-card-atas {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.produk-nama {
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.produk-qty {
+  font-size: 20px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.produk-harga {
+  font-size: 14px;
+  color: var(--text-2);
+}
+
+.produk-badges {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+
 /* ---------- Toast ---------- */
 
 #toast {
