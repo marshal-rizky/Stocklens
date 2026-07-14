@@ -51,6 +51,8 @@ def test_beranda_punya_kpi_dan_peringatan(tmp_path):
     assert r.status_code == 200
     for id_ in ("kpi-nilai", "kpi-laba", "kpi-opname", "peringatan"):
         assert f'id="{id_}"' in r.text
+    assert "beranda.js" in r.text
+    assert 'data-slot="angka"' in r.text
 
 
 def test_barang_punya_search_daftar_fab(tmp_path):
@@ -60,3 +62,4 @@ def test_barang_punya_search_daftar_fab(tmp_path):
     assert 'type="search"' in r.text
     assert 'id="daftar-barang"' in r.text
     assert 'href="/ui/barang/baru"' in r.text
+    assert "barang.js" in r.text
