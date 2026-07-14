@@ -44,7 +44,14 @@ function escapeHtml(s) {
  * @returns {Promise<any>}
  */
 async function api(path, opts) {
-  const res = await fetch(path, opts);
+  let res;
+  try {
+    res = await fetch(path, opts);
+  } catch (e) {
+    /* kegagalan level jaringan (offline, server mati) */
+    toast("Tidak bisa terhubung ke server", false);
+    throw e;
+  }
   if (!res.ok) {
     let detail = res.statusText;
     try {

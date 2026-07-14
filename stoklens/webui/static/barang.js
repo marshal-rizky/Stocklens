@@ -37,50 +37,53 @@ function kartuProduk(p) {
   );
 }
 
-function kartuKosong() {
-  return (
-    '<div class="empty-state">' +
-    "<p>Belum ada barang</p>" +
-    '<a class="btn btn-cta" href="/ui/barang/baru">Tambah barang</a>' +
-    "</div>"
-  );
-}
-
-function render(daftar) {
+/**
+ * Render daftar produk. Kalau kosong, tampilkan pesanKosong (HTML string).
+ * @param {object[]} daftar
+ * @param {string} pesanKosong
+ */
+function render(daftar, pesanKosong) {
   const kontainer = document.getElementById("daftar-barang");
-  if (daftar.length === 0) {
-    kontainer.innerHTML = kartuKosong();
-    return;
-  }
-  kontainer.innerHTML = daftar.map(kartuProduk).join("");
+  kontainer.innerHTML = daftar.length
+    ? daftar.map(kartuProduk).join("")
+    : pesanKosong;
 }
 
-document.addEventListener("DOMContentLoaded", async () => {
-  const inputCari = document.getElementById("cari-barang");
+const PESAN_BELUM_ADA =
+  '<div class="empty-state">' +
+  "<p>Belum ada barang</p>" +
+  '<a class="btn btn-cta" href="/ui/barang/baru">Tambah barang</a>' +
+  "</div>";
 
+const PESAN_TIDAK_KETEMU = '<div class="empty-state"><p>Barang tidak ditemukan</p></div>';
+
+function tampilkanErrorMuat() {
+  const kontainer = document.getElementById("daftar-barang");
+  kontainer.innerHTML =
+    '<div class="card error-state"><p>Gagal memuat</p>' +
+    '<button type="button" class="btn" id="coba-lagi">Coba lagi</button></div>';
+  document.getElementById("coba-lagi").addEventListener("click", muatBarang);
+}
+
+async function muatBarang() {
   try {
     semuaProduk = await api("/api/products");
-    semuaProduk.sort((a, b) => a.nama.localeCompare(b.nama, "id"));
   } catch (e) {
-    semuaProduk = [];
+    /* state ERROR, bukan state kosong: toast sudah tampil dari api() */
+    tampilkanErrorMuat();
+    return;
   }
+  semuaProduk.sort((a, b) => a.nama.localeCompare(b.nama, "id"));
+  render(semuaProduk, PESAN_BELUM_ADA);
+}
 
-  if (semuaProduk.length === 0) {
-    render([]);
-  } else {
-    render(semuaProduk);
-  }
+document.addEventListener("DOMContentLoaded", () => {
+  muatBarang();
 
-  inputCari.addEventListener("input", () => {
-    const kata = inputCari.value.trim().toLowerCase();
+  document.getElementById("cari-barang").addEventListener("input", (ev) => {
+    const kata = ev.target.value.trim().toLowerCase();
     const hasil = semuaProduk.filter((p) => p.nama.toLowerCase().includes(kata));
-    if (semuaProduk.length === 0) {
-      render([]);
-    } else {
-      const kontainer = document.getElementById("daftar-barang");
-      kontainer.innerHTML = hasil.length
-        ? hasil.map(kartuProduk).join("")
-        : '<div class="empty-state"><p>Barang tidak ditemukan</p></div>';
-    }
+    /* daftar sumber kosong = belum ada barang; hasil filter kosong = tidak ketemu */
+    render(hasil, semuaProduk.length ? PESAN_TIDAK_KETEMU : PESAN_BELUM_ADA);
   });
 });
