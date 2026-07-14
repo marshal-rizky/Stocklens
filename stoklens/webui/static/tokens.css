@@ -1,0 +1,9 @@
+:root {
+  --primary:#2563EB; --cta:#F97316; --bg:#F8FAFC; --surface:#FFFFFF;
+  --text:#1E293B; --text-2:#64748B; --border:#E2E8F0;
+  --pos:#16A34A; --neg:#DC2626;
+  --r:12px; --sp:8px;
+}
+@media (prefers-color-scheme: dark) { :root {
+  --bg:#0F172A; --surface:#1E293B; --text:#F1F5F9; --text-2:#94A3B8; --border:#334155;
+}}
