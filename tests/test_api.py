@@ -24,8 +24,9 @@ def test_report_endpoint(tmp_path):
     assert rep["total_shrinkage_rp"] == 9600
 
 
-def test_dashboard_html(tmp_path):
+def test_root_redirect_ke_ui(tmp_path):
     dbp, _ = _seeded(tmp_path)
     client = TestClient(create_app(db_path=dbp))
-    html = client.get("/").text
-    assert "Indomie" in html and "9.600" in html
+    r = client.get("/", follow_redirects=False)
+    assert r.status_code in (302, 307)
+    assert r.headers["location"] == "/ui/beranda"
