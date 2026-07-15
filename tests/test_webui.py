@@ -73,3 +73,11 @@ def test_barang_baru_punya_form_dan_input_kamera(tmp_path):
     assert "Harga modal" in r.text
     assert 'capture="environment"' in r.text
     assert "barang_baru.js" in r.text
+
+
+def test_barang_detail_punya_container_dan_skrip(tmp_path):
+    client = _client(tmp_path)
+    r = client.get("/ui/barang/5")
+    assert r.status_code == 200
+    assert 'data-product-id="5"' in r.text
+    assert "barang_detail.js" in r.text
