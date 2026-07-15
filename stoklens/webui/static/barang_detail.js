@@ -50,7 +50,7 @@ function renderLedger(ledger) {
         '<span class="ledger-qty tabular">' +
         r.qty_tercatat +
         '</span><span class="badge">' +
-        (SUMBER_LABEL[r.sumber] || r.sumber) +
+        (SUMBER_LABEL[r.sumber] || escapeHtml(r.sumber)) +
         "</span></div>" +
         (r.alasan ? '<span class="ledger-alasan">' + escapeHtml(r.alasan) + "</span>" : "") +
         '<span class="ledger-tanggal">' +
@@ -112,7 +112,7 @@ async function simpanEdit(ev) {
   errorHargaModal.classList.add("hidden");
 
   const nama = document.getElementById("edit-nama").value.trim();
-  const hargaModal = parseInt(document.getElementById("edit-harga-modal").value, 10);
+  const hargaModal = angka(document.getElementById("edit-harga-modal").value);
   if (isNaN(hargaModal) || hargaModal < 1) {
     errorHargaModal.classList.remove("hidden");
     return;
@@ -123,12 +123,15 @@ async function simpanEdit(ev) {
   const patch = {};
   if (nama && nama !== produkSaatIni.nama) patch.nama = nama;
   if (hargaModal !== produkSaatIni.harga_modal) patch.harga_modal = hargaModal;
+  /* Keterbatasan yang diterima (prototype): mengosongkan field harga jual TIDAK
+     menghapus harga_jual di server — PATCH hanya mengirim field berisi nilai,
+     dan backend mengabaikan null. Harga jual hanya bisa diganti, bukan dihapus. */
   if (hargaJualRaw) {
-    const hargaJual = parseInt(hargaJualRaw, 10);
+    const hargaJual = angka(hargaJualRaw);
     if (!isNaN(hargaJual) && hargaJual !== produkSaatIni.harga_jual) patch.harga_jual = hargaJual;
   }
   if (stokMinRaw) {
-    const stokMin = parseInt(stokMinRaw, 10);
+    const stokMin = angka(stokMinRaw);
     if (!isNaN(stokMin) && stokMin !== (produkSaatIni.stok_minimum || 0)) {
       patch.stok_minimum = stokMin;
     }
@@ -176,7 +179,7 @@ async function terapkanPenyesuaian() {
       body: JSON.stringify({ product_id: Number(idProduk()), delta, alasan: document.getElementById("select-alasan").value }),
     });
   } catch (e) {
-    toast("Tidak bisa terhubung ke server", false);
+    toast(PESAN_OFFLINE, false);
     tombol.disabled = delta === 0;
     return;
   }

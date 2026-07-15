@@ -1,5 +1,7 @@
 /* Helper JS bersama untuk semua halaman UI mobile StokLens. */
 
+const PESAN_OFFLINE = "Tidak bisa terhubung ke server";
+
 let toastTimer = null;
 
 /**
@@ -27,6 +29,20 @@ function rp(n) {
 }
 
 /**
+ * Parse input angka gaya lokal ("3.500", "Rp 3.500", "-5") jadi integer.
+ * Strip semua karakter non-digit (minus di depan dipertahankan).
+ * @param {string} str
+ * @returns {number} NaN kalau tidak ada digit
+ */
+function angka(str) {
+  const s = String(str).trim();
+  const negatif = s.startsWith("-");
+  const digits = s.replace(/\D/g, "");
+  if (!digits) return NaN;
+  return parseInt((negatif ? "-" : "") + digits, 10);
+}
+
+/**
  * Escape karakter HTML supaya aman disisipkan lewat innerHTML.
  * @param {string} s
  * @returns {string}
@@ -49,7 +65,7 @@ async function api(path, opts) {
     res = await fetch(path, opts);
   } catch (e) {
     /* kegagalan level jaringan (offline, server mati) */
-    toast("Tidak bisa terhubung ke server", false);
+    toast(PESAN_OFFLINE, false);
     throw e;
   }
   if (!res.ok) {

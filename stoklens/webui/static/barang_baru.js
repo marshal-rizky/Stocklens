@@ -14,7 +14,7 @@ let fotoFiles = [];
  * Hitung & tampilkan margin % live di bawah field harga jual.
  */
 function perbaruiMargin() {
-  const modal = parseInt(document.getElementById("input-harga-modal").value, 10);
+  const modal = angka(document.getElementById("input-harga-modal").value);
   const jualRaw = document.getElementById("input-harga-jual").value.trim();
   const hint = document.getElementById("margin-hint");
 
@@ -23,7 +23,7 @@ function perbaruiMargin() {
     hint.classList.remove("accent-pos", "accent-neg");
     return;
   }
-  const jual = parseInt(jualRaw, 10);
+  const jual = angka(jualRaw);
   if (isNaN(jual)) {
     hint.textContent = "—";
     hint.classList.remove("accent-pos", "accent-neg");
@@ -37,9 +37,11 @@ function perbaruiMargin() {
 
 /**
  * Render grid thumbnail dari fotoFiles, masing-masing dengan tombol hapus.
+ * Object URL batch sebelumnya di-revoke dulu supaya tidak bocor memori.
  */
 function renderThumbnail() {
   const grid = document.getElementById("thumbnail-grid");
+  grid.querySelectorAll("img").forEach((img) => URL.revokeObjectURL(img.src));
   grid.innerHTML = fotoFiles
     .map(
       (f, i) =>
@@ -76,13 +78,17 @@ async function kirimForm(ev) {
   tombol.innerHTML =
     '<span class="spinner" aria-hidden="true"></span><span>Menyimpan... (analisis foto ±10 dtk)</span>';
 
+  /* angka() menormalkan input lokal ("3.500" -> 3500) sebelum dikirim */
+  const qtyAwal = angka(document.getElementById("input-stok-awal").value);
+  const stokMinimum = angka(document.getElementById("input-stok-minimum").value);
+  const hargaJual = angka(document.getElementById("input-harga-jual").value);
+
   const fd = new FormData();
   fd.append("nama", document.getElementById("input-nama").value.trim());
-  fd.append("harga_modal", document.getElementById("input-harga-modal").value);
-  fd.append("qty_awal", document.getElementById("input-stok-awal").value || "0");
-  const hargaJual = document.getElementById("input-harga-jual").value.trim();
-  if (hargaJual) fd.append("harga_jual", hargaJual);
-  fd.append("stok_minimum", document.getElementById("input-stok-minimum").value || "0");
+  fd.append("harga_modal", String(angka(document.getElementById("input-harga-modal").value)));
+  fd.append("qty_awal", String(isNaN(qtyAwal) ? 0 : qtyAwal));
+  if (!isNaN(hargaJual)) fd.append("harga_jual", String(hargaJual));
+  fd.append("stok_minimum", String(isNaN(stokMinimum) ? 0 : stokMinimum));
   fotoFiles.forEach((f) => fd.append("fotos", f));
 
   try {
