@@ -261,6 +261,46 @@ a.card {
   color: var(--text-2);
 }
 
+/* ---------- Riwayat opname (Beranda) ---------- */
+
+.riwayat-section {
+  margin-top: 16px;
+}
+
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.section-head h2 {
+  margin: 0;
+}
+
+.lihat-semua {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 44px;
+  padding-left: 8px;
+  font-size: 13px;
+  color: var(--primary);
+  text-decoration: none;
+}
+
+.lihat-semua svg {
+  width: 16px;
+  height: 16px;
+}
+
+#riwayat-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
 /* ---------- Aksi cepat (Beranda) ---------- */
 
 .aksi-cepat {

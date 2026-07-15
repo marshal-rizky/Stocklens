@@ -87,6 +87,56 @@ function tampilkanErrorMuat() {
   });
 }
 
+/* Kartu ringkas satu scan (gaya sama dengan halaman Laporan). */
+function kartuScanRingkas(s) {
+  const meta = [];
+  if (s.lokasi_rak) {
+    meta.push('<span class="laporan-lokasi">' + escapeHtml(s.lokasi_rak) + "</span>");
+  }
+  if (s.total_shrinkage_rp > 0) {
+    meta.push(
+      '<span class="laporan-shrinkage accent-neg">Shrinkage: ' +
+        rp(s.total_shrinkage_rp) +
+        "</span>"
+    );
+  }
+  return (
+    '<a class="card laporan-card" href="/ui/laporan/' +
+    s.id +
+    '"><div class="laporan-card-atas"><span class="laporan-tanggal">' +
+    formatTanggal(s.tanggal) +
+    '</span><span class="badge">' +
+    escapeHtml(s.tipe) +
+    "</span></div>" +
+    (meta.length
+      ? '<div class="laporan-card-meta">' +
+        meta.join('<span class="laporan-sep" aria-hidden="true">·</span>') +
+        "</div>"
+      : "") +
+    "</a>"
+  );
+}
+
+/* Riwayat opname terakhir (maks 3). Independen dari dashboard: kalau gagal,
+   section disembunyikan tanpa mengganggu sisa beranda. */
+async function muatRiwayat() {
+  const section = document.getElementById("riwayat-section");
+  try {
+    const scans = await api("/api/scans");
+    if (!scans.length) {
+      section.classList.add("hidden");
+      return;
+    }
+    document.getElementById("riwayat-list").innerHTML = scans
+      .slice(0, 3)
+      .map(kartuScanRingkas)
+      .join("");
+    section.classList.remove("hidden");
+  } catch (e) {
+    section.classList.add("hidden");
+  }
+}
+
 async function muatBeranda() {
   try {
     const data = await api("/api/dashboard");
@@ -102,4 +152,5 @@ async function muatBeranda() {
 document.addEventListener("DOMContentLoaded", () => {
   markupRingkasanAsli = document.getElementById("ringkasan-muat").innerHTML;
   muatBeranda();
+  muatRiwayat();
 });
