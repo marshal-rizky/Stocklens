@@ -119,3 +119,18 @@ def test_opname_video_punya_select_count_mode(tmp_path):
     assert "opname_video.js" in r.text
 
 
+def test_laporan_punya_skrip(tmp_path):
+    client = _client(tmp_path)
+    r = client.get("/ui/laporan")
+    assert r.status_code == 200
+    assert "laporan.js" in r.text
+
+
+def test_laporan_detail_punya_data_scan_id(tmp_path):
+    client = _client(tmp_path)
+    r = client.get("/ui/laporan/7")
+    assert r.status_code == 200
+    assert 'data-scan-id="7"' in r.text
+    assert "laporan_detail.js" in r.text
+
+

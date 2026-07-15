@@ -56,3 +56,11 @@ def ui_opname_video(request: Request):
 @router.get("/laporan")
 def ui_laporan(request: Request):
     return templates.TemplateResponse(request, "laporan.html", {"aktif": "laporan"})
+
+
+@router.get("/laporan/{scan_id}")
+def ui_laporan_detail(request: Request, scan_id: int):
+    return templates.TemplateResponse(
+        request, "laporan_detail.html",
+        {"aktif": "laporan", "scan_id": scan_id},
+    )
