@@ -43,6 +43,16 @@ def ui_opname_manual(request: Request):
     return templates.TemplateResponse(request, "opname_manual.html", {"aktif": "opname"})
 
 
+@router.get("/opname/foto")
+def ui_opname_foto(request: Request):
+    return templates.TemplateResponse(request, "opname_foto.html", {"aktif": "opname"})
+
+
+@router.get("/opname/video")
+def ui_opname_video(request: Request):
+    return templates.TemplateResponse(request, "opname_video.html", {"aktif": "opname"})
+
+
 @router.get("/laporan")
 def ui_laporan(request: Request):
     return templates.TemplateResponse(request, "laporan.html", {"aktif": "laporan"})
