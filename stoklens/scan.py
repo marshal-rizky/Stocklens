@@ -23,8 +23,6 @@ from datetime import date
 from pathlib import Path
 
 import numpy as np
-from ultralytics import YOLO
-
 from . import db
 from .counter import TrackResult, aggregate
 from .crossing import count_by_crossing
@@ -46,6 +44,10 @@ def run_scan(con, embedder, video_path, model_path="yolo11n.pt",
     count_mode: "line" (rekaman sweep, anti dobel) | "track" (kamera statis).
     tracker: path yaml tracker ultralytics; default BoT-SORT ReID milik StokLens.
     """
+    # Lazy import: modul ini harus bisa di-import tanpa torch stack
+    # (CI & test monkeypatch run_scan tanpa install ultralytics).
+    from ultralytics import YOLO
+
     products = db.all_products(con)
     allowed = {guided_product_id} if guided_product_id is not None else None
     model = YOLO(model_path)

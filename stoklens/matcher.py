@@ -33,3 +33,10 @@ def majority_label(labels):
     if not votes:
         return None
     return Counter(votes).most_common(1)[0][0]
+
+
+def average_embedding(vecs) -> np.ndarray:
+    """Rata-rata beberapa embedding, dinormalisasi ulang (murni numpy —
+    sengaja di sini, bukan di embedder.py, supaya enroll.py bebas torch)."""
+    m = np.mean(np.stack(vecs), axis=0)
+    return (m / (np.linalg.norm(m) + 1e-9)).astype(np.float32)
