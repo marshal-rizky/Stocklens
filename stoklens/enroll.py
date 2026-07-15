@@ -2,7 +2,7 @@
 from PIL import Image
 
 from . import db
-from .embedder import average_embedding
+from .matcher import average_embedding
 
 
 def enroll_product(con, embedder, nama, harga_modal, foto_paths,
