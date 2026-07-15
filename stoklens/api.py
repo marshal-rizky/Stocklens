@@ -64,6 +64,8 @@ def create_app(db_path="stoklens.db", embedder=None, photo_detector=None):
     @app.post("/products")
     async def create_product(nama: str = Form(...), harga_modal: int = Form(...),
                              qty_awal: int = Form(0),
+                             harga_jual: int = Form(None),
+                             stok_minimum: int = Form(0),
                              fotos: list[UploadFile] = None):
         from .enroll import enroll_product
         tmp = Path(tempfile.mkdtemp())
@@ -72,8 +74,11 @@ def create_app(db_path="stoklens.db", embedder=None, photo_detector=None):
             p = tmp / f.filename
             p.write_bytes(await f.read())
             paths.append(p)
-        pid = enroll_product(con(), get_embedder(), nama, harga_modal, paths,
-                             qty_awal=qty_awal)
+        c = con()
+        pid = enroll_product(c, get_embedder(), nama, harga_modal, paths,
+                             harga_jual=harga_jual, qty_awal=qty_awal)
+        if stok_minimum > 0:
+            db.update_product(c, pid, stok_minimum=stok_minimum)
         shutil.rmtree(tmp, ignore_errors=True)
         return {"product_id": pid}
 

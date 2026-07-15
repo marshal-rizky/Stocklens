@@ -1,5 +1,8 @@
+import io
+
 import numpy as np
 from fastapi.testclient import TestClient
+from PIL import Image
 
 from stoklens import db
 from stoklens.api import create_app
@@ -97,3 +100,33 @@ def test_export_stok_csv(tmp_path):
     r = client.get("/api/export/stok.csv")
     assert r.status_code == 200
     assert "Indomie" in r.text and "3200" in r.text
+
+
+# ---- POST /products: field opsional harga_jual + stok_minimum ----
+
+class _FakeEmbedderPil:
+    def embed_pil(self, img):
+        return np.zeros(4, dtype=np.float32)
+
+
+def _png_bytes():
+    buf = io.BytesIO()
+    Image.new("RGB", (10, 10), (255, 0, 0)).save(buf, format="PNG")
+    return buf.getvalue()
+
+
+def test_create_product_dengan_harga_jual_dan_stok_minimum(tmp_path):
+    dbp = str(tmp_path / "t.db")
+    client = TestClient(create_app(db_path=dbp, embedder=_FakeEmbedderPil()))
+    r = client.post(
+        "/products",
+        data={"nama": "Teh Botol", "harga_modal": "3000", "qty_awal": "5",
+              "harga_jual": "3500", "stok_minimum": "2"},
+        files=[("fotos", ("a.png", _png_bytes(), "image/png"))],
+    )
+    assert r.status_code == 200
+    pid = r.json()["product_id"]
+    detail = client.get(f"/api/products/{pid}").json()
+    assert detail["harga_jual"] == 3500
+    assert detail["stok_minimum"] == 2
+    assert detail["qty"] == 5

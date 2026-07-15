@@ -63,3 +63,13 @@ def test_barang_punya_search_daftar_fab(tmp_path):
     assert 'id="daftar-barang"' in r.text
     assert 'href="/ui/barang/baru"' in r.text
     assert "barang.js" in r.text
+
+
+def test_barang_baru_punya_form_dan_input_kamera(tmp_path):
+    client = _client(tmp_path)
+    r = client.get("/ui/barang/baru")
+    assert r.status_code == 200
+    assert "Nama" in r.text
+    assert "Harga modal" in r.text
+    assert 'capture="environment"' in r.text
+    assert "barang_baru.js" in r.text

@@ -372,6 +372,174 @@ a.card {
   margin-top: 2px;
 }
 
+/* ---------- Header halaman (Tambah/Detail barang) ---------- */
+
+.halaman-header {
+  padding-top: 12px;
+}
+
+.kembali {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 48px;
+  text-decoration: none;
+  color: var(--text-2);
+  font-size: 14px;
+}
+
+.kembali svg {
+  width: 20px;
+  height: 20px;
+  stroke: currentColor;
+}
+
+/* ---------- Form (field label + input) ---------- */
+
+.field {
+  margin: 12px 0;
+}
+
+.field label {
+  display: block;
+  font-size: 14px;
+  color: var(--text-2);
+  margin-bottom: 4px;
+}
+
+.field input,
+.select-input {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 16px;
+}
+
+.field-error {
+  color: var(--neg);
+  font-size: 13px;
+  margin: 4px 0 0;
+}
+
+.margin-hint {
+  display: block;
+  font-size: 13px;
+  color: var(--text-2);
+  margin-top: 4px;
+}
+
+.hint {
+  font-size: 13px;
+  color: var(--text-2);
+  margin: 6px 0;
+}
+
+.btn-full {
+  width: 100%;
+  margin-top: 8px;
+}
+
+/* ---------- Foto (Tambah barang) ---------- */
+
+.sr-only-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.foto-btn {
+  width: 100%;
+  gap: 8px;
+}
+
+.foto-btn svg {
+  width: 20px;
+  height: 20px;
+  stroke: currentColor;
+}
+
+.thumbnail-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.thumb {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: var(--r);
+  border: 1px solid var(--border);
+}
+
+.thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: var(--r);
+}
+
+/* Target sentuh penuh 48x48 (transparan); lingkaran merah di dalamnya cuma indikator visual. */
+.thumb-remove {
+  position: absolute;
+  top: -12px;
+  right: -12px;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.thumb-remove-visual {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--neg);
+  color: var(--on-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.thumb-remove-visual svg {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+}
+
+/* ---------- Spinner (tombol submit) ---------- */
+
+.spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  margin-right: 8px;
+  border: 2px solid var(--on-accent);
+  border-top-color: transparent;
+  border-radius: 999px;
+  animation: spin 700ms linear infinite;
+  vertical-align: middle;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner { animation: none; }
+}
+
 /* ---------- Toast ---------- */
 
 #toast {
