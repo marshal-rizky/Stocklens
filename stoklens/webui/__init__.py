@@ -20,6 +20,11 @@ def ui_barang(request: Request):
     return templates.TemplateResponse(request, "barang.html", {"aktif": "barang"})
 
 
+@router.get("/barang/baru")
+def ui_barang_baru(request: Request):
+    return templates.TemplateResponse(request, "barang_baru.html", {"aktif": "barang"})
+
+
 @router.get("/opname")
 def ui_opname(request: Request):
     return templates.TemplateResponse(request, "opname.html", {"aktif": "opname"})

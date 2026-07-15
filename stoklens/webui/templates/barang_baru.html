@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Tambah Barang - StokLens{% endblock %}
+{% block content %}
+<div class="halaman-header">
+  <a class="kembali" href="/ui/barang">
+    <svg aria-hidden="true" focusable="false"
+         viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round">
+      <path d="m12 19-7-7 7-7"/>
+      <path d="M19 12H5"/>
+    </svg>
+    <span>Kembali</span>
+  </a>
+</div>
+<h1>Tambah Barang</h1>
+
+<form id="form-barang-baru" novalidate>
+  <div class="field">
+    <label for="input-nama">Nama</label>
+    <input type="text" id="input-nama" name="nama" required autocomplete="off">
+  </div>
+
+  <div class="field">
+    <label for="input-harga-modal">Harga modal</label>
+    <input type="text" inputmode="numeric" id="input-harga-modal" name="harga_modal" required>
+  </div>
+
+  <div class="field">
+    <label for="input-harga-jual">Harga jual</label>
+    <input type="text" inputmode="numeric" id="input-harga-jual" name="harga_jual">
+    <span class="margin-hint" id="margin-hint">—</span>
+  </div>
+
+  <div class="field">
+    <label for="input-stok-awal">Stok awal</label>
+    <input type="text" inputmode="numeric" id="input-stok-awal" name="qty_awal" value="0">
+  </div>
+
+  <div class="field">
+    <label for="input-stok-minimum">Stok minimum</label>
+    <input type="text" inputmode="numeric" id="input-stok-minimum" name="stok_minimum" value="0">
+  </div>
+
+  <div class="field">
+    <label for="input-foto">Foto barang</label>
+    <input type="file" id="input-foto" accept="image/*" capture="environment" multiple class="sr-only-input">
+    <button type="button" class="btn foto-btn" id="tombol-ambil-foto">
+      <svg aria-hidden="true" focusable="false"
+           viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/>
+        <circle cx="12" cy="13" r="3"/>
+      </svg>
+      <span>Ambil Foto</span>
+    </button>
+    <p class="hint">Ambil 3–5 sudut berbeda</p>
+    <div id="thumbnail-grid" class="thumbnail-grid"></div>
+    <p class="field-error hidden" id="error-foto">Minimal 1 foto diperlukan</p>
+  </div>
+
+  <button type="submit" class="btn btn-cta btn-full" id="tombol-simpan">Simpan</button>
+</form>
+{% endblock %}
+
+{% block skrip %}
+<script src="/static/barang_baru.js"></script>
+{% endblock %}
