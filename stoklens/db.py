@@ -21,7 +21,8 @@ CREATE TABLE IF NOT EXISTS scans(
   lokasi_rak TEXT,
   video_ref TEXT,
   tipe TEXT DEFAULT 'video',
-  status TEXT DEFAULT 'selesai'
+  status TEXT DEFAULT 'selesai',
+  terapkan_pada TEXT
 );
 CREATE TABLE IF NOT EXISTS scan_items(
   id INTEGER PRIMARY KEY,
@@ -48,6 +49,7 @@ _MIGRATIONS = [
     "ALTER TABLE products ADD COLUMN stok_minimum INTEGER DEFAULT 0",
     "ALTER TABLE scans ADD COLUMN tipe TEXT DEFAULT 'video'",
     "ALTER TABLE stock_ledger ADD COLUMN alasan TEXT",
+    "ALTER TABLE scans ADD COLUMN terapkan_pada TEXT",
 ]
 
 
@@ -182,7 +184,36 @@ def latest_scan_id(con):
 
 def get_scan(con, scan_id):
     r = con.execute(
-        "SELECT id, tanggal, lokasi_rak, tipe, status FROM scans WHERE id=?",
+        "SELECT id, tanggal, lokasi_rak, tipe, status, terapkan_pada"
+        " FROM scans WHERE id=?",
         (scan_id,),
     ).fetchone()
     return dict(r) if r else None
+
+
+def list_scans(con):
+    """Semua scan, terbaru dulu."""
+    rows = con.execute(
+        "SELECT id, tanggal, lokasi_rak, tipe, status, terapkan_pada"
+        " FROM scans ORDER BY id DESC"
+    ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def mark_scan_applied(con, scan_id):
+    """Tandai scan sudah diterapkan ke ledger (guard terapkan ganda)."""
+    con.execute(
+        "UPDATE scans SET terapkan_pada = datetime('now') WHERE id=?",
+        (scan_id,),
+    )
+    con.commit()
+
+
+def get_scan_items(con, scan_id):
+    """scan_items yang punya product_id (bukan None) — untuk terapkan ke ledger."""
+    rows = con.execute(
+        "SELECT product_id, qty_terdeteksi FROM scan_items"
+        " WHERE scan_id=? AND product_id IS NOT NULL",
+        (scan_id,),
+    ).fetchall()
+    return [dict(r) for r in rows]

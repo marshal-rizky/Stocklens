@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Detail Laporan - StokLens{% endblock %}
+{% block content %}
+<div class="halaman-header">
+  <a class="kembali" href="/ui/laporan">
+    <svg aria-hidden="true" focusable="false"
+         viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round">
+      <path d="m12 19-7-7 7-7"/>
+      <path d="M19 12H5"/>
+    </svg>
+    <span>Kembali</span>
+  </a>
+</div>
+<h1>Detail Laporan</h1>
+
+<div id="laporan-detail" data-scan-id="{{ scan_id }}">
+  <div class="card skeleton" id="state-loading" style="min-height:96px"></div>
+
+  <div class="card error-state hidden" id="state-error">
+    <p>Gagal memuat</p>
+    <button type="button" class="btn" id="coba-lagi">Coba lagi</button>
+  </div>
+
+  <div id="laporan-container" class="hidden"></div>
+</div>
+{% endblock %}
+
+{% block skrip %}
+<script src="/static/report_view.js"></script>
+<script src="/static/laporan_detail.js"></script>
+{% endblock %}

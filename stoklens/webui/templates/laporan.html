@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Laporan - StokLens{% endblock %}
+{% block content %}
+<h1>Laporan</h1>
+
+<div id="daftar-laporan" class="laporan-list"></div>
+
+<div class="halaman-footer">
+  <a class="btn btn-full" href="/api/export/stok.csv">Unduh buku stok (CSV)</a>
+</div>
+{% endblock %}
+
+{% block skrip %}
+<script src="/static/laporan.js"></script>
+{% endblock %}
