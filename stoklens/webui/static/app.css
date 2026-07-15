@@ -185,29 +185,65 @@ a.card {
 
 /* ---------- KPI (Beranda) ---------- */
 
-/* Scroll horizontal di container sendiri (konten lebar tidak boleh
-   bikin halaman scroll ke samping di 360px). */
-.kpi-grid {
+/* Kartu hero: nilai stok sebagai angka utama, full width. */
+.kpi-hero {
   display: flex;
-  gap: 8px;
-  margin: 16px 0;
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
+  flex-direction: column;
+  gap: 6px;
+  margin: 16px 0 8px;
+  padding: 16px;
 }
 
-.kpi-grid::-webkit-scrollbar {
-  display: none;
+.kpi-angka-besar {
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.kpi-hero-tail {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+.kpi-hero-tail svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Dua metrik sekunder berdampingan (bukan scroll samping). */
+.kpi-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.kpi-mini {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 12px;
+}
+
+/* Ringkasan opname (report_view): grid yang wrap, tidak scroll ke samping. */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 8px;
+  margin: 16px 0;
 }
 
 .kpi-card {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  min-width: 140px;
-  flex: 0 0 auto;
-  scroll-snap-align: start;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .kpi-label {
@@ -223,6 +259,54 @@ a.card {
 .kpi-sub {
   font-size: 12px;
   color: var(--text-2);
+}
+
+/* ---------- Aksi cepat (Beranda) ---------- */
+
+.aksi-cepat {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 16px 0;
+}
+
+.aksi-tombol {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 92px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+  transition: transform 150ms ease;
+}
+
+.aksi-tombol:active {
+  transform: scale(0.97);
+}
+
+.aksi-tombol svg {
+  width: 28px;
+  height: 28px;
+}
+
+.aksi-primary {
+  background: var(--cta);
+  color: var(--on-accent);
+  border-color: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aksi-tombol:active {
+    transform: none;
+  }
 }
 
 /* ---------- Peringatan (Beranda) ---------- */
@@ -290,7 +374,11 @@ a.card {
 }
 
 .kpi-grid .error-state {
-  flex: 1 1 100%; /* .kpi-grid sekarang flex; state error tetap selebar baris */
+  grid-column: 1 / -1; /* state error selebar baris grid */
+}
+
+#ringkasan-muat .error-state {
+  margin: 16px 0;
 }
 
 /* ---------- Onboarding (empty state global) ---------- */

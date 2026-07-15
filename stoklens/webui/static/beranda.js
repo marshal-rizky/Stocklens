@@ -72,17 +72,17 @@ function cekKosongGlobal(data) {
   document.getElementById("onboarding").classList.toggle("hidden", !kosong);
 }
 
-/* Markup asli grid KPI, disimpan supaya bisa dipulihkan saat coba lagi. */
-let markupKpiAsli = null;
+/* Markup asli area ringkasan, disimpan supaya bisa dipulihkan saat coba lagi. */
+let markupRingkasanAsli = null;
 
 function tampilkanErrorMuat() {
-  /* ganti area KPI (yang masih skeleton) dengan state error + tombol coba lagi */
-  const grid = document.querySelector(".kpi-grid");
-  grid.innerHTML =
+  /* ganti area ringkasan (yang masih skeleton) dengan state error + tombol coba lagi */
+  const area = document.getElementById("ringkasan-muat");
+  area.innerHTML =
     '<div class="card error-state"><p>Gagal memuat data</p>' +
     '<button type="button" class="btn" id="coba-lagi">Coba lagi</button></div>';
   document.getElementById("coba-lagi").addEventListener("click", () => {
-    grid.innerHTML = markupKpiAsli; /* pulihkan skeleton lalu muat ulang */
+    area.innerHTML = markupRingkasanAsli; /* pulihkan skeleton lalu muat ulang */
     muatBeranda();
   });
 }
@@ -100,6 +100,6 @@ async function muatBeranda() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  markupKpiAsli = document.querySelector(".kpi-grid").innerHTML;
+  markupRingkasanAsli = document.getElementById("ringkasan-muat").innerHTML;
   muatBeranda();
 });
