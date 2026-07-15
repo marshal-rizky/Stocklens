@@ -12,6 +12,18 @@ function formatTanggalScan(iso) {
 }
 
 function kartuScan(s) {
+  /* baris meta: lokasi dan shrinkage dipisah " · " supaya tidak menempel */
+  const meta = [];
+  if (s.lokasi_rak) {
+    meta.push('<span class="laporan-lokasi">' + escapeHtml(s.lokasi_rak) + "</span>");
+  }
+  if (s.total_shrinkage_rp > 0) {
+    meta.push(
+      '<span class="laporan-shrinkage accent-neg">Shrinkage: ' +
+        rp(s.total_shrinkage_rp) +
+        "</span>"
+    );
+  }
   return (
     '<a class="card laporan-card" href="/ui/laporan/' +
     s.id +
@@ -20,13 +32,10 @@ function kartuScan(s) {
     '</span><span class="badge">' +
     escapeHtml(s.tipe) +
     "</span></div>" +
-    (s.lokasi_rak
-      ? '<span class="laporan-lokasi">' + escapeHtml(s.lokasi_rak) + "</span>"
-      : "") +
-    (s.total_shrinkage_rp > 0
-      ? '<span class="laporan-shrinkage accent-neg">Shrinkage: ' +
-        rp(s.total_shrinkage_rp) +
-        "</span>"
+    (meta.length
+      ? '<div class="laporan-card-meta">' +
+        meta.join('<span class="laporan-sep" aria-hidden="true">·</span>') +
+        "</div>"
       : "") +
     "</a>"
   );
