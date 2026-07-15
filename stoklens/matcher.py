@@ -19,6 +19,10 @@ def match(embedding, products, threshold=0.75, allowed_ids=None):
     for p in products:
         if allowed_ids is not None and p["id"] not in allowed_ids:
             continue
+        # Produk dengan dimensi embedding beda (data korup/legacy) di-skip,
+        # jangan sampai satu baris jelek meledakkan seluruh scan.
+        if len(p["embedding"]) != len(embedding):
+            continue
         s = cosine(embedding, p["embedding"])
         if s > best_score:
             best_id, best_score = p["id"], s

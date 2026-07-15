@@ -31,6 +31,12 @@ def test_match_guided_mode_batasi_kandidat():
     assert pid == 2
 
 
+def test_match_skip_embedding_beda_dimensi():
+    prods = _prods() + [{"id": 3, "embedding": np.ones(8, dtype=np.float32)}]
+    pid, _ = match(np.array([0.9, 0.1], dtype=np.float32), prods, threshold=0.5)
+    assert pid == 1  # produk dim-8 di-skip tanpa error
+
+
 def test_majority_label():
     assert majority_label([1, 1, 2, None, 1]) == 1
 
