@@ -43,7 +43,8 @@ Kalau `pytest` merah di kondisi repo bersih → lapor di grup, jangan didiamkan.
 | `stoklens/ocr.py` | Wrapper EasyOCR (lazy singleton) | — (diuji via lapangan) |
 | `stoklens/enroll.py` | Foto barang → rata-rata embedding → DB | `test_enroll_slow.py` |
 | `stoklens/scan.py` | Orkestrasi: video → YOLO+BoT-SORT → match → OCR → DB | — (glue; logika intinya sudah diuji di modul lain) |
-| `stoklens/api.py` | FastAPI: POST /products, POST /scans, GET /report/{id}, GET / (dashboard) | `test_api.py` |
+| `stoklens/api.py` | FastAPI: JSON API (/api/*, /products, /scans, /report) + mount UI | `test_api.py`, `test_api_ui.py` |
+| `stoklens/webui/` | UI mobile (/ui/*): templates Jinja2 + JS vanilla; GET / redirect ke /ui/beranda | `test_webui.py` |
 | `stoklens/botsort_reid.yaml` | Config tracker anti ID-pecah (baca komentarnya) | — |
 | `scripts/poc_track.py` | PoC counting pakai YOLO pretrained (kelas COCO) — untuk validasi awal | — |
 | `scripts/demo_scan.py` | CLI end-to-end: enroll / scan / report | — |
@@ -66,7 +67,7 @@ modul murni, jangan ditanam di `scan.py`.
         crop terbesar per track → EasyOCR → parse_expiry() → tanggal expired
 
 [Output]  scan_items (DB) → build_report(): selisih vs stock_ledger,
-          shrinkage Rp, rugi expired Rp → dashboard (GET /) / JSON (GET /report/{id})
+          shrinkage Rp, rugi expired Rp → UI mobile (/ui/beranda, /ui/laporan) / JSON (GET /report/{id})
 ```
 
 ## Keputusan desain penting + ALASANNYA (jangan diulang debatnya tanpa data baru)
@@ -179,7 +180,9 @@ Desain UI dibuat di Google Stitch → export HTML/CSS. Cara masuk ke repo:
    | `POST /products` (multipart) | Enrollment barang: nama, harga_modal, qty_awal, fotos[] |
    | `POST /scans` (multipart) | Opname via video: video, lokasi_rak |
    | `POST /api/scans-foto` (multipart) | Opname via foto: fotos[], lokasi_rak, guided_product_id?, read_expiry? |
-   | `GET /report/{scan_id}` | Laporan opname JSON |
+   | `GET /report/{scan_id}` | Laporan opname JSON (+ key `scan` berisi info scan & `terapkan_pada`) |
+   | `GET /api/scans` | Daftar riwayat opname + total shrinkage/rugi |
+   | `POST /api/opname/{scan_id}/terapkan` | Terapkan hasil opname ke buku stok (409 kalau sudah) |
    | `GET /api/export/stok.csv` | Export buku stok CSV |
 3. Pertahankan token desain (warna primary `#2563EB`, CTA `#F97316`, touch target ≥48dp, angka rupiah
    `tabular-nums`) supaya konsisten dengan design doc — kirim token ini ke prompt Stitch sekalian.
