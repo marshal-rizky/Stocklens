@@ -100,3 +100,22 @@ def test_opname_manual_punya_container_checklist_dan_skrip(tmp_path):
     assert "report_view.js" in r.text
 
 
+def test_opname_foto_punya_input_kamera_dan_report_view(tmp_path):
+    client = _client(tmp_path)
+    r = client.get("/ui/opname/foto")
+    assert r.status_code == 200
+    assert 'capture="environment"' in r.text
+    assert "report_view.js" in r.text
+    assert "opname_foto.js" in r.text
+
+
+def test_opname_video_punya_select_count_mode(tmp_path):
+    client = _client(tmp_path)
+    r = client.get("/ui/opname/video")
+    assert r.status_code == 200
+    assert 'id="select-count-mode"' in r.text
+    assert 'value="line"' in r.text
+    assert 'value="track"' in r.text
+    assert "opname_video.js" in r.text
+
+
