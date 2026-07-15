@@ -186,3 +186,21 @@ def get_scan(con, scan_id):
         (scan_id,),
     ).fetchone()
     return dict(r) if r else None
+
+
+def list_scans(con):
+    """Semua scan, terbaru dulu."""
+    rows = con.execute(
+        "SELECT id, tanggal, lokasi_rak, tipe, status FROM scans ORDER BY id DESC"
+    ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def get_scan_items(con, scan_id):
+    """scan_items yang punya product_id (bukan None) — untuk terapkan ke ledger."""
+    rows = con.execute(
+        "SELECT product_id, qty_terdeteksi FROM scan_items"
+        " WHERE scan_id=? AND product_id IS NOT NULL",
+        (scan_id,),
+    ).fetchall()
+    return [dict(r) for r in rows]

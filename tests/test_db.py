@@ -39,3 +39,23 @@ def test_scan_dan_report_rows():
         "qty_terdeteksi": 8, "qty_expired": 2,
         "expired_terdekat": "2026-08-01", "confidence_avg": 0.91,
     }]
+
+
+def test_list_scans_urutan_terbaru_dulu():
+    con = _con()
+    sid1 = db.add_scan(con, lokasi_rak="Rak 1", tipe="manual")
+    sid2 = db.add_scan(con, lokasi_rak="Rak 2", tipe="foto")
+    rows = db.list_scans(con)
+    assert [r["id"] for r in rows] == [sid2, sid1]
+    assert rows[0]["lokasi_rak"] == "Rak 2"
+    assert rows[0]["tipe"] == "foto"
+
+
+def test_get_scan_items_hanya_yang_punya_product_id():
+    con = _con()
+    pid = db.add_product(con, "Gula 1kg", 12000, np.zeros(4, dtype=np.float32))
+    sid = db.add_scan(con)
+    db.add_scan_item(con, sid, pid, qty_terdeteksi=8)
+    db.add_scan_item(con, sid, None, qty_terdeteksi=1)  # unknown, tanpa product_id
+    items = db.get_scan_items(con, sid)
+    assert items == [{"product_id": pid, "qty_terdeteksi": 8}]

@@ -87,6 +87,43 @@ def test_opname_manual_terapkan(tmp_path):
     assert client.get(f"/api/products/{p1}").json()["qty"] == 37
 
 
+def test_list_scans_urutan_dan_total(tmp_path):
+    dbp = str(tmp_path / "t.db")
+    con = db.connect(dbp)
+    p1 = db.add_product(con, "Indomie", 3200, np.zeros(4, dtype=np.float32))
+    db.set_stock(con, p1, 40)
+    sid1 = db.add_scan(con, lokasi_rak="Rak 1", tipe="manual")
+    db.add_scan_item(con, sid1, p1, 37)
+    sid2 = db.add_scan(con, lokasi_rak="Rak 2", tipe="foto")
+    db.add_scan_item(con, sid2, p1, 35)
+    con.close()
+    client = TestClient(create_app(db_path=dbp))
+    rows = client.get("/api/scans").json()
+    assert [r["id"] for r in rows] == [sid2, sid1]
+    assert rows[0]["total_shrinkage_rp"] == (40 - 35) * 3200
+    assert rows[1]["total_shrinkage_rp"] == (40 - 37) * 3200
+
+
+def test_opname_terapkan(tmp_path):
+    client, p1 = _client(tmp_path)
+    r = client.post("/api/opname-manual", json={
+        "items": [{"product_id": p1, "qty_fisik": 33}],
+    })
+    scan_id = r.json()["scan_id"]
+    assert client.get(f"/api/products/{p1}").json()["qty"] == 40  # belum diterapkan
+
+    r2 = client.post(f"/api/opname/{scan_id}/terapkan")
+    assert r2.status_code == 200
+    assert r2.json() == {"ok": True, "jumlah_item": 1}
+    assert client.get(f"/api/products/{p1}").json()["qty"] == 33
+
+
+def test_opname_terapkan_scan_tidak_ada(tmp_path):
+    client, _ = _client(tmp_path)
+    r = client.post("/api/opname/999/terapkan")
+    assert r.status_code == 404
+
+
 def test_dashboard_kpi(tmp_path):
     client, p1 = _client(tmp_path)
     d = client.get("/api/dashboard").json()
