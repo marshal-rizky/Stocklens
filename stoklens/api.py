@@ -83,11 +83,13 @@ def create_app(db_path="stoklens.db", embedder=None, photo_detector=None):
         return {"product_id": pid}
 
     @app.post("/scans")
-    async def create_scan(video: UploadFile, lokasi_rak: str = Form(None)):
+    async def create_scan(video: UploadFile, lokasi_rak: str = Form(None),
+                          count_mode: str = Form("line")):
         from .scan import run_scan
         tmp = Path(tempfile.mkdtemp()) / video.filename
         tmp.write_bytes(await video.read())
-        sid = run_scan(con(), get_embedder(), tmp, lokasi_rak=lokasi_rak)
+        sid = run_scan(con(), get_embedder(), tmp, lokasi_rak=lokasi_rak,
+                       count_mode=count_mode)
         return {"scan_id": sid}
 
     @app.get("/report/{scan_id}")
@@ -176,6 +178,29 @@ def create_app(db_path="stoklens.db", embedder=None, photo_detector=None):
                 db.set_stock(c, item.product_id, item.qty_fisik, sumber="opname",
                              alasan=f"opname #{scan_id}")
         return {"scan_id": scan_id, "diterapkan": body.terapkan, "report": rep}
+
+    @app.get("/api/scans")
+    def api_scans():
+        c = con()
+        out = []
+        for s in db.list_scans(c):
+            rep = build_report(db.get_report_rows(c, s["id"]))
+            out.append(s | {
+                "total_shrinkage_rp": rep["total_shrinkage_rp"],
+                "total_rugi_expired_rp": rep["total_rugi_expired_rp"],
+            })
+        return out
+
+    @app.post("/api/opname/{scan_id}/terapkan")
+    def api_opname_terapkan(scan_id: int):
+        c = con()
+        if db.get_scan(c, scan_id) is None:
+            raise HTTPException(404, "Scan tidak ditemukan")
+        items = db.get_scan_items(c, scan_id)
+        for item in items:
+            db.set_stock(c, item["product_id"], item["qty_terdeteksi"],
+                         sumber="opname", alasan=f"opname #{scan_id}")
+        return {"ok": True, "jumlah_item": len(items)}
 
     @app.get("/api/dashboard")
     def api_dashboard():
