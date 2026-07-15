@@ -106,16 +106,23 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("input-harga-modal").addEventListener("input", perbaruiMargin);
   document.getElementById("input-harga-jual").addEventListener("input", perbaruiMargin);
 
-  document.getElementById("tombol-ambil-foto").addEventListener("click", () => {
-    document.getElementById("input-foto").click();
-  });
-
-  document.getElementById("input-foto").addEventListener("change", (ev) => {
+  /* Dua sumber foto: kamera (satu-satu) dan galeri (bisa banyak sekaligus),
+     keduanya menambah ke daftar yang sama. */
+  function tambahFoto(ev) {
     fotoFiles = fotoFiles.concat(Array.from(ev.target.files));
     ev.target.value = "";
     document.getElementById("error-foto").classList.add("hidden");
     renderThumbnail();
+  }
+
+  document.getElementById("tombol-kamera").addEventListener("click", () => {
+    document.getElementById("input-foto-kamera").click();
   });
+  document.getElementById("tombol-galeri").addEventListener("click", () => {
+    document.getElementById("input-foto-galeri").click();
+  });
+  document.getElementById("input-foto-kamera").addEventListener("change", tambahFoto);
+  document.getElementById("input-foto-galeri").addEventListener("change", tambahFoto);
 
   document.getElementById("form-barang-baru").addEventListener("submit", kirimForm);
 });
