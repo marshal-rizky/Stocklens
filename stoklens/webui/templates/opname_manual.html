@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Opname Manual - StokLens{% endblock %}
+{% block content %}
+<div class="halaman-header">
+  <a class="kembali" href="/ui/opname">
+    <svg aria-hidden="true" focusable="false"
+         viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round">
+      <path d="m12 19-7-7 7-7"/>
+      <path d="M19 12H5"/>
+    </svg>
+    <span>Kembali</span>
+  </a>
+</div>
+<h1>Opname Manual</h1>
+
+<div id="form-state">
+  <div class="field">
+    <label for="input-lokasi-rak">Lokasi rak (opsional)</label>
+    <input type="text" id="input-lokasi-rak" autocomplete="off">
+  </div>
+
+  <p class="progress-sticky" id="progress-sticky">Terisi 0/0</p>
+
+  <div id="daftar-checklist" class="checklist-list"></div>
+
+  <div class="empty-state hidden" id="state-kosong">
+    <p>Belum ada barang</p>
+    <a class="btn btn-cta" href="/ui/barang/baru">Tambah barang</a>
+  </div>
+
+  <button type="button" class="btn btn-cta btn-full" id="tombol-hitung" disabled>Hitung selisih</button>
+</div>
+
+<div id="laporan-hasil" class="hidden">
+  <div id="laporan-container"></div>
+  <a class="btn btn-full" href="/ui/opname/manual">Opname lagi</a>
+</div>
+{% endblock %}
+
+{% block skrip %}
+<script src="/static/report_view.js"></script>
+<script src="/static/opname_manual.js"></script>
+{% endblock %}

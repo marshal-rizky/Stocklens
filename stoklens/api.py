@@ -1,4 +1,4 @@
-"""FastAPI: enrollment, scan, akuntansi stok (JSON API) + dashboard HTML.
+"""FastAPI: enrollment, scan, akuntansi stok (JSON API) + UI mobile (/ui/*).
 
 Endpoint /api/* = kontrak untuk UI mobile (Google Stitch) — lihat docs/CATATAN-TIM.md.
 """
@@ -9,11 +9,15 @@ import tempfile
 from pathlib import Path
 
 from fastapi import FastAPI, Form, HTTPException, UploadFile
-from fastapi.responses import HTMLResponse, PlainTextResponse
+from fastapi.responses import PlainTextResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from . import accounting, db
 from .report import build_report
+from .webui import router as webui_router
+
+_STATIC_DIR = Path(__file__).parent / "webui" / "static"
 
 
 class ProductPatch(BaseModel, extra="forbid"):
@@ -40,10 +44,6 @@ class OpnameManual(BaseModel):
     terapkan: bool = False
 
 
-def _rp(n):
-    return f"Rp{n:,.0f}".replace(",", ".")
-
-
 def create_app(db_path="stoklens.db", embedder=None, photo_detector=None):
     """photo_detector: fn(image_bgr)->boxes untuk mode foto; None = YOLO asli."""
     app = FastAPI(title="StokLens")
@@ -58,9 +58,14 @@ def create_app(db_path="stoklens.db", embedder=None, photo_detector=None):
             embedder = ClipEmbedder()
         return embedder
 
+    app.include_router(webui_router)
+    app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
+
     @app.post("/products")
     async def create_product(nama: str = Form(...), harga_modal: int = Form(...),
                              qty_awal: int = Form(0),
+                             harga_jual: int = Form(None),
+                             stok_minimum: int = Form(0),
                              fotos: list[UploadFile] = None):
         from .enroll import enroll_product
         tmp = Path(tempfile.mkdtemp())
@@ -69,22 +74,32 @@ def create_app(db_path="stoklens.db", embedder=None, photo_detector=None):
             p = tmp / f.filename
             p.write_bytes(await f.read())
             paths.append(p)
-        pid = enroll_product(con(), get_embedder(), nama, harga_modal, paths,
-                             qty_awal=qty_awal)
+        c = con()
+        pid = enroll_product(c, get_embedder(), nama, harga_modal, paths,
+                             harga_jual=harga_jual, qty_awal=qty_awal)
+        if stok_minimum > 0:
+            db.update_product(c, pid, stok_minimum=stok_minimum)
         shutil.rmtree(tmp, ignore_errors=True)
         return {"product_id": pid}
 
     @app.post("/scans")
-    async def create_scan(video: UploadFile, lokasi_rak: str = Form(None)):
+    async def create_scan(video: UploadFile, lokasi_rak: str = Form(None),
+                          count_mode: str = Form("line")):
         from .scan import run_scan
         tmp = Path(tempfile.mkdtemp()) / video.filename
         tmp.write_bytes(await video.read())
-        sid = run_scan(con(), get_embedder(), tmp, lokasi_rak=lokasi_rak)
+        sid = run_scan(con(), get_embedder(), tmp, lokasi_rak=lokasi_rak,
+                       count_mode=count_mode)
         return {"scan_id": sid}
 
     @app.get("/report/{scan_id}")
     def report(scan_id: int):
-        return build_report(db.get_report_rows(con(), scan_id))
+        c = con()
+        # Key "scan" tambahan (additive) — konsumen lama yang cuma baca
+        # items/total_* tetap aman.
+        return build_report(db.get_report_rows(c, scan_id)) | {
+            "scan": db.get_scan(c, scan_id),
+        }
 
     @app.post("/api/scans-foto")
     async def api_scan_foto(fotos: list[UploadFile], lokasi_rak: str = Form(None),
@@ -167,7 +182,36 @@ def create_app(db_path="stoklens.db", embedder=None, photo_detector=None):
             for item in body.items:
                 db.set_stock(c, item.product_id, item.qty_fisik, sumber="opname",
                              alasan=f"opname #{scan_id}")
+            db.mark_scan_applied(c, scan_id)
         return {"scan_id": scan_id, "diterapkan": body.terapkan, "report": rep}
+
+    @app.get("/api/scans")
+    def api_scans():
+        c = con()
+        out = []
+        for s in db.list_scans(c):
+            rep = build_report(db.get_report_rows(c, s["id"]))
+            out.append(s | {
+                "total_shrinkage_rp": rep["total_shrinkage_rp"],
+                "total_rugi_expired_rp": rep["total_rugi_expired_rp"],
+            })
+        return out
+
+    @app.post("/api/opname/{scan_id}/terapkan")
+    def api_opname_terapkan(scan_id: int):
+        c = con()
+        scan = db.get_scan(c, scan_id)
+        if scan is None:
+            raise HTTPException(404, "Scan tidak ditemukan")
+        # Guard terapkan ganda: snapshot lama tidak boleh menimpa stok sekarang.
+        if scan["terapkan_pada"] is not None:
+            raise HTTPException(409, "Opname ini sudah diterapkan")
+        items = db.get_scan_items(c, scan_id)
+        for item in items:
+            db.set_stock(c, item["product_id"], item["qty_terdeteksi"],
+                         sumber="opname", alasan=f"opname #{scan_id}")
+        db.mark_scan_applied(c, scan_id)
+        return {"ok": True, "jumlah_item": len(items)}
 
     @app.get("/api/dashboard")
     def api_dashboard():
@@ -207,30 +251,8 @@ def create_app(db_path="stoklens.db", embedder=None, photo_detector=None):
             buf.getvalue(), media_type="text/csv",
             headers={"Content-Disposition": "attachment; filename=stok.csv"})
 
-    @app.get("/", response_class=HTMLResponse)
-    def dashboard():
-        c = con()
-        sid = db.latest_scan_id(c)
-        if sid is None:
-            return "<h1>StokLens</h1><p>Belum ada scan.</p>"
-        rep = build_report(db.get_report_rows(c, sid))
-        rows = "".join(
-            f"<tr><td>{i['nama']}</td><td>{i['qty_tercatat']}</td>"
-            f"<td>{i['qty_terdeteksi']}</td><td>{i['selisih']}</td>"
-            f"<td>{_rp(i['shrinkage_rp'])}</td><td>{i['expired_terdekat'] or '-'}</td>"
-            f"<td>{_rp(i['rugi_expired_rp'])}</td></tr>"
-            for i in rep["items"]
-        )
-        return f"""<html><head><title>StokLens</title><style>
-        body{{font-family:sans-serif;margin:2rem}} table{{border-collapse:collapse}}
-        td,th{{border:1px solid #ccc;padding:.4rem .8rem}} .kpi{{display:inline-block;
-        margin-right:2rem;padding:1rem;border:1px solid #ccc;border-radius:8px}}
-        </style></head><body><h1>StokLens — Scan #{sid}</h1>
-        <div class="kpi">Nilai stok<br><b>{_rp(rep['total_nilai_rp'])}</b></div>
-        <div class="kpi">Shrinkage<br><b>{_rp(rep['total_shrinkage_rp'])}</b></div>
-        <div class="kpi">Potensi rugi expired<br><b>{_rp(rep['total_rugi_expired_rp'])}</b></div>
-        <table><tr><th>Produk</th><th>Tercatat</th><th>Terdeteksi</th><th>Selisih</th>
-        <th>Shrinkage</th><th>Expired terdekat</th><th>Rugi expired</th></tr>{rows}</table>
-        </body></html>"""
+    @app.get("/")
+    def root():
+        return RedirectResponse(url="/ui/beranda")
 
     return app
