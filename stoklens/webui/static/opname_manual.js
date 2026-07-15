@@ -102,7 +102,7 @@ async function kirimOpname() {
   const tombol = document.getElementById("tombol-hitung");
   const teksAsli = tombol.textContent;
   tombol.disabled = true;
-  tombol.textContent = "Menghitung...";
+  tombol.textContent = "Menghitung…";
 
   let hasil;
   try {

@@ -23,6 +23,9 @@ async function muatLaporanDetail() {
   renderReport(document.getElementById("laporan-container"), report, {
     scanId: idScanLaporan(),
     tampilkanTerapkan: true,
+    /* laporan historis yang sudah pernah diterapkan tidak boleh diterapkan
+       ulang (menimpa stok sekarang dengan snapshot basi) */
+    sudahDiterapkan: Boolean(report.scan && report.scan.terapkan_pada),
   });
 }
 
