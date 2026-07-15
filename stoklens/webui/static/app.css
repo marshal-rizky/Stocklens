@@ -593,6 +593,12 @@ a.card {
   clip: rect(0 0 0 0);
 }
 
+.foto-btn-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
 .foto-btn {
   width: 100%;
   gap: 8px;
