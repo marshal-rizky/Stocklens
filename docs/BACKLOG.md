@@ -2,26 +2,22 @@
 
 > Daftar perbaikan yang DISENGAJA ditunda. Ambil satu, bikin branch `fitur/...` atau
 > `fix/...`, kerjakan, PR. Jangan dikerjakan diam-diam tanpa klaim di grup.
-> Update terakhir: 2026-07-15.
+> Update terakhir: 2026-07-15 (2 item UI selesai — lihat bagian Selesai).
 
-## UI improvement (masukan dari uji pakai ketua, 15 Jul)
+## Selesai (branch `fitur/ui-beranda-redesign`, menunggu merge)
 
-1. **Beranda: satu scroll vertikal saja.**
-   Saat ini kartu KPI di-scroll horizontal (kanan-kiri) — terasa tidak alami.
-   Ubah jadi susunan vertikal/stack (atau grid 2 kolom + 1 full-width) supaya seluruh
-   beranda cukup di-scroll ke bawah. Sentuh: `app.css` (.kpi-grid), cek juga dampaknya
-   di ringkasan `report_view.js` yang memakai kelas yang sama — kemungkinan perlu
-   kelas terpisah antara KPI beranda dan totals laporan.
+1. ~~**Beranda: satu scroll vertikal saja.**~~ ✅ SELESAI.
+   KPI horizontal diganti: kartu hero "Nilai stok" full-width + 2 metrik berdampingan
+   (grid), tanpa scroll samping. Ditambah baris "Aksi cepat" (Mulai Opname / Tambah
+   Barang) dan section "Riwayat opname" (3 scan terakhir) untuk mengisi ruang kosong
+   dengan konten berguna. `report_view.js` totals ikut pakai grid wrap (tidak scroll).
 
-2. **Ambil foto: multi-shot tanpa keluar-masuk kamera.**
-   Sekarang `capture="environment"` membuka kamera → jepret 1 → balik ke form → ulangi.
-   Harusnya bisa ambil/pilih banyak foto sekaligus. Opsi implementasi (pilih saat
-   mengerjakan): (a) hilangkan atribut `capture` supaya muncul picker galeri yang
-   mendukung multi-select + tombol kamera bawaan picker; (b) dua tombol: "Ambil Foto"
-   (kamera, satu-satu) dan "Pilih dari Galeri" (multi); (c) kamera in-app via
-   getUserMedia dengan tombol jepret berulang — paling mulus tapi paling besar
-   kerjaannya (dan jadi fondasi fitur overlay panduan SOP di roadmap).
-   Berlaku di: `barang_baru.js` (enrollment) dan `opname_foto.js`.
+2. ~~**Ambil foto: multi-shot tanpa keluar-masuk kamera.**~~ ✅ SELESAI (opsi b).
+   Dua tombol di enrollment (`barang_baru`) dan opname foto (`opname_foto`):
+   "Ambil Foto" (kamera, `capture`, satu-satu) + "Pilih dari Galeri" (`multiple`, tanpa
+   `capture`, banyak sekaligus). Keduanya menambah ke daftar foto yang sama.
+   Catatan: kamera in-app via getUserMedia (opsi c) belum — itu fondasi fitur overlay
+   panduan SOP di roadmap, dikerjakan nanti kalau perlu.
 
 ## Teknis (temuan final review branch UI, belum dikerjakan)
 
