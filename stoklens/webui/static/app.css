@@ -185,17 +185,29 @@ a.card {
 
 /* ---------- KPI (Beranda) ---------- */
 
+/* Scroll horizontal di container sendiri (konten lebar tidak boleh
+   bikin halaman scroll ke samping di 360px). */
 .kpi-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  display: flex;
   gap: 8px;
   margin: 16px 0;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.kpi-grid::-webkit-scrollbar {
+  display: none;
 }
 
 .kpi-card {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-width: 140px;
+  flex: 0 0 auto;
+  scroll-snap-align: start;
 }
 
 .kpi-label {
@@ -278,7 +290,7 @@ a.card {
 }
 
 .kpi-grid .error-state {
-  grid-column: 1 / -1;
+  flex: 1 1 100%; /* .kpi-grid sekarang flex; state error tetap selebar baris */
 }
 
 /* ---------- Onboarding (empty state global) ---------- */
@@ -862,9 +874,21 @@ a.card {
   font-weight: 600;
 }
 
+.laporan-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
 .laporan-lokasi {
   font-size: 13px;
   color: var(--text-2);
+}
+
+.laporan-sep {
+  color: var(--text-2);
+  font-size: 13px;
 }
 
 .laporan-shrinkage {
