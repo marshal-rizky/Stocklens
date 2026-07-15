@@ -81,7 +81,7 @@ function kartuTotalsLaporan(report) {
  * Render laporan opname (totals + item) ke containerEl.
  * @param {HTMLElement} containerEl
  * @param {object} report - {items, total_nilai_rp, total_shrinkage_rp, total_rugi_expired_rp}
- * @param {{scanId?: number|string, tampilkanTerapkan?: boolean}} [opts]
+ * @param {{scanId?: number|string, tampilkanTerapkan?: boolean, sudahDiterapkan?: boolean}} [opts]
  */
 function renderReport(containerEl, report, opts) {
   opts = opts || {};
@@ -91,8 +91,9 @@ function renderReport(containerEl, report, opts) {
     : '<p class="empty-state-kecil">Tidak ada item</p>';
 
   const tombolHtml = opts.tampilkanTerapkan
-    ? '<button type="button" class="btn btn-cta btn-full" id="tombol-terapkan-opname">' +
-      "Terapkan ke buku stok</button>"
+    ? '<button type="button" class="btn btn-cta btn-full" id="tombol-terapkan-opname"' +
+      (opts.sudahDiterapkan ? " disabled>Sudah diterapkan" : ">Terapkan ke buku stok") +
+      "</button>"
     : "";
 
   containerEl.innerHTML =
@@ -102,19 +103,40 @@ function renderReport(containerEl, report, opts) {
     "</div>" +
     tombolHtml;
 
-  if (!opts.tampilkanTerapkan) return;
+  if (!opts.tampilkanTerapkan || opts.sudahDiterapkan) return;
 
   const tombol = document.getElementById("tombol-terapkan-opname");
   tombol.addEventListener("click", async () => {
     if (!confirm("Terapkan hasil opname ini ke buku stok?")) return;
     tombol.disabled = true;
+    /* fetch mentah (bukan api()) supaya 409 "sudah diterapkan" bisa dibedakan
+       dari error lain: 409 = tombol tetap disabled, error lain = boleh coba lagi */
+    let res;
     try {
-      await api("/api/opname/" + opts.scanId + "/terapkan", { method: "POST" });
-      toast("Hasil opname diterapkan ke buku stok");
-      tombol.textContent = "Sudah diterapkan";
+      res = await fetch("/api/opname/" + opts.scanId + "/terapkan", { method: "POST" });
     } catch (e) {
-      /* toast error sudah tampil dari api() */
+      toast(PESAN_OFFLINE, false);
       tombol.disabled = false;
+      return;
     }
+    if (res.status === 409) {
+      let detail = "Opname ini sudah diterapkan";
+      try {
+        const body = await res.json();
+        detail = body.detail || detail;
+      } catch (e) {
+        /* respons bukan JSON, pakai pesan default */
+      }
+      toast(detail, false);
+      tombol.textContent = "Sudah diterapkan";
+      return;
+    }
+    if (!res.ok) {
+      toast("Gagal menerapkan hasil opname", false);
+      tombol.disabled = false;
+      return;
+    }
+    toast("Hasil opname diterapkan ke buku stok");
+    tombol.textContent = "Sudah diterapkan";
   });
 }

@@ -124,6 +124,52 @@ def test_opname_terapkan_scan_tidak_ada(tmp_path):
     assert r.status_code == 404
 
 
+def test_opname_terapkan_dua_kali_ditolak(tmp_path):
+    client, p1 = _client(tmp_path)
+    r = client.post("/api/opname-manual", json={
+        "items": [{"product_id": p1, "qty_fisik": 33}],
+    })
+    scan_id = r.json()["scan_id"]
+    assert client.post(f"/api/opname/{scan_id}/terapkan").status_code == 200
+    assert client.get(f"/api/products/{p1}").json()["qty"] == 33
+
+    # stok berubah lagi setelah terapkan pertama (jual/penyesuaian)
+    client.post("/api/adjustments",
+                json={"product_id": p1, "delta": -3, "alasan": "koreksi"})
+    assert client.get(f"/api/products/{p1}").json()["qty"] == 30
+
+    # terapkan kedua: 409, stok TIDAK tertimpa snapshot basi
+    r2 = client.post(f"/api/opname/{scan_id}/terapkan")
+    assert r2.status_code == 409
+    assert "sudah diterapkan" in r2.json()["detail"].lower()
+    assert client.get(f"/api/products/{p1}").json()["qty"] == 30
+
+
+def test_opname_manual_terapkan_true_tandai_terapkan_pada(tmp_path):
+    client, p1 = _client(tmp_path)
+    r = client.post("/api/opname-manual", json={
+        "terapkan": True,
+        "items": [{"product_id": p1, "qty_fisik": 37}],
+    })
+    scan_id = r.json()["scan_id"]
+    rows = client.get("/api/scans").json()
+    row = next(s for s in rows if s["id"] == scan_id)
+    assert row["terapkan_pada"] is not None
+    # dan terapkan manual kedua ditolak
+    assert client.post(f"/api/opname/{scan_id}/terapkan").status_code == 409
+
+
+def test_report_punya_key_scan(tmp_path):
+    client, p1 = _client(tmp_path)
+    r = client.post("/api/opname-manual", json={
+        "items": [{"product_id": p1, "qty_fisik": 37}],
+    })
+    scan_id = r.json()["scan_id"]
+    rep = client.get(f"/report/{scan_id}").json()
+    assert rep["scan"]["id"] == scan_id
+    assert rep["scan"]["terapkan_pada"] is None
+
+
 def test_dashboard_kpi(tmp_path):
     client, p1 = _client(tmp_path)
     d = client.get("/api/dashboard").json()

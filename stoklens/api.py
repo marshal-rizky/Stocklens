@@ -94,7 +94,12 @@ def create_app(db_path="stoklens.db", embedder=None, photo_detector=None):
 
     @app.get("/report/{scan_id}")
     def report(scan_id: int):
-        return build_report(db.get_report_rows(con(), scan_id))
+        c = con()
+        # Key "scan" tambahan (additive) — konsumen lama yang cuma baca
+        # items/total_* tetap aman.
+        return build_report(db.get_report_rows(c, scan_id)) | {
+            "scan": db.get_scan(c, scan_id),
+        }
 
     @app.post("/api/scans-foto")
     async def api_scan_foto(fotos: list[UploadFile], lokasi_rak: str = Form(None),
@@ -177,6 +182,7 @@ def create_app(db_path="stoklens.db", embedder=None, photo_detector=None):
             for item in body.items:
                 db.set_stock(c, item.product_id, item.qty_fisik, sumber="opname",
                              alasan=f"opname #{scan_id}")
+            db.mark_scan_applied(c, scan_id)
         return {"scan_id": scan_id, "diterapkan": body.terapkan, "report": rep}
 
     @app.get("/api/scans")
@@ -194,12 +200,17 @@ def create_app(db_path="stoklens.db", embedder=None, photo_detector=None):
     @app.post("/api/opname/{scan_id}/terapkan")
     def api_opname_terapkan(scan_id: int):
         c = con()
-        if db.get_scan(c, scan_id) is None:
+        scan = db.get_scan(c, scan_id)
+        if scan is None:
             raise HTTPException(404, "Scan tidak ditemukan")
+        # Guard terapkan ganda: snapshot lama tidak boleh menimpa stok sekarang.
+        if scan["terapkan_pada"] is not None:
+            raise HTTPException(409, "Opname ini sudah diterapkan")
         items = db.get_scan_items(c, scan_id)
         for item in items:
             db.set_stock(c, item["product_id"], item["qty_terdeteksi"],
                          sumber="opname", alasan=f"opname #{scan_id}")
+        db.mark_scan_applied(c, scan_id)
         return {"ok": True, "jumlah_item": len(items)}
 
     @app.get("/api/dashboard")
