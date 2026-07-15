@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}Detail Barang - StokLens{% endblock %}
+{% block content %}
+<div class="halaman-header">
+  <a class="kembali" href="/ui/barang">
+    <svg aria-hidden="true" focusable="false"
+         viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round">
+      <path d="m12 19-7-7 7-7"/>
+      <path d="M19 12H5"/>
+    </svg>
+    <span>Kembali</span>
+  </a>
+</div>
+
+<div id="detail-barang" data-product-id="{{ product_id }}">
+  <div class="card skeleton" id="state-loading" style="min-height:96px"></div>
+
+  <div class="card error-state hidden" id="state-error">
+    <p>Gagal memuat</p>
+    <button type="button" class="btn" id="coba-lagi">Coba lagi</button>
+  </div>
+
+  <div class="empty-state hidden" id="state-notfound">
+    <p>Barang tidak ditemukan</p>
+    <a class="btn btn-cta" href="/ui/barang">Kembali ke daftar barang</a>
+  </div>
+
+  <div id="state-konten" class="hidden">
+    <div class="card header-produk">
+      <span class="produk-nama-besar" id="detail-nama"></span>
+      <div class="header-produk-baris">
+        <span class="qty-besar tabular" id="detail-qty"></span>
+        <span class="nilai-stok" id="detail-nilai-stok"></span>
+      </div>
+      <div id="detail-margin-badge"></div>
+    </div>
+
+    <section aria-labelledby="ubah-data-judul">
+      <h2 id="ubah-data-judul">Ubah data</h2>
+      <form id="form-edit" class="card" novalidate>
+        <div class="field">
+          <label for="edit-nama">Nama</label>
+          <input type="text" id="edit-nama" name="nama" required>
+        </div>
+        <div class="field">
+          <label for="edit-harga-modal">Harga modal</label>
+          <input type="text" inputmode="numeric" id="edit-harga-modal" name="harga_modal" required>
+          <p class="field-error hidden" id="error-edit-harga-modal">Harga modal minimal Rp1</p>
+        </div>
+        <div class="field">
+          <label for="edit-harga-jual">Harga jual</label>
+          <input type="text" inputmode="numeric" id="edit-harga-jual" name="harga_jual">
+        </div>
+        <div class="field">
+          <label for="edit-stok-minimum">Stok minimum</label>
+          <input type="text" inputmode="numeric" id="edit-stok-minimum" name="stok_minimum">
+        </div>
+        <button type="submit" class="btn btn-cta btn-full" id="tombol-simpan-edit">Simpan</button>
+      </form>
+    </section>
+
+    <section aria-labelledby="kartu-stok-judul">
+      <h2 id="kartu-stok-judul">Kartu stok</h2>
+      <div id="daftar-ledger" class="ledger-list"></div>
+    </section>
+
+    <section aria-labelledby="penyesuaian-judul">
+      <h2 id="penyesuaian-judul">Penyesuaian</h2>
+      <div class="card">
+        <div class="stepper">
+          <button type="button" class="btn stepper-btn" id="stepper-minus" aria-label="Kurangi">
+            <svg aria-hidden="true" focusable="false"
+                 viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 12h14"/>
+            </svg>
+          </button>
+          <span class="stepper-angka tabular" id="stepper-angka">0</span>
+          <button type="button" class="btn stepper-btn" id="stepper-plus" aria-label="Tambah">
+            <svg aria-hidden="true" focusable="false"
+                 viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 12h14"/>
+              <path d="M12 5v14"/>
+            </svg>
+          </button>
+        </div>
+        <div class="field">
+          <label for="select-alasan">Alasan</label>
+          <select id="select-alasan" name="alasan" class="select-input">
+            <option value="rusak">Rusak</option>
+            <option value="hilang">Hilang</option>
+            <option value="retur">Retur</option>
+            <option value="koreksi">Koreksi</option>
+          </select>
+        </div>
+        <button type="button" class="btn btn-cta btn-full" id="tombol-terapkan" disabled>
+          Terapkan penyesuaian
+        </button>
+        <p class="field-error hidden" id="error-penyesuaian"></p>
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}
+
+{% block skrip %}
+<script src="/static/barang_detail.js"></script>
+{% endblock %}

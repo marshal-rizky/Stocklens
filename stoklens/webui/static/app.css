@@ -540,6 +540,109 @@ a.card {
   .spinner { animation: none; }
 }
 
+/* ---------- Header produk (Detail barang) ---------- */
+
+.header-produk {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.produk-nama-besar {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.header-produk-baris {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.qty-besar {
+  font-size: 32px;
+  font-weight: 700;
+}
+
+.nilai-stok {
+  font-size: 14px;
+  color: var(--text-2);
+}
+
+/* ---------- Kartu stok (ledger) ---------- */
+
+.ledger-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ledger-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ledger-atas {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ledger-qty {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.ledger-alasan {
+  font-size: 14px;
+  color: var(--text);
+}
+
+.ledger-tanggal {
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+.empty-state-kecil {
+  color: var(--text-2);
+  font-size: 14px;
+  padding: 12px 0;
+}
+
+/* ---------- Stepper (Penyesuaian) ---------- */
+
+.stepper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  margin-bottom: 12px;
+}
+
+.stepper-btn {
+  min-width: 48px;
+  min-height: 48px;
+  padding: 0;
+  border-radius: 999px;
+}
+
+.stepper-btn svg {
+  width: 24px;
+  height: 24px;
+  stroke: currentColor;
+}
+
+.stepper-angka {
+  min-width: 56px;
+  text-align: center;
+  font-size: 28px;
+  font-weight: 700;
+}
+
 /* ---------- Toast ---------- */
 
 #toast {
