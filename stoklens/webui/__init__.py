@@ -38,6 +38,11 @@ def ui_opname(request: Request):
     return templates.TemplateResponse(request, "opname.html", {"aktif": "opname"})
 
 
+@router.get("/opname/manual")
+def ui_opname_manual(request: Request):
+    return templates.TemplateResponse(request, "opname_manual.html", {"aktif": "opname"})
+
+
 @router.get("/laporan")
 def ui_laporan(request: Request):
     return templates.TemplateResponse(request, "laporan.html", {"aktif": "laporan"})
