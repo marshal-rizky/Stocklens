@@ -81,3 +81,22 @@ def test_barang_detail_punya_container_dan_skrip(tmp_path):
     assert r.status_code == 200
     assert 'data-product-id="5"' in r.text
     assert "barang_detail.js" in r.text
+
+
+def test_opname_hub_punya_3_link_mode(tmp_path):
+    client = _client(tmp_path)
+    r = client.get("/ui/opname")
+    assert r.status_code == 200
+    for path in ("/ui/opname/foto", "/ui/opname/manual", "/ui/opname/video"):
+        assert f'href="{path}"' in r.text
+
+
+def test_opname_manual_punya_container_checklist_dan_skrip(tmp_path):
+    client = _client(tmp_path)
+    r = client.get("/ui/opname/manual")
+    assert r.status_code == 200
+    assert 'id="daftar-checklist"' in r.text
+    assert "opname_manual.js" in r.text
+    assert "report_view.js" in r.text
+
+

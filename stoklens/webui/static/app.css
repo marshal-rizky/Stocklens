@@ -668,3 +668,210 @@ a.card {
   background: var(--neg);
   color: var(--on-accent);
 }
+
+/* ---------- Mode card (Opname hub) ---------- */
+
+.mode-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.mode-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+}
+
+.mode-card-icon {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mode-card-icon svg {
+  width: 22px;
+  height: 22px;
+  stroke: var(--primary);
+}
+
+.mode-card-teks {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mode-card-judul {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.mode-card-desc {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+/* ---------- Progress sticky (Opname manual) ---------- */
+
+.progress-sticky {
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  padding: 8px 0;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-2);
+  z-index: 1;
+}
+
+/* ---------- Checklist (Opname manual) ---------- */
+
+.checklist-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.checklist-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.checklist-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.checklist-nama {
+  font-weight: 600;
+  font-size: 15px;
+  overflow-wrap: break-word;
+}
+
+.checklist-hint {
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+.stepper-kecil {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  margin-bottom: 0;
+}
+
+.checklist-input {
+  width: 56px;
+  min-height: 48px;
+  padding: 0 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 16px;
+  text-align: center;
+}
+
+/* ---------- Laporan opname (report_view.js) ---------- */
+
+.badge svg {
+  width: 12px;
+  height: 12px;
+  stroke: currentColor;
+  margin-right: 2px;
+  vertical-align: -1px;
+}
+
+.laporan-item-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.laporan-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.laporan-item-atas {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.laporan-item-nama {
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.laporan-item-baris {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  color: var(--text-2);
+}
+
+.laporan-item-sub {
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+/* ---------- Daftar laporan ---------- */
+
+.laporan-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.laporan-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.laporan-card-atas {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.laporan-tanggal {
+  font-weight: 600;
+}
+
+.laporan-lokasi {
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+.laporan-shrinkage {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.halaman-footer {
+  margin: 20px 0;
+}

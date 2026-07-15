@@ -1,4 +1,53 @@
 {% extends "base.html" %}
+{% block title %}Opname - StokLens{% endblock %}
 {% block content %}
-<h1>Halaman Opname</h1>
+<h1>Opname</h1>
+
+<div class="mode-list">
+  <a class="card mode-card" href="/ui/opname/foto">
+    <div class="mode-card-icon">
+      <svg aria-hidden="true" focusable="false"
+           viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/>
+        <circle cx="12" cy="13" r="3"/>
+      </svg>
+    </div>
+    <div class="mode-card-teks">
+      <span class="mode-card-judul">Foto <span class="badge badge-pos">Direkomendasikan</span></span>
+      <p class="mode-card-desc">Foto tiap sub-segmen rak, sistem hitung otomatis + baca kedaluwarsa.</p>
+    </div>
+  </a>
+
+  <a class="card mode-card" href="/ui/opname/manual">
+    <div class="mode-card-icon">
+      <svg aria-hidden="true" focusable="false"
+           viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round">
+        <rect width="8" height="4" x="8" y="2" rx="1" ry="1"/>
+        <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+        <path d="m9 14 2 2 4-4"/>
+      </svg>
+    </div>
+    <div class="mode-card-teks">
+      <span class="mode-card-judul">Manual</span>
+      <p class="mode-card-desc">Hitung sendiri, input langsung per barang lewat checklist.</p>
+    </div>
+  </a>
+
+  <a class="card mode-card" href="/ui/opname/video">
+    <div class="mode-card-icon">
+      <svg aria-hidden="true" focusable="false"
+           viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round">
+        <path d="m22 8-6 4 6 4V8Z"/>
+        <rect width="14" height="12" x="2" y="6" rx="2" ry="2"/>
+      </svg>
+    </div>
+    <div class="mode-card-teks">
+      <span class="mode-card-judul">Video</span>
+      <p class="mode-card-desc">Rekam sapuan rak, sistem hitung otomatis dari video.</p>
+    </div>
+  </a>
+</div>
 {% endblock %}
