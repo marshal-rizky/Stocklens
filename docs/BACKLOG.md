@@ -2,7 +2,7 @@
 
 > Daftar perbaikan yang DISENGAJA ditunda. Ambil satu, bikin branch `fitur/...` atau
 > `fix/...`, kerjakan, PR. Jangan dikerjakan diam-diam tanpa klaim di grup.
-> Update terakhir: 2026-07-15 (2 item UI selesai — lihat bagian Selesai).
+> Update terakhir: 2026-07-18 (tambah bagian Akurasi pengenalan — prioritas tertinggi).
 
 ## Selesai (branch `fitur/ui-beranda-redesign`, menunggu merge)
 
@@ -18,6 +18,47 @@
    `capture`, banyak sekaligus). Keduanya menambah ke daftar foto yang sama.
    Catatan: kamera in-app via getUserMedia (opsi c) belum — itu fondasi fitur overlay
    panduan SOP di roadmap, dikerjakan nanti kalau perlu.
+
+## Akurasi pengenalan (PRIORITAS TERTINGGI — dari analisis 18 Jul)
+
+**A. Enroll dari hasil scan ("unknown" → beri nama → masuk galeri).**
+Dampak terbesar ke akurasi, lebih besar daripada menambah ratusan foto dataset.
+
+*Masalah:* enrollment sekarang dipotret terpisah (close-up, cahaya beda, sudut lurus),
+sedangkan crop hasil scan kecil, agak blur, dan menyerong. Ketidakcocokan kondisi ini
+— bukan material rak — adalah penyebab utama gagal-match. Urutan faktor perusak:
+(1) beda skala/ketajaman, (2) beda cahaya/suhu warna, (3) beda sudut, (4) latar/rak,
+(5) foto stock internet (paling buruk; desain kemasannya sering versi lama).
+
+*Solusi:* hilangkan ketidakcocokan di akarnya. Saat scan menghasilkan item `unknown`,
+tampilkan crop-nya di laporan → user tap → pilih produk yang sudah ada ATAU daftarkan
+baru → crop itu ditambahkan ke galeri embedding produk tersebut. Kondisinya otomatis
+identik dengan kondisi scan, dan galeri makin kaya tiap pemakaian (self-improving).
+
+*Catatan implementasi:* pipeline sudah mendeteksi item unknown (`scan_items.product_id`
+NULL) tapi crop-nya belum disimpan. Perlu: simpan crop unknown (file/blob + referensi
+di DB), endpoint `POST /api/products/{id}/tambah-embedding` (rata-ratakan embedding
+lama dengan yang baru — lihat `matcher.average_embedding`), dan UI di `report_view.js`
+untuk menampilkan crop unknown + aksi "Ini barang apa?".
+
+**B. Perbarui `PANDUAN-DATASET.md` dengan aturan kondisi foto.**
+- Dataset detektor: WAJIB foto rak asli (kayu/kaca/besi, padat/setengah kosong).
+  Foto barang di meja hampir tidak berguna; foto stock internet MERUSAK (bias ke
+  latar putih yang tak pernah ada di gudang).
+- Enrollment: potret di kondisi yang sama dengan saat scan — jarak mirip, cahaya toko
+  yang sama, 3–5 sudut. Jangan pakai foto stock/marketplace.
+- Rak kaca perlu sampel ekstra (pantulan & barang tembus pandang lebih sulit).
+
+**C. Auto-labeling untuk hemat waktu tim.**
+Pakai model hasil pre-train SKU-110K untuk melabeli otomatis foto rak kita, tim tinggal
+MENGOREKSI di Roboflow, bukan menggambar dari nol. Estimasi: 20–40 jam-orang → 3–5 jam.
+
+*Catatan riset (18 Jul):* dataset produk Indonesia publik praktis TIDAK ADA yang layak
+— Roboflow `rak-minimarket` 53 gambar, `dataset-rak-minimarket` 26 gambar, sisanya
+proyek capstone 200–400 gambar foto produk tunggal. Scraping marketplace ditolak:
+melanggar ToS + hak cipta (risiko diskualifikasi rulebook #17) DAN salah jenis data
+(foto katalog latar putih, bukan adegan rak). Andalan tetap SKU-110K + 200–500 foto
+rak sendiri.
 
 ## Teknis (temuan final review branch UI, belum dikerjakan)
 
