@@ -1,9 +1,43 @@
 # Panduan Fine-tuning Model StokLens
 
 > Prasyarat: dataset YOLO format dari Roboflow (lihat `PANDUAN-DATASET.md`).
-> Semua jalan di **Google Colab gratis (GPU T4)** — Runtime → Change runtime type → T4 GPU.
 > PENTING (rulebook AIC): model WAJIB di-fine-tune. Dokumen ini + screenshot hasilnya
 > = bukti compliance. Simpan semuanya.
+
+## Di mana training dijalankan (cek 18 Jul 2026)
+
+**Laptop ketua tim = pilihan terbaik. JANGAN beli Colab Pro.**
+
+Laptop ketua punya **RTX 4070 12GB** — sekitar **2–3× lebih cepat dari T4** yang dipakai
+Colab (gratis maupun Pro tier standar), tanpa batas waktu sesi dan tanpa risiko
+disconnect di tengah training. VRAM 12GB lebih dari cukup untuk YOLO11n/s @640px.
+
+⚠️ **Masalah yang ditemukan:** PyTorch terpasang versi **CPU-only** (`2.13.0+cpu`),
+jadi GPU tidak terpakai sama sekali. Ini juga bikin enrollment CLIP lambat (30–60 dtk).
+Perbaikan (driver CUDA UMD 13.3 sudah mendukung):
+
+```bash
+pip uninstall -y torch torchvision
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
+python -c "import torch; print(torch.cuda.is_available())"   # harus True
+```
+
+Risiko: reinstall torch bisa mengganggu ultralytics/open_clip/easyocr yang sudah jalan.
+Lakukan saat TIDAK sedang mengejar demo, dan verifikasi `pytest` masih hijau setelahnya.
+
+**Perbandingan opsi:**
+
+| Opsi | GPU | Batas | Biaya |
+|---|---|---|---|
+| **RTX 4070 lokal** (disarankan) | Setara/di atas L4 | Tidak ada | Rp0 |
+| Colab gratis | T4 (kalau kebagian) | Sering putus, sesi pendek | Rp0 |
+| Colab Pro | T4/L4, background run | 24 jam | ~Rp170k/bln |
+| Kaggle Notebooks | P100 / T4×2 | 30 jam GPU/minggu, sesi 12 jam | Rp0 |
+
+Colab/Kaggle tetap berguna untuk anggota tim yang **tidak punya GPU**, atau kalau mau
+training jalan sementara laptop dipakai kerja lain. Untuk itu **versi gratis sudah cukup**
+— dan Kaggle lebih longgar dari Colab gratis. Perintah training di bawah sama saja,
+tinggal jalankan di mana pun (di lokal, hapus baris `!pip install`).
 
 ## Gambaran alur
 
