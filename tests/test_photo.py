@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 
+from stoklens import crops as crops_mod
 from stoklens import db
 from stoklens.photo import aggregate_detections, scan_photos
 
@@ -67,13 +68,13 @@ def test_scan_photos_guided_mode(tmp_path):
 
 # ---- simpan crop unknown (Unit 2) ----
 
-def test_scan_photos_simpan_unknown_crop_embedding_sesuai_crop(tmp_path, monkeypatch):
-    monkeypatch.chdir(tmp_path)   # data/crops relatif ke tmp_path, bukan repo
+def test_scan_photos_simpan_unknown_crop_embedding_sesuai_crop(tmp_path):
     con = db.connect(":memory:")
     db.add_product(con, "Merah", 1000, np.array([1, 0], dtype=np.float32))
     # "Biru" sengaja tidak didaftarkan -> crop kanan jadi unknown
     sid = scan_photos(con, FakeEmbedder(), [_fixture_image()],
-                      detector=fake_detector, read_expiry=False)
+                      detector=fake_detector, read_expiry=False,
+                      dir_crops=tmp_path)
 
     belum = db.list_unknown_crops(con, sid)
     assert len(belum) == 1
@@ -100,8 +101,7 @@ class AreaEmbedder:
                         dtype=np.float32)
 
 
-def test_scan_photos_pasangan_crop_dan_embedding_tidak_tertukar(tmp_path, monkeypatch):
-    monkeypatch.chdir(tmp_path)
+def test_scan_photos_pasangan_crop_dan_embedding_tidak_tertukar(tmp_path):
     con = db.connect(":memory:")
     # tidak ada produk terdaftar -> kedua deteksi jadi unknown
 
@@ -111,7 +111,7 @@ def test_scan_photos_pasangan_crop_dan_embedding_tidak_tertukar(tmp_path, monkey
 
     img = np.zeros((20, 40, 3), dtype=np.uint8)
     sid = scan_photos(con, AreaEmbedder(), [img], detector=detector_dua_ukuran,
-                      read_expiry=False)
+                      read_expiry=False, dir_crops=tmp_path)
 
     baris = db.list_unknown_crops(con, sid)
     assert len(baris) == 2
@@ -136,18 +136,16 @@ def test_scan_photos_pasangan_crop_dan_embedding_tidak_tertukar(tmp_path, monkey
     assert sorted(luas_tersimpan) == [100.0, 400.0]
 
 
-def test_scan_photos_simpan_unknown_bisa_dimatikan(tmp_path, monkeypatch):
-    monkeypatch.chdir(tmp_path)
+def test_scan_photos_simpan_unknown_bisa_dimatikan(tmp_path):
     con = db.connect(":memory:")
     db.add_product(con, "Merah", 1000, np.array([1, 0], dtype=np.float32))
     sid = scan_photos(con, FakeEmbedder(), [_fixture_image()],
                       detector=fake_detector, read_expiry=False,
-                      simpan_unknown=False)
+                      simpan_unknown=False, dir_crops=tmp_path)
     assert db.list_unknown_crops(con, sid) == []
 
 
-def test_scan_photos_batas_maks_unknown_per_scan(tmp_path, monkeypatch):
-    monkeypatch.chdir(tmp_path)
+def test_scan_photos_batas_maks_unknown_per_scan(tmp_path):
     con = db.connect(":memory:")
     # tidak ada produk terdaftar sama sekali -> semua deteksi unknown
 
@@ -157,7 +155,7 @@ def test_scan_photos_batas_maks_unknown_per_scan(tmp_path, monkeypatch):
 
     img = np.zeros((5, 100, 3), dtype=np.uint8)
     sid = scan_photos(con, FakeEmbedder(), [img], detector=detector_banyak,
-                      read_expiry=False, maks_unknown=3)
+                      read_expiry=False, maks_unknown=3, dir_crops=tmp_path)
 
     assert len(db.list_unknown_crops(con, sid)) == 3   # dibatasi cap
     row = con.execute(
@@ -165,3 +163,31 @@ def test_scan_photos_batas_maks_unknown_per_scan(tmp_path, monkeypatch):
         (sid,),
     ).fetchone()
     assert row["qty_terdeteksi"] == 10   # hitungan report TIDAK ikut dibatasi
+
+
+def test_scan_photos_gagal_simpan_crop_tidak_membatalkan_opname(tmp_path, monkeypatch):
+    """Crop unknown cuma bonus — kegagalan menulisnya TIDAK boleh menghapus
+    hasil opname yang sudah dihitung (regresi: exception naik sebelum
+    add_scan_item dipanggil -> baris scans yatim, laporan kosong senyap)."""
+    con = db.connect(":memory:")
+    db.add_product(con, "Merah", 1000, np.array([1, 0], dtype=np.float32))
+
+    def imwrite_gagal(*a, **kw):
+        raise OSError("disk penuh")
+
+    monkeypatch.setattr(crops_mod.cv2, "imwrite", imwrite_gagal)
+
+    sid = scan_photos(con, FakeEmbedder(), [_fixture_image()],
+                      detector=fake_detector, read_expiry=False,
+                      dir_crops=tmp_path)
+
+    # opname tetap tersimpan lengkap
+    rows = {r["nama"]: r for r in db.get_report_rows(con, sid)}
+    assert rows["Merah"]["qty_terdeteksi"] == 1
+    item_unknown = con.execute(
+        "SELECT qty_terdeteksi FROM scan_items WHERE scan_id=? AND product_id IS NULL",
+        (sid,),
+    ).fetchone()
+    assert item_unknown["qty_terdeteksi"] == 1     # unknown tetap terhitung
+    # cuma crop bonusnya yang hilang
+    assert db.list_unknown_crops(con, sid) == []

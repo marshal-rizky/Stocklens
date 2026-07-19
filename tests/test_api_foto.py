@@ -24,8 +24,11 @@ def _jpeg():
 
 
 def test_scan_foto_endpoint(tmp_path, monkeypatch):
-    # Crop unknown ditulis ke `data/crops/` RELATIF ke cwd — tanpa chdir,
-    # tiap kali pytest jalan repo kotor oleh file JPEG asli.
+    # Crop unknown ditulis ke DIR_CROPS_DEFAULT yang RELATIF ke cwd — tanpa
+    # chdir, tiap kali pytest jalan repo kotor oleh file JPEG asli.
+    # Test lain memakai parameter `dir_crops`, tapi endpoint /api/scans-foto
+    # belum meneruskannya (itu urusan Unit 3 yang sekalian mount StaticFiles),
+    # jadi di sini chdir masih cara terbersih.
     monkeypatch.chdir(tmp_path)
     client = _client(tmp_path)
     r = client.post(

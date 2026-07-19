@@ -63,7 +63,7 @@ def _yolo_detector(model_path="yolo11n.pt"):
 
 def scan_photos(con, embedder, images, detector=None, match_threshold=0.75,
                 guided_product_id=None, lokasi_rak=None, read_expiry=True,
-                simpan_unknown=True, maks_unknown=30):
+                simpan_unknown=True, maks_unknown=30, dir_crops=None):
     """Opname dari kumpulan foto; return scan_id (scans.tipe = 'foto').
 
     images: list np.ndarray BGR atau path file gambar.
@@ -73,6 +73,7 @@ def scan_photos(con, embedder, images, detector=None, match_threshold=0.75,
                    bisa diberi nama user nanti (Unit 3). Maks `maks_unknown`
                    crop per scan — sebelum YOLO di-fine-tune hampir semua
                    deteksi "unknown", jangan sampai membanjiri disk.
+    dir_crops: direktori dasar file crop; default crops.DIR_CROPS_DEFAULT.
     """
     products = db.all_products(con, with_gallery=True)
     allowed = {guided_product_id} if guided_product_id is not None else None
@@ -99,7 +100,9 @@ def scan_photos(con, embedder, images, detector=None, match_threshold=0.75,
             if pid is not None:
                 crops_per_product[pid].append(crop)
             elif simpan_unknown and len(unknown_buffer) < maks_unknown:
-                unknown_buffer.append((crop, embedding))
+                # .copy(): crop adalah view ke foto resolusi penuh — tanpa copy
+                # seluruh foto ikut tertahan di RAM sampai loop persist.
+                unknown_buffer.append((crop.copy(), embedding))
 
     counts = aggregate_detections(detections)
 
@@ -113,9 +116,7 @@ def scan_photos(con, embedder, images, detector=None, match_threshold=0.75,
                     expiry_per_product[pid].append(d)
 
     scan_id = db.add_scan(con, lokasi_rak=lokasi_rak, tipe="foto")
-    for crop, embedding in unknown_buffer:
-        path = crops.simpan_crop(crop, scan_id)
-        db.add_unknown_crop(con, scan_id, path, embedding)
+    crops.simpan_buffer(con, scan_id, unknown_buffer, dir_crops)
 
     today = date.today()
     for pid, c in counts.items():
