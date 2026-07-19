@@ -59,3 +59,46 @@ def test_get_scan_items_hanya_yang_punya_product_id():
     db.add_scan_item(con, sid, None, qty_terdeteksi=1)  # unknown, tanpa product_id
     items = db.get_scan_items(con, sid)
     assert items == [{"product_id": pid, "qty_terdeteksi": 8}]
+
+
+# ---- Galeri embedding (enroll dari scan) ----
+
+def test_all_products_kembalikan_galeri_embeddings():
+    con = _con()
+    pid = db.add_product(con, "Indomie", 3200, np.array([1, 0], dtype=np.float32))
+    # awalnya galeri hanya berisi embedding enrollment
+    p = db.all_products(con)[0]
+    assert len(p["embeddings"]) == 1
+    assert np.allclose(p["embeddings"][0], [1, 0])
+
+    db.add_product_embedding(con, pid, np.array([0, 1], dtype=np.float32),
+                             sumber="scan")
+    p = db.all_products(con)[0]
+    assert len(p["embeddings"]) == 2
+    assert np.allclose(p["embeddings"][1], [0, 1])
+
+
+def test_unknown_crop_simpan_daftar_dan_resolve():
+    con = _con()
+    pid = db.add_product(con, "Indomie", 3200, np.array([1, 0], dtype=np.float32))
+    sid = db.add_scan(con, tipe="foto")
+    cid = db.add_unknown_crop(con, sid, "data/crops/1.jpg",
+                              np.array([0.9, 0.1], dtype=np.float32))
+
+    belum = db.list_unknown_crops(con, sid)
+    assert len(belum) == 1
+    assert belum[0]["id"] == cid
+    assert belum[0]["crop_path"] == "data/crops/1.jpg"
+
+    db.resolve_unknown_crop(con, cid, pid)
+    assert db.list_unknown_crops(con, sid) == []          # sudah tidak menggantung
+    assert len(db.list_unknown_crops(con, sid, hanya_belum=False)) == 1
+
+
+def test_get_unknown_crop_bawa_embedding():
+    con = _con()
+    sid = db.add_scan(con)
+    cid = db.add_unknown_crop(con, sid, "x.jpg", np.array([0.5, 0.5], dtype=np.float32))
+    c = db.get_unknown_crop(con, cid)
+    assert np.allclose(c["embedding"], [0.5, 0.5])
+    assert db.get_unknown_crop(con, 999) is None
