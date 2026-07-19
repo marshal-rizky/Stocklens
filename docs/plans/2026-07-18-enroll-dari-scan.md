@@ -3,6 +3,53 @@
 > Branch: `fitur/enroll-dari-scan`. Dikerjakan subagent per unit: implement → spec
 > review → quality review → fix loop. Jangan merge sebelum CI hijau.
 
+## STATUS (update 2026-07-18, untuk dilanjutkan di sesi lain)
+
+| Unit | Status | Catatan |
+|---|---|---|
+| 1. DB galeri + matcher | ✅ **SELESAI** — spec review ✅, quality review ✅ | 91 test |
+| 2. Pipeline simpan crop | ✅ **SELESAI** — spec review ✅, quality review ✅ (1 Critical + 3 Important sudah diperbaiki) | 110 test |
+| 3. API | ⬜ **BELUM MULAI** — mulai dari sini | baca "Wajib untuk Unit 3" di bawah |
+| 4. UI | ⬜ **BELUM MULAI** | baca "Catatan untuk Unit 4" di bawah |
+
+**Cara melanjutkan di sesi baru:** `git checkout fitur/enroll-dari-scan`, jalankan
+`python -m pytest -q` (harus 110 hijau), lalu kerjakan Unit 3 di bawah dengan pola
+subagent (implement → spec review → quality review → fix loop).
+
+### Wajib untuk Unit 3 (temuan review yang HARUS dipatuhi)
+
+1. **Validasi ID di endpoint itu load-bearing, bukan kosmetik.** `PRAGMA foreign_keys`
+   TIDAK aktif (default SQLite OFF), jadi `add_product_embedding(con, 9999, emb)` akan
+   sukses diam-diam: user tap "ini Yakult", dapat toast sukses, embedding nyasar ke
+   produk yang tidak ada, dan scan berikutnya tetap gagal mengenali. DB tidak akan
+   menangkap ini — endpoint yang harus 404.
+2. **Mount StaticFiles pakai `crops.DIR_CROPS_DEFAULT`**, jangan ketik ulang literal
+   `"data/crops"`.
+3. **`crop_path` sudah POSIX** (`as_posix()`), jadi `crop_url` aman dibentuk dengan
+   `replace`/`removeprefix` di Windows maupun Linux.
+4. **Jangan memuat CLIP di endpoint mana pun** — embedding crop sudah tersimpan saat
+   scan. Test Unit 3 harus lulus di CI tanpa torch.
+5. Helper yang sudah tersedia dari Unit 1: `db.get_unknown_crop` (bawa embedding),
+   `db.list_unknown_crops(con, scan_id, hanya_belum=True)`, `db.add_product_embedding`,
+   `db.resolve_unknown_crop` (mengembalikan `rowcount`), `db.count_product_embeddings`
+   (untuk field `jumlah_galeri`).
+
+### Catatan untuk Unit 4 (masukan perencanaan dari review)
+
+**Mode foto mengumpulkan crop unknown per-DETEKSI tanpa dedup** (mode video sudah
+otomatis dedup karena per-track). Sebelum YOLO di-fine-tune hampir semua deteksi jadi
+unknown, jadi scan 6 foto bisa memenuhi kuota 30 dari 1–2 foto pertama, isinya barang
+yang itu-itu juga — user disodori 30 kartu untuk 4 SKU dan grid-nya terlihat rusak.
+Mitigasi murah: dedup buffer dengan cosine similarity terhadap embedding yang sudah
+di-buffer (buang kalau > ~0.95). Embedding-nya sudah terhitung, jadi hampir gratis.
+
+### Known deferral (sengaja belum dikerjakan)
+
+- File crop tidak pernah dihapus (tidak saat resolve, tidak saat scan dihapus). Layout
+  per-scan (`data/crops/<scan_id>/`) sengaja dipilih supaya cleanup nanti tinggal rmtree.
+- Kuota `maks_unknown=30` menyimpan N crop PERTAMA, bukan N terbaik/terbesar. Kalau
+  kualitas enrollment mengecewakan saat uji lapangan, ini kandidat perbaikan.
+
 **Goal:** Item yang tidak dikenali saat scan ("unknown") bisa ditap user → diberi nama →
 crop-nya masuk galeri embedding produk. Menghilangkan ketidakcocokan kondisi
 (enrollment close-up vs crop scan kecil/menyerong) yang jadi penyebab utama gagal-match.
