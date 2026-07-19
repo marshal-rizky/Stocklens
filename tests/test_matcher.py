@@ -43,3 +43,38 @@ def test_majority_label():
 
 def test_majority_label_semua_none():
     assert majority_label([None, None]) is None
+
+
+# ---- Galeri multi-embedding: similarity tertinggi lintas entri ----
+
+def test_match_pakai_similarity_tertinggi_dari_galeri():
+    # entri kedua produk 1 paling dekat ke query, entri pertama jauh
+    prods = [
+        {"id": 1, "embedding": np.array([0.0, 1.0], dtype=np.float32),
+         "embeddings": [np.array([0.0, 1.0], dtype=np.float32),
+                        np.array([1.0, 0.0], dtype=np.float32)]},
+        {"id": 2, "embedding": np.array([0.0, 1.0], dtype=np.float32),
+         "embeddings": [np.array([0.0, 1.0], dtype=np.float32)]},
+    ]
+    pid, score = match(np.array([0.9, 0.1], dtype=np.float32), prods, threshold=0.5)
+    assert pid == 1
+    assert score > 0.5  # skor berasal dari entri kedua (paling mirip), bukan entri pertama
+
+
+def test_match_produk_hanya_embedding_tunggal_tetap_jalan():
+    prods = [
+        {"id": 1, "embedding": np.array([1.0, 0.0], dtype=np.float32)},
+        {"id": 2, "embedding": np.array([0.0, 1.0], dtype=np.float32)},
+    ]
+    pid, score = match(np.array([0.9, 0.1], dtype=np.float32), prods, threshold=0.5)
+    assert pid == 1 and score > 0.5
+
+
+def test_match_skip_entri_galeri_dimensi_beda():
+    prods = [
+        {"id": 1, "embedding": np.array([1.0, 0.0], dtype=np.float32),
+         "embeddings": [np.array([1.0, 0.0], dtype=np.float32),
+                        np.ones(8, dtype=np.float32)]},
+    ]
+    pid, score = match(np.array([0.9, 0.1], dtype=np.float32), prods, threshold=0.5)
+    assert pid == 1  # entri dim-8 di-skip tanpa error, entri dim-2 tetap dipakai
