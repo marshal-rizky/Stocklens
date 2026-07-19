@@ -22,7 +22,7 @@ from datetime import date
 
 import cv2
 
-from . import db
+from . import crops, db
 from .expiry import parse_expiry
 from .matcher import match
 
@@ -62,12 +62,17 @@ def _yolo_detector(model_path="yolo11n.pt"):
 
 
 def scan_photos(con, embedder, images, detector=None, match_threshold=0.75,
-                guided_product_id=None, lokasi_rak=None, read_expiry=True):
+                guided_product_id=None, lokasi_rak=None, read_expiry=True,
+                simpan_unknown=True, maks_unknown=30):
     """Opname dari kumpulan foto; return scan_id (scans.tipe = 'foto').
 
     images: list np.ndarray BGR atau path file gambar.
     detector: fn(image_bgr) -> list (x1, y1, x2, y2); default YOLO.
     guided_product_id: guided mode — semua deteksi kandidat produk ini saja.
+    simpan_unknown: simpan crop deteksi tak dikenali ke `unknown_crops` supaya
+                   bisa diberi nama user nanti (Unit 3). Maks `maks_unknown`
+                   crop per scan — sebelum YOLO di-fine-tune hampir semua
+                   deteksi "unknown", jangan sampai membanjiri disk.
     """
     products = db.all_products(con, with_gallery=True)
     allowed = {guided_product_id} if guided_product_id is not None else None
@@ -75,6 +80,9 @@ def scan_photos(con, embedder, images, detector=None, match_threshold=0.75,
 
     detections = []          # (foto_idx, product_id|None, score)
     crops_per_product = defaultdict(list)   # pid -> crops utk OCR expired
+    # (crop, embedding) unknown menunggu disimpan — ditunda karena scan_id
+    # baru ada setelah db.add_scan() di bawah (perlu utk foreign key & path).
+    unknown_buffer = []
     for i, img in enumerate(images):
         if not hasattr(img, "shape"):
             img = cv2.imread(str(img))
@@ -84,24 +92,31 @@ def scan_photos(con, embedder, images, detector=None, match_threshold=0.75,
             crop = img[max(y1, 0):y2, max(x1, 0):x2]
             if crop.size == 0:
                 continue
-            pid, score = match(embedder.embed_bgr(crop), products,
+            embedding = embedder.embed_bgr(crop)
+            pid, score = match(embedding, products,
                                threshold=match_threshold, allowed_ids=allowed)
             detections.append((i, pid, score))
             if pid is not None:
                 crops_per_product[pid].append(crop)
+            elif simpan_unknown and len(unknown_buffer) < maks_unknown:
+                unknown_buffer.append((crop, embedding))
 
     counts = aggregate_detections(detections)
 
     expiry_per_product = defaultdict(list)
     if read_expiry:
         from .ocr import read_text
-        for pid, crops in crops_per_product.items():
-            for crop in crops:
+        for pid, crop_list in crops_per_product.items():
+            for crop in crop_list:
                 d = parse_expiry(read_text(crop))
                 if d:
                     expiry_per_product[pid].append(d)
 
     scan_id = db.add_scan(con, lokasi_rak=lokasi_rak, tipe="foto")
+    for crop, embedding in unknown_buffer:
+        path = crops.simpan_crop(crop, scan_id)
+        db.add_unknown_crop(con, scan_id, path, embedding)
+
     today = date.today()
     for pid, c in counts.items():
         if pid == "unknown":

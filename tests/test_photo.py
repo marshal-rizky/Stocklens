@@ -1,3 +1,4 @@
+import cv2
 import numpy as np
 
 from stoklens import db
@@ -62,3 +63,56 @@ def test_scan_photos_guided_mode(tmp_path):
     rows = {r["nama"]: r for r in db.get_report_rows(con, sid)}
     assert rows["Merah"]["qty_terdeteksi"] == 2
     assert "Biru" not in rows
+
+
+# ---- simpan crop unknown (Unit 2) ----
+
+def test_scan_photos_simpan_unknown_crop_embedding_sesuai_crop(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)   # data/crops relatif ke tmp_path, bukan repo
+    con = db.connect(":memory:")
+    db.add_product(con, "Merah", 1000, np.array([1, 0], dtype=np.float32))
+    # "Biru" sengaja tidak didaftarkan -> crop kanan jadi unknown
+    sid = scan_photos(con, FakeEmbedder(), [_fixture_image()],
+                      detector=fake_detector, read_expiry=False)
+
+    belum = db.list_unknown_crops(con, sid)
+    assert len(belum) == 1
+
+    info = db.get_unknown_crop(con, belum[0]["id"])
+    tersimpan = cv2.imread(info["crop_path"])
+    assert tersimpan is not None
+    # embedding tersimpan harus persis embedding dari crop yang ditulis ke
+    # disk (bukan crop lain) — syarat wajib supaya galeri produk (Unit 3)
+    # tidak tercemar saat user meng-assign crop ini.
+    assert np.allclose(info["embedding"], FakeEmbedder().embed_bgr(tersimpan))
+
+
+def test_scan_photos_simpan_unknown_bisa_dimatikan(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    con = db.connect(":memory:")
+    db.add_product(con, "Merah", 1000, np.array([1, 0], dtype=np.float32))
+    sid = scan_photos(con, FakeEmbedder(), [_fixture_image()],
+                      detector=fake_detector, read_expiry=False,
+                      simpan_unknown=False)
+    assert db.list_unknown_crops(con, sid) == []
+
+
+def test_scan_photos_batas_maks_unknown_per_scan(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    con = db.connect(":memory:")
+    # tidak ada produk terdaftar sama sekali -> semua deteksi unknown
+
+    def detector_banyak(image_bgr):
+        # 10 kotak kecil non-overlap dalam satu foto
+        return [(x, 0, x + 5, 5) for x in range(0, 100, 10)]
+
+    img = np.zeros((5, 100, 3), dtype=np.uint8)
+    sid = scan_photos(con, FakeEmbedder(), [img], detector=detector_banyak,
+                      read_expiry=False, maks_unknown=3)
+
+    assert len(db.list_unknown_crops(con, sid)) == 3   # dibatasi cap
+    row = con.execute(
+        "SELECT qty_terdeteksi FROM scan_items WHERE scan_id=? AND product_id IS NULL",
+        (sid,),
+    ).fetchone()
+    assert row["qty_terdeteksi"] == 10   # hitungan report TIDAK ikut dibatasi
