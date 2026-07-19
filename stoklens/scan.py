@@ -48,7 +48,7 @@ def run_scan(con, embedder, video_path, model_path="yolo11n.pt",
     # (CI & test monkeypatch run_scan tanpa install ultralytics).
     from ultralytics import YOLO
 
-    products = db.all_products(con)
+    products = db.all_products(con, with_gallery=True)
     allowed = {guided_product_id} if guided_product_id is not None else None
     model = YOLO(model_path)
 

@@ -25,7 +25,9 @@ def match(embedding, products, threshold=0.75, allowed_ids=None):
     for p in products:
         if allowed_ids is not None and p["id"] not in allowed_ids:
             continue
-        galeri = p["embeddings"] if "embeddings" in p else [p["embedding"]]
+        # Jalur singular = kompat untuk test & pemanggil lama yang belum
+        # minta galeri (all_products tanpa with_gallery).
+        galeri = p.get("embeddings") or [p["embedding"]]
         for emb in galeri:
             # Entri dengan dimensi embedding beda (data korup/legacy) di-skip,
             # jangan sampai satu baris jelek meledakkan seluruh scan.

@@ -69,7 +69,7 @@ def scan_photos(con, embedder, images, detector=None, match_threshold=0.75,
     detector: fn(image_bgr) -> list (x1, y1, x2, y2); default YOLO.
     guided_product_id: guided mode — semua deteksi kandidat produk ini saja.
     """
-    products = db.all_products(con)
+    products = db.all_products(con, with_gallery=True)
     allowed = {guided_product_id} if guided_product_id is not None else None
     detect = detector or _yolo_detector()
 
