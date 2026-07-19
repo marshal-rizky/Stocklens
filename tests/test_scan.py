@@ -4,6 +4,7 @@ lewat sys.modules["ultralytics"], supaya CI tidak perlu install YOLO/CLIP.
 import sys
 import types
 
+import cv2
 import numpy as np
 
 from stoklens import db, scan
@@ -93,6 +94,37 @@ def test_run_scan_unknown_track_embedding_dari_best_crop_bukan_sample(monkeypatc
     info = db.get_unknown_crop(con, belum[0]["id"])
     # embedding tersimpan = luas crop TERBESAR (400), bukan sample pertama (100)
     assert np.allclose(info["embedding"], [400.0, 0.0])
+
+
+def test_run_scan_pasangan_crop_dan_embedding_tidak_tertukar(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    # DUA track unknown dengan ukuran kotak BERBEDA -> embedding berbeda,
+    # jadi tukar-pasangan di loop persist benar-benar terdeteksi.
+    boxes = [(0, 0, 10, 10), (20, 0, 40, 20)]     # luas 100 dan 400
+    frames = [_frame((20, 40, 3), boxes, [0, 1]) for _ in range(3)]
+    _pasang_fake_yolo(monkeypatch, frames)
+
+    con = db.connect(":memory:")
+    sid = scan.run_scan(con, FakeEmbedder(), "fake.mp4", count_mode="track",
+                        read_expiry=False)
+
+    baris = db.list_unknown_crops(con, sid)
+    assert len(baris) == 2
+
+    luas_tersimpan = []
+    for b in baris:
+        info = db.get_unknown_crop(con, b["id"])
+        gambar = cv2.imread(info["crop_path"])
+        assert gambar is not None
+        # embedding baris ini harus embedding dari file crop MILIK BARIS INI
+        diharapkan = FakeEmbedder().embed_bgr(gambar)
+        assert np.allclose(info["embedding"], diharapkan), (
+            f"crop {info['crop_path']} berpasangan dengan embedding "
+            f"{info['embedding']} — tertukar"
+        )
+        luas_tersimpan.append(float(diharapkan[0]))
+
+    assert sorted(luas_tersimpan) == [100.0, 400.0]
 
 
 def test_run_scan_track_pendek_di_bawah_min_track_frames_tidak_disimpan(monkeypatch, tmp_path):

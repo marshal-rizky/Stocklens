@@ -1,6 +1,8 @@
 import cv2
 import numpy as np
+import pytest
 
+from stoklens import crops as crops_mod
 from stoklens.crops import simpan_crop
 
 
@@ -34,3 +36,11 @@ def test_simpan_crop_dua_kali_scan_sama_beda_path(tmp_path):
 def test_simpan_crop_scan_id_tercermin_di_path(tmp_path):
     path = simpan_crop(_crop(), scan_id=7, dir_dasar=str(tmp_path / "crops"))
     assert "7" in path
+
+
+def test_simpan_crop_imwrite_gagal_lempar_error_jelas(tmp_path, monkeypatch):
+    # cv2.imwrite gagal DIAM-DIAM (return False, bukan exception) — kalau tidak
+    # dijaga, unknown_crops.crop_path akan menunjuk file yang tidak pernah ada.
+    monkeypatch.setattr(crops_mod.cv2, "imwrite", lambda *a, **kw: False)
+    with pytest.raises(IOError, match="Gagal menulis crop"):
+        simpan_crop(_crop(), scan_id=1, dir_dasar=str(tmp_path / "crops"))

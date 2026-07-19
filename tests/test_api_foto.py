@@ -23,7 +23,10 @@ def _jpeg():
     return buf.tobytes()
 
 
-def test_scan_foto_endpoint(tmp_path):
+def test_scan_foto_endpoint(tmp_path, monkeypatch):
+    # Crop unknown ditulis ke `data/crops/` RELATIF ke cwd — tanpa chdir,
+    # tiap kali pytest jalan repo kotor oleh file JPEG asli.
+    monkeypatch.chdir(tmp_path)
     client = _client(tmp_path)
     r = client.post(
         "/api/scans-foto",
