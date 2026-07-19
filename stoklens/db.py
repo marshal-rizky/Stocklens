@@ -1,6 +1,7 @@
 """SQLite: schema + CRUD. Embedding disimpan sebagai BLOB float32."""
 import json
 import sqlite3
+from collections import defaultdict
 
 import numpy as np
 
@@ -91,20 +92,37 @@ def add_product(con, nama, harga_modal, embedding, harga_jual=None, foto_refs=()
     return cur.lastrowid
 
 
-def all_products(con):
+def all_products(con, with_gallery=False):
+    """Semua produk. with_gallery=True menambah key `embeddings` (galeri).
+
+    Galeri opt-in karena tumbuh tanpa batas tiap user assign crop, sedangkan
+    pemanggil UI (daftar produk, dashboard, export) sama sekali tidak memakainya.
+    Galeri diambil satu query lalu dikelompokkan, bukan per produk (hindari N+1).
+    """
     rows = con.execute("SELECT * FROM products ORDER BY id").fetchall()
-    hasil = []
+    if not with_gallery:
+        return [
+            dict(r) | {"embedding": np.frombuffer(r["embedding"], dtype=np.float32)}
+            for r in rows
+        ]
+
+    galeri = defaultdict(list)
+    for g in con.execute(
+        "SELECT product_id, embedding FROM product_embeddings"
+        " ORDER BY product_id, id"
+    ).fetchall():
+        galeri[g["product_id"]].append(
+            np.frombuffer(g["embedding"], dtype=np.float32)
+        )
+
+    out = []
     for r in rows:
         emb = np.frombuffer(r["embedding"], dtype=np.float32)
-        galeri_rows = con.execute(
-            "SELECT embedding FROM product_embeddings WHERE product_id=? ORDER BY id",
-            (r["id"],),
-        ).fetchall()
-        embeddings = [emb] + [
-            np.frombuffer(g["embedding"], dtype=np.float32) for g in galeri_rows
-        ]
-        hasil.append(dict(r) | {"embedding": emb, "embeddings": embeddings})
-    return hasil
+        out.append(dict(r) | {
+            "embedding": emb,
+            "embeddings": [emb] + galeri[r["id"]],
+        })
+    return out
 
 
 def add_product_embedding(con, product_id, embedding, sumber="scan"):
@@ -116,6 +134,15 @@ def add_product_embedding(con, product_id, embedding, sumber="scan"):
     )
     con.commit()
     return cur.lastrowid
+
+
+def count_product_embeddings(con, product_id):
+    """Jumlah embedding tambahan di galeri produk (belum termasuk enrollment)."""
+    r = con.execute(
+        "SELECT COUNT(*) AS n FROM product_embeddings WHERE product_id=?",
+        (product_id,),
+    ).fetchone()
+    return r["n"]
 
 
 def set_stock(con, product_id, qty, sumber="manual", alasan=None):
@@ -266,23 +293,24 @@ def add_unknown_crop(con, scan_id, crop_path, embedding):
 
 def list_unknown_crops(con, scan_id=None, hanya_belum=True):
     """Daftar unknown_crops (tanpa BLOB embedding). scan_id=None = semua scan."""
-    kondisi = []
+    where = []
     params = []
     if scan_id is not None:
-        kondisi.append("scan_id=?")
+        where.append("scan_id=?")
         params.append(scan_id)
     if hanya_belum:
-        kondisi.append("product_id IS NULL")
-    where = f" WHERE {' AND '.join(kondisi)}" if kondisi else ""
+        where.append("product_id IS NULL")
+    klausa = f" WHERE {' AND '.join(where)}" if where else ""
     rows = con.execute(
         "SELECT id, scan_id, crop_path, product_id, created_at"
-        f" FROM unknown_crops{where} ORDER BY id",
+        f" FROM unknown_crops{klausa} ORDER BY id",
         params,
     ).fetchall()
     return [dict(r) for r in rows]
 
 
 def get_unknown_crop(con, crop_id):
+    """Satu unknown_crop lengkap dengan embedding (float32); None kalau tidak ada."""
     r = con.execute(
         "SELECT id, scan_id, crop_path, embedding, product_id, created_at"
         " FROM unknown_crops WHERE id=?",
@@ -296,9 +324,13 @@ def get_unknown_crop(con, crop_id):
 
 
 def resolve_unknown_crop(con, crop_id, product_id):
-    """Tandai unknown_crop sudah dinamai/dikaitkan ke produk."""
-    con.execute(
+    """Tandai unknown_crop sudah dinamai/dikaitkan ke produk.
+
+    Return jumlah baris terpengaruh: 0 berarti crop_id tidak ada.
+    """
+    cur = con.execute(
         "UPDATE unknown_crops SET product_id=? WHERE id=?",
         (product_id, crop_id),
     )
     con.commit()
+    return cur.rowcount

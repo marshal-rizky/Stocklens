@@ -67,15 +67,51 @@ def test_all_products_kembalikan_galeri_embeddings():
     con = _con()
     pid = db.add_product(con, "Indomie", 3200, np.array([1, 0], dtype=np.float32))
     # awalnya galeri hanya berisi embedding enrollment
-    p = db.all_products(con)[0]
+    p = db.all_products(con, with_gallery=True)[0]
     assert len(p["embeddings"]) == 1
     assert np.allclose(p["embeddings"][0], [1, 0])
 
     db.add_product_embedding(con, pid, np.array([0, 1], dtype=np.float32),
                              sumber="scan")
-    p = db.all_products(con)[0]
+    p = db.all_products(con, with_gallery=True)[0]
     assert len(p["embeddings"]) == 2
     assert np.allclose(p["embeddings"][1], [0, 1])
+
+
+def test_all_products_tanpa_with_gallery_tidak_bawa_embeddings():
+    con = _con()
+    pid = db.add_product(con, "Indomie", 3200, np.array([1, 0], dtype=np.float32))
+    db.add_product_embedding(con, pid, np.array([0, 1], dtype=np.float32))
+    p = db.all_products(con)[0]
+    assert "embeddings" not in p        # galeri opt-in, jangan dikirim sia-sia
+    assert np.allclose(p["embedding"], [1, 0])   # embedding tunggal tetap ada
+
+
+def test_all_products_galeri_dikelompokkan_per_produk():
+    con = _con()
+    p1 = db.add_product(con, "Indomie", 3200, np.array([1, 0], dtype=np.float32))
+    p2 = db.add_product(con, "Gula", 12000, np.array([0, 1], dtype=np.float32))
+    db.add_product_embedding(con, p1, np.array([0.9, 0.1], dtype=np.float32))
+    db.add_product_embedding(con, p2, np.array([0.1, 0.9], dtype=np.float32))
+    db.add_product_embedding(con, p1, np.array([0.8, 0.2], dtype=np.float32))
+
+    a, b = db.all_products(con, with_gallery=True)
+    # galeri satu query harus tetap masuk ke produk yang benar, urut id
+    assert len(a["embeddings"]) == 3 and len(b["embeddings"]) == 2
+    assert np.allclose(a["embeddings"][1], [0.9, 0.1])
+    assert np.allclose(a["embeddings"][2], [0.8, 0.2])
+    assert np.allclose(b["embeddings"][1], [0.1, 0.9])
+
+
+def test_count_product_embeddings():
+    con = _con()
+    p1 = db.add_product(con, "Indomie", 3200, np.array([1, 0], dtype=np.float32))
+    p2 = db.add_product(con, "Gula", 12000, np.array([0, 1], dtype=np.float32))
+    assert db.count_product_embeddings(con, p1) == 0   # enrollment tidak dihitung
+    db.add_product_embedding(con, p1, np.array([0, 1], dtype=np.float32))
+    db.add_product_embedding(con, p1, np.array([1, 1], dtype=np.float32))
+    assert db.count_product_embeddings(con, p1) == 2
+    assert db.count_product_embeddings(con, p2) == 0
 
 
 def test_unknown_crop_simpan_daftar_dan_resolve():
@@ -90,7 +126,8 @@ def test_unknown_crop_simpan_daftar_dan_resolve():
     assert belum[0]["id"] == cid
     assert belum[0]["crop_path"] == "data/crops/1.jpg"
 
-    db.resolve_unknown_crop(con, cid, pid)
+    assert db.resolve_unknown_crop(con, cid, pid) == 1    # 1 baris kena update
+    assert db.resolve_unknown_crop(con, 999, pid) == 0    # crop_id tidak ada
     assert db.list_unknown_crops(con, sid) == []          # sudah tidak menggantung
     assert len(db.list_unknown_crops(con, sid, hanya_belum=False)) == 1
 
