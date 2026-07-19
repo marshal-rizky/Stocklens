@@ -12,18 +12,27 @@ Laptop ketua punya **RTX 4070 12GB** — sekitar **2–3× lebih cepat dari T4**
 Colab (gratis maupun Pro tier standar), tanpa batas waktu sesi dan tanpa risiko
 disconnect di tengah training. VRAM 12GB lebih dari cukup untuk YOLO11n/s @640px.
 
-⚠️ **Masalah yang ditemukan:** PyTorch terpasang versi **CPU-only** (`2.13.0+cpu`),
-jadi GPU tidak terpakai sama sekali. Ini juga bikin enrollment CLIP lambat (30–60 dtk).
-Perbaikan (driver CUDA UMD 13.3 sudah mendukung):
+✅ **SUDAH DIPERBAIKI (18 Jul 2026).** Sebelumnya PyTorch terpasang build **CPU-only**
+(`2.13.0+cpu`) sehingga GPU tidak terpakai sama sekali. Sekarang `2.13.0+cu126`,
+`torch.cuda.is_available() == True`, RTX 4070 terdeteksi.
+
+Perintah yang dipakai (untuk anggota tim lain yang punya GPU NVIDIA):
 
 ```bash
-pip uninstall -y torch torchvision
-pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
+pip install --index-url https://download.pytorch.org/whl/cu126 \
+    "torch==2.13.0+cu126" "torchvision==0.28.0+cu126"
 python -c "import torch; print(torch.cuda.is_available())"   # harus True
 ```
 
-Risiko: reinstall torch bisa mengganggu ultralytics/open_clip/easyocr yang sudah jalan.
-Lakukan saat TIDAK sedang mengejar demo, dan verifikasi `pytest` masih hijau setelahnya.
+⚠️ **Pakai index `cu126`, JANGAN `cu124`.** Saat dicek, `cu124` hanya menyediakan
+torch sampai 2.6.0 — memakainya akan MENURUNKAN torch dari 2.13.0 dan berisiko
+merusak ultralytics 8.4.90 / open_clip 3.3.0. Selalu cek dulu:
+`pip index versions torch --index-url https://download.pytorch.org/whl/<cuXXX>`
+dan pilih index yang punya versi torch yang sama dengan yang sedang terpasang.
+
+Hasil verifikasi setelah upgrade: 82 test cepat + 2 test slow hijau, semua modul
+(ultralytics, open_clip, easyocr, stoklens) import normal. **CLIP jadi ~3,3× lebih
+cepat** (19 ms → 6 ms per gambar).
 
 **Perbandingan opsi:**
 
