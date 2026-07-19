@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 from stoklens.matcher import cosine, majority_label, match
 
@@ -48,17 +49,22 @@ def test_majority_label_semua_none():
 # ---- Galeri multi-embedding: similarity tertinggi lintas entri ----
 
 def test_match_pakai_similarity_tertinggi_dari_galeri():
-    # entri kedua produk 1 paling dekat ke query, entri pertama jauh
+    # Galeri produk 1 sengaja 3 entri dengan yang paling mirip di TENGAH.
+    # Cosine tiap entri vs query: [0.1104, 0.9939, 0.1104].
+    # Skor harus persis entri terbaik (0.9939), sehingga asersi ini mematikan
+    # implementasi salah: rata-rata galeri (0.5433), entri pertama (0.1104),
+    # dan entri terakhir (0.1104) — semuanya gagal di assert approx di bawah.
     prods = [
         {"id": 1, "embedding": np.array([0.0, 1.0], dtype=np.float32),
          "embeddings": [np.array([0.0, 1.0], dtype=np.float32),
-                        np.array([1.0, 0.0], dtype=np.float32)]},
+                        np.array([1.0, 0.0], dtype=np.float32),
+                        np.array([0.0, 1.0], dtype=np.float32)]},
         {"id": 2, "embedding": np.array([0.0, 1.0], dtype=np.float32),
          "embeddings": [np.array([0.0, 1.0], dtype=np.float32)]},
     ]
     pid, score = match(np.array([0.9, 0.1], dtype=np.float32), prods, threshold=0.5)
     assert pid == 1
-    assert score > 0.5  # skor berasal dari entri kedua (paling mirip), bukan entri pertama
+    assert score == pytest.approx(0.9939, abs=1e-3)
 
 
 def test_match_produk_hanya_embedding_tunggal_tetap_jalan():
