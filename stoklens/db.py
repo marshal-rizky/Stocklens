@@ -41,6 +41,21 @@ CREATE TABLE IF NOT EXISTS stock_ledger(
   alasan TEXT,
   tanggal_update TEXT DEFAULT (datetime('now'))
 );
+CREATE TABLE IF NOT EXISTS product_embeddings(
+  id INTEGER PRIMARY KEY,
+  product_id INTEGER NOT NULL REFERENCES products(id),
+  embedding BLOB NOT NULL,
+  sumber TEXT DEFAULT 'scan',
+  created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS unknown_crops(
+  id INTEGER PRIMARY KEY,
+  scan_id INTEGER NOT NULL REFERENCES scans(id),
+  crop_path TEXT NOT NULL,
+  embedding BLOB NOT NULL,
+  product_id INTEGER REFERENCES products(id),
+  created_at TEXT DEFAULT (datetime('now'))
+);
 """
 
 # Migrasi kolom untuk DB lama (SCHEMA pakai IF NOT EXISTS, jadi tabel lama
@@ -78,10 +93,29 @@ def add_product(con, nama, harga_modal, embedding, harga_jual=None, foto_refs=()
 
 def all_products(con):
     rows = con.execute("SELECT * FROM products ORDER BY id").fetchall()
-    return [
-        dict(r) | {"embedding": np.frombuffer(r["embedding"], dtype=np.float32)}
-        for r in rows
-    ]
+    hasil = []
+    for r in rows:
+        emb = np.frombuffer(r["embedding"], dtype=np.float32)
+        galeri_rows = con.execute(
+            "SELECT embedding FROM product_embeddings WHERE product_id=? ORDER BY id",
+            (r["id"],),
+        ).fetchall()
+        embeddings = [emb] + [
+            np.frombuffer(g["embedding"], dtype=np.float32) for g in galeri_rows
+        ]
+        hasil.append(dict(r) | {"embedding": emb, "embeddings": embeddings})
+    return hasil
+
+
+def add_product_embedding(con, product_id, embedding, sumber="scan"):
+    """Tambah embedding tambahan ke galeri produk (mis. crop hasil scan)."""
+    blob = np.asarray(embedding, dtype=np.float32).tobytes()
+    cur = con.execute(
+        "INSERT INTO product_embeddings(product_id, embedding, sumber) VALUES(?,?,?)",
+        (product_id, blob, sumber),
+    )
+    con.commit()
+    return cur.lastrowid
 
 
 def set_stock(con, product_id, qty, sumber="manual", alasan=None):
@@ -217,3 +251,54 @@ def get_scan_items(con, scan_id):
         (scan_id,),
     ).fetchall()
     return [dict(r) for r in rows]
+
+
+def add_unknown_crop(con, scan_id, crop_path, embedding):
+    """Simpan crop yang tidak dikenali matcher, supaya bisa dinamai user nanti."""
+    blob = np.asarray(embedding, dtype=np.float32).tobytes()
+    cur = con.execute(
+        "INSERT INTO unknown_crops(scan_id, crop_path, embedding) VALUES(?,?,?)",
+        (scan_id, crop_path, blob),
+    )
+    con.commit()
+    return cur.lastrowid
+
+
+def list_unknown_crops(con, scan_id=None, hanya_belum=True):
+    """Daftar unknown_crops (tanpa BLOB embedding). scan_id=None = semua scan."""
+    kondisi = []
+    params = []
+    if scan_id is not None:
+        kondisi.append("scan_id=?")
+        params.append(scan_id)
+    if hanya_belum:
+        kondisi.append("product_id IS NULL")
+    where = f" WHERE {' AND '.join(kondisi)}" if kondisi else ""
+    rows = con.execute(
+        "SELECT id, scan_id, crop_path, product_id, created_at"
+        f" FROM unknown_crops{where} ORDER BY id",
+        params,
+    ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def get_unknown_crop(con, crop_id):
+    r = con.execute(
+        "SELECT id, scan_id, crop_path, embedding, product_id, created_at"
+        " FROM unknown_crops WHERE id=?",
+        (crop_id,),
+    ).fetchone()
+    if r is None:
+        return None
+    d = dict(r)
+    d["embedding"] = np.frombuffer(d["embedding"], dtype=np.float32)
+    return d
+
+
+def resolve_unknown_crop(con, crop_id, product_id):
+    """Tandai unknown_crop sudah dinamai/dikaitkan ke produk."""
+    con.execute(
+        "UPDATE unknown_crops SET product_id=? WHERE id=?",
+        (product_id, crop_id),
+    )
+    con.commit()

@@ -127,6 +127,7 @@ def create_app(db_path="stoklens.db", embedder=None, photo_detector=None):
     def _product_row(p, stock_map):
         p = dict(p)
         p.pop("embedding", None)
+        p.pop("embeddings", None)
         p.pop("foto_refs", None)
         p["qty"] = stock_map.get(p["id"], 0)
         p["margin_pct"] = accounting.margin_pct(p["harga_modal"], p.get("harga_jual"))
