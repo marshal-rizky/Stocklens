@@ -37,7 +37,7 @@ def run_scan(con, embedder, video_path, model_path="yolo11n.pt",
              match_threshold=0.75, embed_every=5, min_track_frames=3,
              guided_product_id=None, lokasi_rak=None, read_expiry=True,
              count_mode="line", tracker=None, simpan_unknown=True,
-             maks_unknown=30):
+             maks_unknown=30, dir_crops=None):
     """Jalankan scan penuh; return scan_id.
 
     guided_product_id: guided mode — semua deteksi dianggap kandidat produk ini
@@ -47,6 +47,7 @@ def run_scan(con, embedder, video_path, model_path="yolo11n.pt",
     simpan_unknown: simpan crop track tak dikenali ke `unknown_crops` supaya
                    bisa diberi nama user nanti (Unit 3), maks `maks_unknown`
                    crop per scan (lihat photo.scan_photos untuk alasan cap).
+    dir_crops: direktori dasar file crop; default crops.DIR_CROPS_DEFAULT.
     """
     # Lazy import: modul ini harus bisa di-import tanpa torch stack
     # (CI & test monkeypatch run_scan tanpa install ultralytics).
@@ -123,9 +124,7 @@ def run_scan(con, embedder, video_path, model_path="yolo11n.pt",
                 expiry_per_product[t.product_id].append(d)
 
     scan_id = db.add_scan(con, video_ref=str(video_path), lokasi_rak=lokasi_rak)
-    for crop, embedding in unknown_buffer:
-        path = crops.simpan_crop(crop, scan_id)
-        db.add_unknown_crop(con, scan_id, path, embedding)
+    crops.simpan_buffer(con, scan_id, unknown_buffer, dir_crops)
 
     today = date.today()
     for pid, c in counts.items():
