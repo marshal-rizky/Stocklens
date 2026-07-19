@@ -13,19 +13,29 @@ def cosine(a, b) -> float:
 def match(embedding, products, threshold=0.75, allowed_ids=None):
     """Return (product_id, score); product_id None kalau di bawah threshold.
 
+    Similarity satu produk = tertinggi di antara entri galerinya (`p["embeddings"]`).
+    Kalau produk hanya punya `embedding` tunggal (belum ada galeri), itu diperlakukan
+    sebagai galeri satu entri. TIDAK dirata-rata — embedding enrollment (foto rapi)
+    dan embedding scan (angle/lighting toko) sengaja dipisah, rata-rata bisa jadi
+    vektor yang tidak mirip keduanya.
+
     allowed_ids: batasi kandidat (guided mode / deklarasi produk per blok).
     """
     best_id, best_score = None, -1.0
     for p in products:
         if allowed_ids is not None and p["id"] not in allowed_ids:
             continue
-        # Produk dengan dimensi embedding beda (data korup/legacy) di-skip,
-        # jangan sampai satu baris jelek meledakkan seluruh scan.
-        if len(p["embedding"]) != len(embedding):
-            continue
-        s = cosine(embedding, p["embedding"])
-        if s > best_score:
-            best_id, best_score = p["id"], s
+        # Jalur singular = kompat untuk test & pemanggil lama yang belum
+        # minta galeri (all_products tanpa with_gallery).
+        galeri = p.get("embeddings") or [p["embedding"]]
+        for emb in galeri:
+            # Entri dengan dimensi embedding beda (data korup/legacy) di-skip,
+            # jangan sampai satu baris jelek meledakkan seluruh scan.
+            if len(emb) != len(embedding):
+                continue
+            s = cosine(embedding, emb)
+            if s > best_score:
+                best_id, best_score = p["id"], s
     if best_score < threshold:
         return None, best_score
     return best_id, best_score

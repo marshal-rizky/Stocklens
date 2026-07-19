@@ -23,7 +23,7 @@ from datetime import date
 from pathlib import Path
 
 import numpy as np
-from . import db
+from . import crops, db
 from .counter import TrackResult, aggregate
 from .crossing import count_by_crossing
 from .expiry import parse_expiry
@@ -36,19 +36,24 @@ DEFAULT_TRACKER = str(Path(__file__).with_name("botsort_reid.yaml"))
 def run_scan(con, embedder, video_path, model_path="yolo11n.pt",
              match_threshold=0.75, embed_every=5, min_track_frames=3,
              guided_product_id=None, lokasi_rak=None, read_expiry=True,
-             count_mode="line", tracker=None):
+             count_mode="line", tracker=None, simpan_unknown=True,
+             maks_unknown=30, dir_crops=None):
     """Jalankan scan penuh; return scan_id.
 
     guided_product_id: guided mode — semua deteksi dianggap kandidat produk ini
                        saja (deklarasi produk per blok, akurasi varian naik).
     count_mode: "line" (rekaman sweep, anti dobel) | "track" (kamera statis).
     tracker: path yaml tracker ultralytics; default BoT-SORT ReID milik StokLens.
+    simpan_unknown: simpan crop track tak dikenali ke `unknown_crops` supaya
+                   bisa diberi nama user nanti (Unit 3), maks `maks_unknown`
+                   crop per scan (lihat photo.scan_photos untuk alasan cap).
+    dir_crops: direktori dasar file crop; default crops.DIR_CROPS_DEFAULT.
     """
     # Lazy import: modul ini harus bisa di-import tanpa torch stack
     # (CI & test monkeypatch run_scan tanpa install ultralytics).
     from ultralytics import YOLO
 
-    products = db.all_products(con)
+    products = db.all_products(con, with_gallery=True)
     allowed = {guided_product_id} if guided_product_id is not None else None
     model = YOLO(model_path)
 
@@ -83,6 +88,9 @@ def run_scan(con, embedder, video_path, model_path="yolo11n.pt",
         counted = {tid: True for tid in seen}
 
     tracks = []
+    # (crop, embedding) track tak dikenali menunggu disimpan — ditunda karena
+    # scan_id baru ada setelah db.add_scan() di bawah.
+    unknown_buffer = []
     for tid, n in seen.items():
         if not embs.get(tid) or not counted.get(tid, False):
             continue
@@ -91,8 +99,18 @@ def run_scan(con, embedder, video_path, model_path="yolo11n.pt",
             pid, s = match(e, products, threshold=match_threshold, allowed_ids=allowed)
             labels.append(pid)
             scores.append(s)
-        tracks.append(TrackResult(tid, majority_label(labels),
-                                  round(float(np.mean(scores)), 3), n))
+        label = majority_label(labels)
+        tracks.append(TrackResult(tid, label, round(float(np.mean(scores)), 3), n))
+
+        # embs[tid] berisi sampel embedding antar-frame, TIDAK berkorespondensi
+        # dengan best_crop[tid] (crop terbesar) — untuk track unknown, embedding
+        # yang disimpan harus dihitung ulang dari crop yang sama persis dengan
+        # yang ditulis ke disk, supaya galeri produk (Unit 3) tidak tercemar.
+        if (label is None and simpan_unknown and n >= min_track_frames
+                and len(unknown_buffer) < maks_unknown):
+            crop = best_crop[tid][1]
+            embedding = embedder.embed_bgr(crop)
+            unknown_buffer.append((crop, embedding))
 
     counts = aggregate(tracks, min_track_frames=min_track_frames)
 
@@ -106,6 +124,8 @@ def run_scan(con, embedder, video_path, model_path="yolo11n.pt",
                 expiry_per_product[t.product_id].append(d)
 
     scan_id = db.add_scan(con, video_ref=str(video_path), lokasi_rak=lokasi_rak)
+    crops.simpan_buffer(con, scan_id, unknown_buffer, dir_crops)
+
     today = date.today()
     for pid, c in counts.items():
         if pid == "unknown":
