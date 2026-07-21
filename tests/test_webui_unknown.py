@@ -134,19 +134,23 @@ def test_report_view_js_double_submit_guard_pilih_produk_dan_tap_crop(tmp_path):
 
 
 def test_report_view_js_tombol_submit_baru_tidak_pernah_permanen_disabled(tmp_path):
-    """Review round 2: #sheet-submit-baru itu singleton (dibangun sekali di
+    """Review round 2+3: #sheet-submit-baru itu singleton (dibangun sekali di
     pastikanSheetEl, persist lintas buka/tutup sheet) — beda dari tombol daftar
-    produk yang dibuang/dibangun ulang tiap buka. Kalau re-enable-nya digerbang
-    `generasi === sheetGenerasi` (pola yang benar buat tombol daftar produk), sheet
-    yang ditutup di tengah request lalu dibuka ulang untuk crop lain akan membuat
-    tombol ini disabled selamanya. Re-enable HARUS tanpa syarat generasi, dan
-    bukaSheetTakDikenali juga harus reset paksa sebagai lapis kedua."""
+    produk yang dibuang/dibangun ulang tiap buka. Fix permanent-disable-nya ADA DI
+    bukaSheetTakDikenali (reset paksa tanpa syarat tiap buka sheet, lapis
+    pertama+cukup) — BUKAN dengan menghapus gerbang generasi di kirimProdukBaru,
+    karena itu balik membuka race lain: completion basi bisa merebut status tombol
+    dari request yang lebih baru & masih jalan. Jadi re-enable di kirimProdukBaru
+    tetap harus digerbang generasi, sama seperti pola tombolProduk di
+    pilihProdukExisting yang tidak pernah diubah."""
     client = _client(tmp_path)
     r = client.get("/static/report_view.js")
     assert r.status_code == 200
-    # Pola bug lama (regresi yang dilaporkan review) tidak boleh muncul lagi.
-    assert "if (generasi === sheetGenerasi) tombol.disabled = false;" not in r.text
-    # Lapis kedua: bukaSheetTakDikenali reset tombol submit tanpa syarat tiap buka.
+    # Re-enable di kirimProdukBaru (catch & sukses) tetap digerbang generasi, biar
+    # completion basi tidak menimpa status tombol milik request yang lebih baru.
+    assert "if (generasi === sheetGenerasi) tombol.disabled = false;" in r.text
+    # Fix permanent-disable: bukaSheetTakDikenali reset tombol submit tanpa syarat
+    # tiap sheet dibuka, apapun penyebab sesi sebelumnya berakhir.
     assert 'getElementById("sheet-submit-baru").disabled = false;' in r.text
 
 

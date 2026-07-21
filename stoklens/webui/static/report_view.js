@@ -369,17 +369,17 @@ async function kirimProdukBaru(ev) {
     });
   } catch (e) {
     /* toast error sudah tampil dari api(); sheet tetap terbuka supaya bisa coba lagi.
-       tombol HARUS di-re-enable tanpa syarat generasi: beda dari tombol daftar produk
-       (yang dibuang/dibangun ulang tiap buka sheet), tombol ini singleton yang
-       persist lintas buka/tutup, jadi kalau di-skip di sini dia permanen mati. */
-    tombol.disabled = false;
+       Gerbang generasi di sini SENGAJA sama seperti tombolProduk di
+       pilihProdukExisting: kalau generasi sudah beda, request yang lebih baru
+       (submit ulang di crop sama atau sheet dipakai buat crop lain) mungkin masih
+       jalan pakai tombol singleton ini — jangan rebut statusnya, biar completion
+       generasi terbaru yang menentukan. Permanent-disable dicegah bukan di sini,
+       tapi lewat reset paksa di awal bukaSheetTakDikenali(). */
+    if (generasi === sheetGenerasi) tombol.disabled = false;
     return;
   }
-  /* Tombol juga di-re-enable tanpa syarat generasi, dengan alasan yang sama seperti
-     di atas — baru SETELAH itu keputusan tutup sheet/panggil callback digerbang
-     generasi, supaya completion yang basi tidak menutup sheet crop lain. */
-  tombol.disabled = false;
   if (generasi !== sheetGenerasi) return; /* sheet sudah dipakai untuk crop lain */
+  tombol.disabled = false;
   tutupSheet();
   if (selesai) selesai(nama);
 }
