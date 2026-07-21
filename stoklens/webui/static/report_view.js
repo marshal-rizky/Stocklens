@@ -368,12 +368,18 @@ async function kirimProdukBaru(ev) {
       body: JSON.stringify(body),
     });
   } catch (e) {
-    /* toast error sudah tampil dari api(); sheet tetap terbuka supaya bisa coba lagi */
-    if (generasi === sheetGenerasi) tombol.disabled = false;
+    /* toast error sudah tampil dari api(); sheet tetap terbuka supaya bisa coba lagi.
+       tombol HARUS di-re-enable tanpa syarat generasi: beda dari tombol daftar produk
+       (yang dibuang/dibangun ulang tiap buka sheet), tombol ini singleton yang
+       persist lintas buka/tutup, jadi kalau di-skip di sini dia permanen mati. */
+    tombol.disabled = false;
     return;
   }
-  if (generasi !== sheetGenerasi) return; /* sheet sudah dipakai untuk crop lain */
+  /* Tombol juga di-re-enable tanpa syarat generasi, dengan alasan yang sama seperti
+     di atas — baru SETELAH itu keputusan tutup sheet/panggil callback digerbang
+     generasi, supaya completion yang basi tidak menutup sheet crop lain. */
   tombol.disabled = false;
+  if (generasi !== sheetGenerasi) return; /* sheet sudah dipakai untuk crop lain */
   tutupSheet();
   if (selesai) selesai(nama);
 }
@@ -446,6 +452,10 @@ async function bukaSheetTakDikenali(cropId, onSelesai, pemicuEl) {
   document.getElementById("sheet-error-nama").classList.add("hidden");
   document.getElementById("sheet-error-harga-modal").classList.add("hidden");
   document.getElementById("sheet-produk-list").innerHTML = "";
+  /* Lapis kedua: kalau buka sebelumnya ditutup di tengah request (lihat fix
+     tombol.disabled di kirimProdukBaru), pastikan tombol singleton ini tidak
+     pernah mulai sesi baru dalam keadaan disabled. */
+  document.getElementById("sheet-submit-baru").disabled = false;
 
   backdrop.classList.remove("hidden");
   document.addEventListener("keydown", sheetKeydownHandler);
