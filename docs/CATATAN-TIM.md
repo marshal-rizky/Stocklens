@@ -184,6 +184,9 @@ Desain UI dibuat di Google Stitch → export HTML/CSS. Cara masuk ke repo:
    | `GET /api/scans` | Daftar riwayat opname + total shrinkage/rugi |
    | `POST /api/opname/{scan_id}/terapkan` | Terapkan hasil opname ke buku stok (409 kalau sudah) |
    | `GET /api/export/stok.csv` | Export buku stok CSV |
+   | `GET /api/scans/{scan_id}/unknown` | Daftar crop tak dikenali (belum resolve) di satu scan |
+   | `POST /api/unknown/{crop_id}/assign` | Kaitkan crop ke produk existing (tambah ke galeri embedding) |
+   | `POST /api/unknown/{crop_id}/produk-baru` | Buat produk baru dari crop tak dikenali |
 3. Pertahankan token desain (warna primary `#2563EB`, CTA `#F97316`, touch target ≥48dp, angka rupiah
    `tabular-nums`) supaya konsisten dengan design doc — kirim token ini ke prompt Stitch sekalian.
 4. Checklist sebelum PR: tidak ada horizontal scroll di 360px, form tidak ketutup keyboard,
