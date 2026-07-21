@@ -178,8 +178,11 @@ function hapusCropDariGrid(section, cropId, nama) {
 
 /**
  * Fetch daftar crop belum dikenali untuk satu scan; kalau ada, tambahkan section
- * "Belum dikenali" di bawah laporan. Gagal/kosong = tidak tampilkan apa-apa (bukan
- * fitur inti, jadi tidak perlu toast error kalau gagal muat).
+ * "Belum dikenali" di bawah laporan. List kosong = tidak tampilkan apa-apa (bukan
+ * fitur inti, tidak perlu toast). Request gagal (network/non-2xx) DIBEDAKAN dari
+ * list kosong lewat console.error, supaya kegagalan diam-diam tidak terlihat sama
+ * dengan "memang tidak ada unknown crop" — konsekuensi yang diterima: item baru
+ * kelihatan lagi setelah reload halaman, bukan retry otomatis.
  * @param {HTMLElement} containerEl
  * @param {number|string} scanId
  */
@@ -187,9 +190,13 @@ async function muatBelumDikenali(containerEl, scanId) {
   let crops;
   try {
     const res = await fetch("/api/scans/" + scanId + "/unknown");
-    if (!res.ok) return;
+    if (!res.ok) {
+      console.error("Gagal memuat daftar belum dikenali, status:", res.status);
+      return;
+    }
     crops = await res.json();
   } catch (e) {
+    console.error("Gagal memuat daftar belum dikenali:", e);
     return;
   }
   if (!crops || crops.length === 0) return;
@@ -206,7 +213,10 @@ async function muatBelumDikenali(containerEl, scanId) {
   section.querySelectorAll(".thumb-tanya").forEach((btn) => {
     const cropId = Number(btn.dataset.cropId);
     btn.addEventListener("click", () => {
-      bukaSheetTakDikenali(cropId, (nama) => hapusCropDariGrid(section, cropId, nama));
+      /* Cegah dobel-tap buka sheet dua kali (dua GET /api/products) sebelum kartu
+         sempat hilang dari grid. Dikembalikan aktif lagi di tutupSheet(). */
+      btn.disabled = true;
+      bukaSheetTakDikenali(cropId, (nama) => hapusCropDariGrid(section, cropId, nama), btn);
     });
   });
 }
@@ -216,15 +226,54 @@ async function muatBelumDikenali(containerEl, scanId) {
 let sheetCropId = null;
 let sheetSelesai = null;
 let sheetProdukList = [];
+let sheetPemicu = null;
+/* Naik tiap kali sheet dibuka. Dipakai request in-flight (assign/produk-baru/muat
+   produk) untuk tahu apakah sheet sudah "dipakai ulang" buat crop lain sebelum
+   request itu selesai — kalau iya, no-op (jangan tutup sheet orang lain, jangan
+   panggil callback punya crop yang salah). Lihat catatan review Unit 4. */
+let sheetGenerasi = 0;
+
+function daftarFokusableSheet() {
+  const panel = document.querySelector("#sheet-backdrop .sheet-panel");
+  if (!panel) return [];
+  return Array.from(panel.querySelectorAll("button, input")).filter(
+    (el) => !el.disabled && el.offsetParent !== null
+  );
+}
+
+function sheetKeydownHandler(ev) {
+  if (ev.key === "Escape") {
+    tutupSheet();
+    return;
+  }
+  if (ev.key !== "Tab") return;
+  const fokusable = daftarFokusableSheet();
+  if (fokusable.length === 0) return;
+  const pertama = fokusable[0];
+  const terakhir = fokusable[fokusable.length - 1];
+  if (ev.shiftKey && document.activeElement === pertama) {
+    ev.preventDefault();
+    terakhir.focus();
+  } else if (!ev.shiftKey && document.activeElement === terakhir) {
+    ev.preventDefault();
+    pertama.focus();
+  }
+}
 
 function tutupSheet() {
   const backdrop = document.getElementById("sheet-backdrop");
   if (backdrop) backdrop.classList.add("hidden");
-  document.removeEventListener("keydown", sheetEscHandler);
-}
-
-function sheetEscHandler(ev) {
-  if (ev.key === "Escape") tutupSheet();
+  document.removeEventListener("keydown", sheetKeydownHandler);
+  /* Kembalikan fokus ke tombol "Ini barang apa?" yang membuka sheet ini, dan
+     aktifkan lagi (lihat guard dobel-tap di muatBelumDikenali). Kalau assign/
+     produk-baru sukses, kartunya akan langsung dihapus lagi sesudah ini oleh
+     hapusCropDariGrid() — fokus sebentar ke elemen yang mau dibuang tidak masalah,
+     browser otomatis pindahkan fokus ke <body>. */
+  if (sheetPemicu) {
+    if ("disabled" in sheetPemicu) sheetPemicu.disabled = false;
+    if (typeof sheetPemicu.focus === "function") sheetPemicu.focus();
+  }
+  sheetPemicu = null;
 }
 
 function renderSheetProdukList(kata) {
@@ -250,30 +299,52 @@ function renderSheetProdukList(kata) {
 }
 
 async function pilihProdukExisting(productId) {
+  /* Tangkap cropId/selesai/generasi SEBELUM await — sheet bisa dipakai ulang buat
+     crop lain sementara request ini masih jalan (lihat sheetGenerasi di atas). */
+  const cropId = sheetCropId;
+  const selesai = sheetSelesai;
+  const generasi = sheetGenerasi;
   const produk = sheetProdukList.find((p) => p.id === productId);
+
+  const tombolProduk = Array.from(
+    document.querySelectorAll("#sheet-produk-list .sheet-produk-btn")
+  );
+  tombolProduk.forEach((b) => (b.disabled = true));
+
   try {
-    await api("/api/unknown/" + sheetCropId + "/assign", {
+    await api("/api/unknown/" + cropId + "/assign", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ product_id: productId }),
     });
   } catch (e) {
-    /* toast error sudah tampil dari api(); sheet tetap terbuka supaya bisa coba lagi */
+    /* toast error sudah tampil dari api(); sheet tetap terbuka supaya bisa coba
+       lagi. Kalau generasi sudah beda, tombol-tombol ini sudah tidak relevan lagi
+       (sheet sedang menampilkan crop lain) — aman dibiarkan disabled/dibuang. */
+    if (generasi === sheetGenerasi) tombolProduk.forEach((b) => (b.disabled = false));
     return;
   }
-  const nama = produk ? produk.nama : "";
-  const selesai = sheetSelesai;
+  if (generasi !== sheetGenerasi) return; /* sheet sudah dipakai untuk crop lain */
   tutupSheet();
-  if (selesai) selesai(nama);
+  if (selesai) selesai(produk ? produk.nama : "");
 }
 
 async function kirimProdukBaru(ev) {
   ev.preventDefault();
+  const cropId = sheetCropId;
+  const selesai = sheetSelesai;
+  const generasi = sheetGenerasi;
+
+  const errorNama = document.getElementById("sheet-error-nama");
   const errorHargaModal = document.getElementById("sheet-error-harga-modal");
+  errorNama.classList.add("hidden");
   errorHargaModal.classList.add("hidden");
 
   const nama = document.getElementById("sheet-nama-baru").value.trim();
-  if (!nama) return;
+  if (!nama) {
+    errorNama.classList.remove("hidden");
+    return;
+  }
 
   const hargaModal = angka(document.getElementById("sheet-harga-modal-baru").value);
   if (isNaN(hargaModal) || hargaModal < 1) {
@@ -291,18 +362,18 @@ async function kirimProdukBaru(ev) {
   const tombol = document.getElementById("sheet-submit-baru");
   tombol.disabled = true;
   try {
-    await api("/api/unknown/" + sheetCropId + "/produk-baru", {
+    await api("/api/unknown/" + cropId + "/produk-baru", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
   } catch (e) {
     /* toast error sudah tampil dari api(); sheet tetap terbuka supaya bisa coba lagi */
-    tombol.disabled = false;
+    if (generasi === sheetGenerasi) tombol.disabled = false;
     return;
   }
+  if (generasi !== sheetGenerasi) return; /* sheet sudah dipakai untuk crop lain */
   tombol.disabled = false;
-  const selesai = sheetSelesai;
   tutupSheet();
   if (selesai) selesai(nama);
 }
@@ -330,7 +401,8 @@ function pastikanSheetEl() {
     '<button type="button" class="btn btn-full" id="sheet-toggle-baru">Barang baru</button>' +
     '<form id="sheet-form-baru" class="hidden">' +
     '<div class="field"><label for="sheet-nama-baru">Nama</label>' +
-    '<input type="text" id="sheet-nama-baru" required></div>' +
+    '<input type="text" id="sheet-nama-baru" required>' +
+    '<p class="field-error hidden" id="sheet-error-nama">Nama wajib diisi</p></div>' +
     '<div class="field"><label for="sheet-harga-modal-baru">Harga modal</label>' +
     '<input type="text" inputmode="numeric" id="sheet-harga-modal-baru">' +
     '<p class="field-error hidden" id="sheet-error-harga-modal">Harga modal minimal Rp1</p></div>' +
@@ -359,25 +431,33 @@ function pastikanSheetEl() {
  * Buka sheet untuk memberi nama satu crop tak dikenali.
  * @param {number} cropId
  * @param {(nama: string) => void} onSelesai - dipanggil setelah assign/produk-baru sukses
+ * @param {HTMLElement} [pemicuEl] - elemen yang men-trigger buka (buat kembalikan fokus)
  */
-async function bukaSheetTakDikenali(cropId, onSelesai) {
+async function bukaSheetTakDikenali(cropId, onSelesai, pemicuEl) {
   const backdrop = pastikanSheetEl();
+  const generasi = ++sheetGenerasi;
   sheetCropId = cropId;
   sheetSelesai = onSelesai;
+  sheetPemicu = pemicuEl || document.activeElement;
 
   document.getElementById("sheet-cari").value = "";
   document.getElementById("sheet-form-baru").classList.add("hidden");
   document.getElementById("sheet-form-baru").reset();
+  document.getElementById("sheet-error-nama").classList.add("hidden");
   document.getElementById("sheet-error-harga-modal").classList.add("hidden");
   document.getElementById("sheet-produk-list").innerHTML = "";
 
   backdrop.classList.remove("hidden");
-  document.addEventListener("keydown", sheetEscHandler);
+  document.addEventListener("keydown", sheetKeydownHandler);
+  document.getElementById("sheet-cari").focus();
 
+  let produk;
   try {
-    sheetProdukList = await api("/api/products");
+    produk = await api("/api/products");
   } catch (e) {
-    sheetProdukList = [];
+    produk = [];
   }
+  if (generasi !== sheetGenerasi) return; /* sheet sudah dipakai untuk crop lain */
+  sheetProdukList = produk;
   renderSheetProdukList("");
 }
