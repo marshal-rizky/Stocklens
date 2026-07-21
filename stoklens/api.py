@@ -57,16 +57,9 @@ class OpnameManual(BaseModel):
     terapkan: bool = False
 
 
-def create_app(db_path="stoklens.db", embedder=None, photo_detector=None,
-               crops_dir=None):
-    """photo_detector: fn(image_bgr)->boxes untuk mode foto; None = YOLO asli.
-
-    crops_dir: direktori crop unknown yang di-mount di /crops; None = pakai
-    crops.DIR_CROPS_DEFAULT (dipisah lewat parameter supaya test bisa isolasi
-    tanpa menulis ke data/crops asli).
-    """
+def create_app(db_path="stoklens.db", embedder=None, photo_detector=None):
+    """photo_detector: fn(image_bgr)->boxes untuk mode foto; None = YOLO asli."""
     app = FastAPI(title="StokLens")
-    crops_dir = Path(crops_dir) if crops_dir is not None else crops.DIR_CROPS_DEFAULT
     crops_prefix = crops.DIR_CROPS_DEFAULT.as_posix()
 
     def con():
@@ -81,8 +74,11 @@ def create_app(db_path="stoklens.db", embedder=None, photo_detector=None,
 
     app.include_router(webui_router)
     app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
-    crops_dir.mkdir(parents=True, exist_ok=True)
-    app.mount("/crops", StaticFiles(directory=str(crops_dir)), name="crops")
+    # StaticFiles butuh direktori sudah ada saat mount — sengaja dibuat di sini
+    # untuk SETIAP create_app(), bukan cuma yang perlu /crops. Efek samping ini
+    # ditolerir (folder digitignore, "data/") demi tidak lazy-mount /crops.
+    crops.DIR_CROPS_DEFAULT.mkdir(parents=True, exist_ok=True)
+    app.mount("/crops", StaticFiles(directory=str(crops.DIR_CROPS_DEFAULT)), name="crops")
 
     @app.post("/products")
     async def create_product(nama: str = Form(...), harga_modal: int = Form(...),
@@ -319,8 +315,8 @@ def create_app(db_path="stoklens.db", embedder=None, photo_detector=None,
         try:
             pid = db.add_product(c, body.nama, body.harga_modal, crop["embedding"],
                                  harga_jual=body.harga_jual)
-        except sqlite3.IntegrityError:
-            raise HTTPException(400, f"Nama produk '{body.nama}' sudah dipakai")
+        except sqlite3.IntegrityError as e:
+            raise HTTPException(400, f"Nama produk '{body.nama}' sudah dipakai") from e
         if body.qty_awal:
             db.set_stock(c, pid, body.qty_awal)
         if body.stok_minimum > 0:
