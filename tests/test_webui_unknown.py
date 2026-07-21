@@ -133,6 +133,23 @@ def test_report_view_js_double_submit_guard_pilih_produk_dan_tap_crop(tmp_path):
     assert "btn.disabled = true;" in r.text
 
 
+def test_report_view_js_tombol_submit_baru_tidak_pernah_permanen_disabled(tmp_path):
+    """Review round 2: #sheet-submit-baru itu singleton (dibangun sekali di
+    pastikanSheetEl, persist lintas buka/tutup sheet) — beda dari tombol daftar
+    produk yang dibuang/dibangun ulang tiap buka. Kalau re-enable-nya digerbang
+    `generasi === sheetGenerasi` (pola yang benar buat tombol daftar produk), sheet
+    yang ditutup di tengah request lalu dibuka ulang untuk crop lain akan membuat
+    tombol ini disabled selamanya. Re-enable HARUS tanpa syarat generasi, dan
+    bukaSheetTakDikenali juga harus reset paksa sebagai lapis kedua."""
+    client = _client(tmp_path)
+    r = client.get("/static/report_view.js")
+    assert r.status_code == 200
+    # Pola bug lama (regresi yang dilaporkan review) tidak boleh muncul lagi.
+    assert "if (generasi === sheetGenerasi) tombol.disabled = false;" not in r.text
+    # Lapis kedua: bukaSheetTakDikenali reset tombol submit tanpa syarat tiap buka.
+    assert 'getElementById("sheet-submit-baru").disabled = false;' in r.text
+
+
 def test_get_unknown_scan_kosong_untuk_scan_tak_ada(tmp_path):
     """Sanity check kontrak yang dipakai UI: scan tanpa crop unknown (termasuk
     scan_id yang tidak ada, mis. dari opname manual) balas 200 list kosong, bukan
