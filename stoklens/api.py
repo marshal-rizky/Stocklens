@@ -5,6 +5,7 @@ Endpoint /api/* = kontrak untuk UI mobile (Google Stitch) — lihat docs/CATATAN
 import csv
 import io
 import shutil
+import sqlite3
 import tempfile
 from pathlib import Path
 
@@ -13,7 +14,7 @@ from fastapi.responses import PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from . import accounting, db
+from . import accounting, crops, db
 from .report import build_report
 from .webui import router as webui_router
 
@@ -25,6 +26,18 @@ class ProductPatch(BaseModel, extra="forbid"):
     harga_modal: int | None = None
     harga_jual: int | None = None
     stok_minimum: int | None = None
+
+
+class UnknownAssign(BaseModel):
+    product_id: int
+
+
+class UnknownProdukBaru(BaseModel):
+    nama: str
+    harga_modal: int
+    harga_jual: int | None = None
+    stok_minimum: int = 0
+    qty_awal: int = 0
 
 
 class Adjustment(BaseModel):
@@ -47,6 +60,7 @@ class OpnameManual(BaseModel):
 def create_app(db_path="stoklens.db", embedder=None, photo_detector=None):
     """photo_detector: fn(image_bgr)->boxes untuk mode foto; None = YOLO asli."""
     app = FastAPI(title="StokLens")
+    crops_prefix = crops.DIR_CROPS_DEFAULT.as_posix()
 
     def con():
         return db.connect(db_path)
@@ -60,6 +74,11 @@ def create_app(db_path="stoklens.db", embedder=None, photo_detector=None):
 
     app.include_router(webui_router)
     app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
+    # StaticFiles butuh direktori sudah ada saat mount — sengaja dibuat di sini
+    # untuk SETIAP create_app(), bukan cuma yang perlu /crops. Efek samping ini
+    # ditolerir (folder digitignore, "data/") demi tidak lazy-mount /crops.
+    crops.DIR_CROPS_DEFAULT.mkdir(parents=True, exist_ok=True)
+    app.mount("/crops", StaticFiles(directory=str(crops.DIR_CROPS_DEFAULT)), name="crops")
 
     @app.post("/products")
     async def create_product(nama: str = Form(...), harga_modal: int = Form(...),
@@ -250,6 +269,60 @@ def create_app(db_path="stoklens.db", embedder=None, photo_detector=None):
         return PlainTextResponse(
             buf.getvalue(), media_type="text/csv",
             headers={"Content-Disposition": "attachment; filename=stok.csv"})
+
+    # ---------- Unknown crops (enroll dari scan) ----------
+    # PENTING: endpoint di bawah TIDAK BOLEH memanggil get_embedder() — embedding
+    # sudah tersimpan di baris unknown_crops (Unit 1&2), jadi tidak perlu CLIP.
+
+    @app.get("/api/scans/{scan_id}/unknown")
+    def api_scan_unknown(scan_id: int):
+        c = con()
+        out = []
+        for crop in db.list_unknown_crops(c, scan_id=scan_id, hanya_belum=True):
+            out.append({
+                "id": crop["id"],
+                "crop_url": "/crops" + crop["crop_path"].removeprefix(crops_prefix),
+                "created_at": crop["created_at"],
+            })
+        return out
+
+    @app.post("/api/unknown/{crop_id}/assign")
+    def api_unknown_assign(crop_id: int, body: UnknownAssign):
+        c = con()
+        crop = db.get_unknown_crop(c, crop_id)
+        if crop is None:
+            raise HTTPException(404, "Crop tidak ditemukan")
+        if db.get_product(c, body.product_id) is None:
+            raise HTTPException(404, "Produk tidak ditemukan")
+        if crop["product_id"] is not None:
+            raise HTTPException(409, "Crop ini sudah di-resolve")
+        db.add_product_embedding(c, body.product_id, crop["embedding"], sumber="scan")
+        db.resolve_unknown_crop(c, crop_id, body.product_id)
+        return {
+            "ok": True,
+            "product_id": body.product_id,
+            "jumlah_galeri": db.count_product_embeddings(c, body.product_id),
+        }
+
+    @app.post("/api/unknown/{crop_id}/produk-baru")
+    def api_unknown_produk_baru(crop_id: int, body: UnknownProdukBaru):
+        c = con()
+        crop = db.get_unknown_crop(c, crop_id)
+        if crop is None:
+            raise HTTPException(404, "Crop tidak ditemukan")
+        if crop["product_id"] is not None:
+            raise HTTPException(409, "Crop ini sudah di-resolve")
+        try:
+            pid = db.add_product(c, body.nama, body.harga_modal, crop["embedding"],
+                                 harga_jual=body.harga_jual)
+        except sqlite3.IntegrityError as e:
+            raise HTTPException(400, f"Nama produk '{body.nama}' sudah dipakai") from e
+        if body.qty_awal:
+            db.set_stock(c, pid, body.qty_awal)
+        if body.stok_minimum > 0:
+            db.update_product(c, pid, stok_minimum=body.stok_minimum)
+        db.resolve_unknown_crop(c, crop_id, pid)
+        return {"ok": True, "product_id": pid}
 
     @app.get("/")
     def root():
