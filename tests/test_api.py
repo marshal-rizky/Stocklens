@@ -24,6 +24,12 @@ def test_report_endpoint(tmp_path):
     assert rep["total_shrinkage_rp"] == 9600
 
 
+def test_report_404_untuk_scan_tak_ada(tmp_path):
+    dbp, _ = _seeded(tmp_path)
+    client = TestClient(create_app(db_path=dbp))
+    assert client.get("/report/99999").status_code == 404
+
+
 def test_root_redirect_ke_ui(tmp_path):
     dbp, _ = _seeded(tmp_path)
     client = TestClient(create_app(db_path=dbp))
