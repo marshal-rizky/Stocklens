@@ -87,6 +87,21 @@ def test_opname_manual_terapkan(tmp_path):
     assert client.get(f"/api/products/{p1}").json()["qty"] == 37
 
 
+def test_opname_manual_terapkan_report_pakai_stok_sebelum_terapkan(tmp_path):
+    # Kunci urutan: report HARUS dibangun sebelum terapkan ke ledger. Kalau
+    # terapkan jalan duluan, qty_tercatat = qty_fisik dan semua selisih jadi 0
+    # (laporan sampah, tapi tetap HTTP 200). Jangan disederhanakan jadi cek stok.
+    client, p1 = _client(tmp_path)     # stok tercatat awal 40
+    rep = client.post("/api/opname-manual", json={
+        "lokasi_rak": "Rak 1", "terapkan": True,
+        "items": [{"product_id": p1, "qty_fisik": 37}],
+    }).json()["report"]
+    assert rep["items"][0]["qty_tercatat"] == 40    # stok SEBELUM terapkan
+    assert rep["items"][0]["selisih"] == -3
+    assert rep["total_shrinkage_rp"] == 9600
+    assert client.get(f"/api/products/{p1}").json()["qty"] == 37   # tetap diterapkan
+
+
 def test_list_scans_urutan_dan_total(tmp_path):
     dbp = str(tmp_path / "t.db")
     con = db.connect(dbp)
