@@ -88,22 +88,14 @@ function idProduk() {
 
 async function muatDetail() {
   tampilkanState("state-loading");
-  let res;
+  let p;
   try {
-    res = await fetch("/api/products/" + idProduk());
+    p = await api("/api/products/" + idProduk(), { silent: true });
   } catch (e) {
-    tampilkanState("state-error");
+    tampilkanState(e.status === 404 ? "state-notfound" : "state-error");
     return;
   }
-  if (res.status === 404) {
-    tampilkanState("state-notfound");
-    return;
-  }
-  if (!res.ok) {
-    tampilkanState("state-error");
-    return;
-  }
-  renderDetail(await res.json());
+  renderDetail(p);
 }
 
 async function simpanEdit(ev) {
@@ -171,31 +163,28 @@ async function terapkanPenyesuaian() {
 
   const tombol = document.getElementById("tombol-terapkan");
   tombol.disabled = true;
-  let res;
+  let body;
   try {
-    res = await fetch("/api/adjustments", {
+    body = await api("/api/adjustments", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ product_id: Number(idProduk()), delta, alasan: document.getElementById("select-alasan").value }),
+      silent: true,
     });
   } catch (e) {
-    toast(PESAN_OFFLINE, false);
-    tombol.disabled = delta === 0;
+    if (e.status === undefined) {
+      toast(PESAN_OFFLINE, false);
+      tombol.disabled = delta === 0;
+    } else if (e.status === 400) {
+      errorEl.textContent = e.detail || "Penyesuaian ditolak";
+      errorEl.classList.remove("hidden");
+      tombol.disabled = false;
+    } else {
+      toast("Gagal menerapkan penyesuaian", false);
+      tombol.disabled = false;
+    }
     return;
   }
-  if (res.status === 400) {
-    const body = await res.json();
-    errorEl.textContent = body.detail || "Penyesuaian ditolak";
-    errorEl.classList.remove("hidden");
-    tombol.disabled = false;
-    return;
-  }
-  if (!res.ok) {
-    toast("Gagal menerapkan penyesuaian", false);
-    tombol.disabled = false;
-    return;
-  }
-  const body = await res.json();
   toast("Stok: " + body.qty_lama + " → " + body.qty_baru);
   await muatDetail();
 }
