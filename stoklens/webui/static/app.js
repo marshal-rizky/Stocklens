@@ -62,10 +62,10 @@ function escapeHtml(s) {
  * @returns {Promise<any>}
  */
 async function api(path, opts) {
-  const silent = !!(opts && opts.silent);
+  const { silent, ...fetchOpts } = opts || {};
   let res;
   try {
-    res = await fetch(path, opts);
+    res = await fetch(path, fetchOpts);
   } catch (e) {
     /* kegagalan level jaringan (offline, server mati) */
     if (!silent) toast(PESAN_OFFLINE, false);
