@@ -32,7 +32,8 @@
 5. ✅ **SELESAI** (commit `7b3e1d7`, branch `fix/api-status-code`) — `api()` di `app.js`
    belum meng-expose status code — `barang_detail.js` dan `report_view.js` terpaksa
    pakai raw fetch untuk bedakan 404/409. Tambah opsi di `api()` lalu hapus duplikasi.
-6. `GET /report/{scan_id}` mengembalikan `scan: null` untuk id tak dikenal, tidak
+6. ✅ **SELESAI** (commit `81150d8`, branch `fix/report-404-scan-tak-ada`) — `GET
+   /report/{scan_id}` mengembalikan `scan: null` untuk id tak dikenal, tidak
    konsisten dengan endpoint /api/* lain yang 404.
 7. `GET /api/scans` & `/api/dashboard` menghitung `build_report` per scan per request
    (N+1) — aman untuk prototype, perbaiki kalau riwayat sudah ratusan.
