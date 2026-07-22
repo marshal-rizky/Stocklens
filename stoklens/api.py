@@ -114,10 +114,13 @@ def create_app(db_path="stoklens.db", embedder=None, photo_detector=None):
     @app.get("/report/{scan_id}")
     def report(scan_id: int):
         c = con()
+        scan = db.get_scan(c, scan_id)
+        if scan is None:
+            raise HTTPException(404, "Scan tidak ditemukan")
         # Key "scan" tambahan (additive) — konsumen lama yang cuma baca
         # items/total_* tetap aman.
         return build_report(db.get_report_rows(c, scan_id)) | {
-            "scan": db.get_scan(c, scan_id),
+            "scan": scan,
         }
 
     @app.post("/api/scans-foto")
