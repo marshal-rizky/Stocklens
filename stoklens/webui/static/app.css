@@ -1033,3 +1033,114 @@ a.card {
 .halaman-footer {
   margin: 20px 0;
 }
+
+/* ---------- Belum dikenali (report_view.js) ---------- */
+
+.belum-dikenali-section {
+  margin-top: 20px;
+}
+
+.thumb-unknown {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.thumb-unknown img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  display: block;
+  border-radius: var(--r);
+  border: 1px solid var(--border);
+}
+
+.thumb-tanya {
+  width: 100%;
+  min-height: 48px;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  background: var(--surface);
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* ---------- Sheet "Ini barang apa?" ---------- */
+
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: var(--shadow);
+  animation: sheet-fade 200ms ease;
+}
+
+.sheet-panel {
+  width: 100%;
+  max-width: 480px;
+  max-height: 85vh;
+  overflow-y: auto;
+  background: var(--surface);
+  border-radius: var(--r) var(--r) 0 0;
+  padding: var(--sp) 16px calc(16px + env(safe-area-inset-bottom));
+  animation: sheet-naik 200ms ease;
+}
+
+@keyframes sheet-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes sheet-naik {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet-backdrop,
+  .sheet-panel {
+    animation: none;
+  }
+}
+
+.sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sheet-head h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.sheet-close {
+  min-width: 48px;
+  min-height: 48px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sheet-close svg {
+  width: 22px;
+  height: 22px;
+  stroke: currentColor;
+}
+
+.sheet-produk-btn {
+  width: 100%;
+  justify-content: flex-start;
+  text-align: left;
+}
