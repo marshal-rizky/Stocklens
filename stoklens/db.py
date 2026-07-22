@@ -261,15 +261,6 @@ def list_scans(con):
     return [dict(r) for r in rows]
 
 
-def mark_scan_applied(con, scan_id):
-    """Tandai scan sudah diterapkan ke ledger (guard terapkan ganda)."""
-    con.execute(
-        "UPDATE scans SET terapkan_pada = datetime('now') WHERE id=?",
-        (scan_id,),
-    )
-    con.commit()
-
-
 def get_scan_items(con, scan_id):
     """scan_items yang punya product_id (bukan None) — untuk terapkan ke ledger."""
     rows = con.execute(
@@ -278,6 +269,38 @@ def get_scan_items(con, scan_id):
         (scan_id,),
     ).fetchall()
     return [dict(r) for r in rows]
+
+
+def terapkan_opname(con, scan_id):
+    """Terapkan hasil scan ke stock_ledger + tandai scan applied. Return jumlah item.
+
+    Satu jalur bersama untuk kedua endpoint terapkan (opname manual inline dan
+    /api/opname/{id}/terapkan).
+
+    SQL-nya sengaja ditulis di sini, BUKAN lewat set_stock(): set_stock commit
+    tiap panggilan, jadi gagal di tengah menyisakan ledger separuh terisi
+    sementara scan belum ditandai (kolom terapkan_pada = guard terapkan ganda).
+    Di sini semua INSERT + UPDATE masuk satu transaksi implisit sqlite3
+    (isolation_level="") dengan satu commit di akhir dan rollback kalau
+    meledak — all-or-nothing. Jangan "dirapikan" balik ke set_stock.
+    """
+    items = get_scan_items(con, scan_id)   # item tanpa product_id tidak ke ledger
+    alasan = f"opname #{scan_id}"
+    try:
+        con.executemany(
+            "INSERT INTO stock_ledger(product_id, qty_tercatat, sumber, alasan)"
+            " VALUES(?,?,?,?)",
+            [(i["product_id"], i["qty_terdeteksi"], "opname", alasan) for i in items],
+        )
+        con.execute(
+            "UPDATE scans SET terapkan_pada = datetime('now') WHERE id=?",
+            (scan_id,),
+        )
+        con.commit()
+    except Exception:
+        con.rollback()
+        raise
+    return len(items)
 
 
 def add_unknown_crop(con, scan_id, crop_path, embedding):
