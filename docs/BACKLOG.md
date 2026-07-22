@@ -27,7 +27,8 @@
 
 3. Export CSV **per-laporan opname** (sekarang hanya buku stok global) — juri/user
    yang buka satu laporan mungkin berharap bisa unduh laporan itu saja.
-4. Konsolidasi dua jalur terapkan-ke-ledger (`/api/opname-manual` inline vs
+4. ✅ **SELESAI** (commit `5046891`, branch `fix/konsolidasi-terapkan-ledger`) —
+   Konsolidasi dua jalur terapkan-ke-ledger (`/api/opname-manual` inline vs
    `/api/opname/{id}/terapkan`) jadi satu helper bersama + transaksi atomik.
 5. ✅ **SELESAI** (commit `7b3e1d7`, branch `fix/api-status-code`) — `api()` di `app.js`
    belum meng-expose status code — `barang_detail.js` dan `report_view.js` terpaksa
