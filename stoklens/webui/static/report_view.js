@@ -109,31 +109,21 @@ function renderReport(containerEl, report, opts) {
   tombol.addEventListener("click", async () => {
     if (!confirm("Terapkan hasil opname ini ke buku stok?")) return;
     tombol.disabled = true;
-    /* fetch mentah (bukan api()) supaya 409 "sudah diterapkan" bisa dibedakan
-       dari error lain: 409 = tombol tetap disabled, error lain = boleh coba lagi */
-    let res;
     try {
-      res = await fetch("/api/opname/" + opts.scanId + "/terapkan", { method: "POST" });
+      await api("/api/opname/" + opts.scanId + "/terapkan", { method: "POST", silent: true });
     } catch (e) {
-      toast(PESAN_OFFLINE, false);
-      tombol.disabled = false;
-      return;
-    }
-    if (res.status === 409) {
-      let detail = "Opname ini sudah diterapkan";
-      try {
-        const body = await res.json();
-        detail = body.detail || detail;
-      } catch (e) {
-        /* respons bukan JSON, pakai pesan default */
+      /* 409 "sudah diterapkan" dibedakan dari error lain: 409 = tombol tetap
+         disabled, error lain (termasuk offline) = boleh coba lagi */
+      if (e.status === 409) {
+        toast(e.detail || "Opname ini sudah diterapkan", false);
+        tombol.textContent = "Sudah diterapkan";
+      } else if (e.status === undefined) {
+        toast(PESAN_OFFLINE, false);
+        tombol.disabled = false;
+      } else {
+        toast("Gagal menerapkan hasil opname", false);
+        tombol.disabled = false;
       }
-      toast(detail, false);
-      tombol.textContent = "Sudah diterapkan";
-      return;
-    }
-    if (!res.ok) {
-      toast("Gagal menerapkan hasil opname", false);
-      tombol.disabled = false;
       return;
     }
     toast("Hasil opname diterapkan ke buku stok");

@@ -29,9 +29,9 @@
    yang buka satu laporan mungkin berharap bisa unduh laporan itu saja.
 4. Konsolidasi dua jalur terapkan-ke-ledger (`/api/opname-manual` inline vs
    `/api/opname/{id}/terapkan`) jadi satu helper bersama + transaksi atomik.
-5. `api()` di `app.js` belum meng-expose status code — `barang_detail.js` dan
-   `report_view.js` terpaksa pakai raw fetch untuk bedakan 404/409. Tambah opsi
-   di `api()` lalu hapus duplikasi.
+5. ✅ **SELESAI** (commit `7b3e1d7`, branch `fix/api-status-code`) — `api()` di `app.js`
+   belum meng-expose status code — `barang_detail.js` dan `report_view.js` terpaksa
+   pakai raw fetch untuk bedakan 404/409. Tambah opsi di `api()` lalu hapus duplikasi.
 6. ✅ **SELESAI** (commit `81150d8`, branch `fix/report-404-scan-tak-ada`) — `GET
    /report/{scan_id}` mengembalikan `scan: null` untuk id tak dikenal, tidak
    konsisten dengan endpoint /api/* lain yang 404.
