@@ -54,30 +54,40 @@ function escapeHtml(s) {
 }
 
 /**
- * Panggil JSON API. Kalau respons gagal, tampilkan toast error lalu lempar.
+ * Panggil JSON API. Kalau respons gagal, tampilkan toast error lalu lempar,
+ * kecuali opts.silent true (dipakai caller yang mau tangani sendiri lewat
+ * e.status / e.detail, misal untuk bedakan 404/409 dari error lain).
  * @param {string} path
- * @param {RequestInit} [opts]
+ * @param {RequestInit & {silent?: boolean}} [opts]
  * @returns {Promise<any>}
  */
 async function api(path, opts) {
+  const silent = !!(opts && opts.silent);
   let res;
   try {
     res = await fetch(path, opts);
   } catch (e) {
     /* kegagalan level jaringan (offline, server mati) */
-    toast(PESAN_OFFLINE, false);
+    if (!silent) toast(PESAN_OFFLINE, false);
     throw e;
   }
   if (!res.ok) {
-    let detail = res.statusText;
+    let detail; // detail dari body server, undefined kalau tidak ada
+    let pesanToast = res.statusText;
     try {
       const body = await res.json();
-      detail = body.detail || detail;
+      if (body && body.detail) {
+        detail = body.detail;
+        pesanToast = body.detail;
+      }
     } catch (e) {
       /* respons bukan JSON, pakai statusText */
     }
-    toast(detail, false);
-    throw new Error(detail);
+    if (!silent) toast(pesanToast, false);
+    const err = new Error(pesanToast);
+    err.status = res.status;
+    err.detail = detail;
+    throw err;
   }
   return res.json();
 }

@@ -134,3 +134,24 @@ def test_laporan_detail_punya_data_scan_id(tmp_path):
     assert "laporan_detail.js" in r.text
 
 
+def test_api_helper_expose_status_dan_dukung_mode_silent(tmp_path):
+    """api() di app.js harus expose e.status/e.detail dan opsi silent (backlog #5)."""
+    client = _client(tmp_path)
+    r = client.get("/static/app.js")
+    assert r.status_code == 200
+    assert "opts.silent" in r.text
+    assert "err.status = res.status" in r.text
+    assert "err.detail = detail" in r.text
+    assert "fetch(path, opts)" in r.text
+
+
+def test_barang_detail_dan_report_view_tidak_pakai_raw_fetch(tmp_path):
+    """barang_detail.js & report_view.js harus pakai api({silent:true}), bukan fetch() mentah (backlog #5)."""
+    client = _client(tmp_path)
+    for path in ("/static/barang_detail.js", "/static/report_view.js"):
+        r = client.get(path)
+        assert r.status_code == 200
+        assert "fetch(" not in r.text
+        assert "silent: true" in r.text
+
+
