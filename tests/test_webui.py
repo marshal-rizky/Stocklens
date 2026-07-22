@@ -142,7 +142,7 @@ def test_api_helper_expose_status_dan_dukung_mode_silent(tmp_path):
     assert "opts.silent" in r.text
     assert "err.status = res.status" in r.text
     assert "err.detail = detail" in r.text
-    assert "fetch(path, opts)" in r.text
+    assert "fetch(path, fetchOpts)" in r.text
 
 
 def test_barang_detail_dan_report_view_tidak_pakai_raw_fetch(tmp_path):
