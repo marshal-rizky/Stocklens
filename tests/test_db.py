@@ -142,19 +142,19 @@ def test_terapkan_opname_tanpa_item_tetap_menandai_scan():
     assert db.get_stock_map(con) == {pid: 10}            # ledger tidak tersentuh
     assert db.get_scan(con, sid)["terapkan_pada"] is not None
 
-    with pytest.raises(ValueError):                      # terapkan kedua ditolak
+    with pytest.raises(db.OpnameSudahDiterapkan):        # terapkan kedua ditolak
         db.terapkan_opname(con, sid)
 
 
 def test_terapkan_opname_scan_tidak_ada_raise():
     con = _con()
-    with pytest.raises(ValueError):
+    with pytest.raises(db.OpnameSudahDiterapkan):
         db.terapkan_opname(con, 999)
 
 
 def test_terapkan_opname_dua_koneksi_hanya_satu_yang_menang(tmp_path):
-    # Balapan terapkan-ganda: dua koneksi (mis. dua request yang saling tumpang
-    # tindih) menerapkan scan yang sama. Compare-and-set bikin yang kedua kalah,
+    # Terapkan-ganda lewat dua koneksi berbeda (mis. dua request beruntun yang
+    # sama-sama lolos cek di layer API). Compare-and-set bikin yang kedua kalah,
     # tanpa meninggalkan baris ledger duplikat.
     path = str(tmp_path / "balapan.db")
     a = db.connect(path)
@@ -165,7 +165,7 @@ def test_terapkan_opname_dua_koneksi_hanya_satu_yang_menang(tmp_path):
 
     b = db.connect(path)
     assert db.terapkan_opname(a, sid) == 1
-    with pytest.raises(ValueError):
+    with pytest.raises(db.OpnameSudahDiterapkan):
         db.terapkan_opname(b, sid)
 
     # satu baris awal (set_stock) + satu baris opname saja, bukan dua opname

@@ -11,6 +11,16 @@ from collections import defaultdict
 
 import numpy as np
 
+
+class OpnameSudahDiterapkan(ValueError):
+    """Scan tidak ada, atau sudah pernah diterapkan ke ledger.
+
+    Turunan ValueError supaya pemanggil lama yang menangkap ValueError tetap
+    jalan, tapi bertipe sendiri supaya `except` di layer API sempit: validasi
+    lain yang kelak dipakai di modul ini tidak ikut kepetik jadi 409 palsu.
+    """
+
+
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS products(
   id INTEGER PRIMARY KEY,
@@ -323,7 +333,8 @@ def terapkan_opname(con, scan_id):
         )
         if cur.rowcount == 0:
             # scan tidak ada, ATAU sudah diterapkan (balapan antar-request)
-            raise ValueError(f"Scan #{scan_id} tidak ada atau sudah diterapkan")
+            raise OpnameSudahDiterapkan(
+                f"Scan #{scan_id} tidak ada atau sudah diterapkan")
         con.commit()
     except Exception:
         con.rollback()
