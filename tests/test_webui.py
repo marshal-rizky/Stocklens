@@ -146,12 +146,22 @@ def test_api_helper_expose_status_dan_dukung_mode_silent(tmp_path):
 
 
 def test_barang_detail_dan_report_view_tidak_pakai_raw_fetch(tmp_path):
-    """barang_detail.js & report_view.js harus pakai api({silent:true}), bukan fetch() mentah (backlog #5)."""
+    """Backlog #5: bedakan status code lewat api({silent:true}), bukan fetch mentah.
+
+    Yang dijaga = pola LAMA yang dihapus backlog #5: merakit fetch sendiri lalu
+    mencabang manual `res.status === 404/409/400`. BUKAN "haram menyentuh
+    fetch" — report_view.js sengaja punya satu fetch fire-and-forget untuk
+    section "Belum dikenali" (gagal muat = section itu tidak tampil, laporan
+    utamanya tetap utuh). Assertion versi pertama melarang fetch APA PUN, lalu
+    pecah begitu fitur itu ke-merge; yang keliru assertion-nya, bukan fiturnya.
+    """
     client = _client(tmp_path)
     for path in ("/static/barang_detail.js", "/static/report_view.js"):
         r = client.get(path)
         assert r.status_code == 200
-        assert "fetch(" not in r.text
+        assert "res.status ===" not in r.text     # cabang status rakitan sendiri
         assert "silent: true" in r.text
+    # barang_detail.js dimigrasikan penuh — tidak ada fetch mentah tersisa
+    assert "fetch(" not in client.get("/static/barang_detail.js").text
 
 
