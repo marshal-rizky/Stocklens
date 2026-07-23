@@ -1,4 +1,10 @@
-"""SQLite: schema + CRUD. Embedding disimpan sebagai BLOB float32."""
+"""SQLite: schema + CRUD. Embedding disimpan sebagai BLOB float32.
+
+Konvensi transaksi: setiap fungsi di sini commit sendiri, KECUALI
+`terapkan_opname()` yang memegang transaksinya sendiri (banyak tulis, satu
+commit). Jadi fungsi-fungsi lain tidak bisa digabung jadi satu transaksi —
+commit internal mereka akan memotongnya di tengah.
+"""
 import json
 import sqlite3
 from collections import defaultdict
@@ -69,8 +75,18 @@ _MIGRATIONS = [
 ]
 
 
-def connect(path) -> sqlite3.Connection:
-    con = sqlite3.connect(path)
+def connect(path, factory=sqlite3.Connection) -> sqlite3.Connection:
+    """Koneksi siap pakai (schema + migrasi sudah jalan).
+
+    `factory` diteruskan ke sqlite3.connect — dipakai test untuk menyuntik
+    subclass Connection yang sengaja gagal, tanpa merakit koneksi sendiri.
+    """
+    # isolation_level="" ditulis EKSPLISIT (bukan mengandalkan default stdlib):
+    # itu mode transaksi implisit — BEGIN otomatis sebelum INSERT/UPDATE, dan
+    # baru permanen saat con.commit(). terapkan_opname() bergantung penuh pada
+    # ini; dengan isolation_level=None (autocommit) rollback-nya jadi no-op dan
+    # jaminan all-or-nothing-nya hilang diam-diam.
+    con = sqlite3.connect(path, isolation_level="", factory=factory)
     con.row_factory = sqlite3.Row
     con.executescript(SCHEMA)
     for m in _MIGRATIONS:
@@ -277,12 +293,17 @@ def terapkan_opname(con, scan_id):
     Satu jalur bersama untuk kedua endpoint terapkan (opname manual inline dan
     /api/opname/{id}/terapkan).
 
+    Raise ValueError kalau scan_id tidak ada ATAU sudah pernah diterapkan —
+    penandaannya sendiri yang jadi guard (compare-and-set), lihat di bawah.
+
     SQL-nya sengaja ditulis di sini, BUKAN lewat set_stock(): set_stock commit
     tiap panggilan, jadi gagal di tengah menyisakan ledger separuh terisi
     sementara scan belum ditandai (kolom terapkan_pada = guard terapkan ganda).
-    Di sini semua INSERT + UPDATE masuk satu transaksi implisit sqlite3
-    (isolation_level="") dengan satu commit di akhir dan rollback kalau
-    meledak — all-or-nothing. Jangan "dirapikan" balik ke set_stock.
+    Di sini semua INSERT + UPDATE masuk satu transaksi implisit sqlite3, satu
+    commit di akhir, rollback kalau meledak — all-or-nothing. Transaksi implisit
+    itu datang dari isolation_level="" yang di-set connect() di atas: kalau
+    setelan itu berubah, jaminan di fungsi ini ikut hilang. Jangan "dirapikan"
+    balik ke set_stock.
     """
     items = get_scan_items(con, scan_id)   # item tanpa product_id tidak ke ledger
     alasan = f"opname #{scan_id}"
@@ -292,10 +313,17 @@ def terapkan_opname(con, scan_id):
             " VALUES(?,?,?,?)",
             [(i["product_id"], i["qty_terdeteksi"], "opname", alasan) for i in items],
         )
-        con.execute(
-            "UPDATE scans SET terapkan_pada = datetime('now') WHERE id=?",
+        # Compare-and-set: penandaan sekaligus guard. Cek-lalu-tulis di layer API
+        # bisa kalah balapan (dua request lolos cek sebelum salah satu menulis);
+        # di sini yang kalah dapat rowcount 0 dan ledger-nya di-rollback.
+        cur = con.execute(
+            "UPDATE scans SET terapkan_pada = datetime('now')"
+            " WHERE id=? AND terapkan_pada IS NULL",
             (scan_id,),
         )
+        if cur.rowcount == 0:
+            # scan tidak ada, ATAU sudah diterapkan (balapan antar-request)
+            raise ValueError(f"Scan #{scan_id} tidak ada atau sudah diterapkan")
         con.commit()
     except Exception:
         con.rollback()
