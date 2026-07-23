@@ -103,9 +103,10 @@ class _KoneksiGagalSaatUpdateScan(sqlite3.Connection):
 
 def test_terapkan_opname_atomik_rollback_saat_gagal(tmp_path):
     path = str(tmp_path / "atomik.db")
-    con = sqlite3.connect(path, factory=_KoneksiGagalSaatUpdateScan)
-    con.row_factory = sqlite3.Row
-    con.executescript(db.SCHEMA)
+    # Lewat db.connect() (bukan sqlite3.connect mentah) supaya test ini benar-benar
+    # memakai konfigurasi koneksi produksi — termasuk isolation_level="" yang jadi
+    # sandaran atomicity-nya.
+    con = db.connect(path, factory=_KoneksiGagalSaatUpdateScan)
     pid = db.add_product(con, "Gula 1kg", 12000, np.zeros(2, dtype=np.float32))
     db.set_stock(con, pid, 10)
     sid = db.add_scan(con, lokasi_rak="Rak 1", tipe="manual")
@@ -124,6 +125,53 @@ def test_terapkan_opname_atomik_rollback_saat_gagal(tmp_path):
     lain = db.connect(path)
     assert len(db.get_ledger(lain, pid)) == 1
     assert db.get_scan(lain, sid)["terapkan_pada"] is None
+
+
+def test_terapkan_opname_tanpa_item_tetap_menandai_scan():
+    # Scan yang semua item-nya belum dikenali (product_id NULL) — atau tanpa item
+    # sama sekali — tidak menulis satu pun baris ledger, TAPI tetap ditandai
+    # applied: scan-nya memang sudah diproses. Kalau tidak ditandai, scan itu
+    # selamanya bisa "diterapkan" lagi dan guard terapkan-ganda jadi bocor.
+    con = _con()
+    pid = db.add_product(con, "Gula 1kg", 12000, np.zeros(2, dtype=np.float32))
+    db.set_stock(con, pid, 10)
+    sid = db.add_scan(con, tipe="manual")
+    db.add_scan_item(con, sid, None, qty_terdeteksi=3)   # unknown, tanpa produk
+
+    assert db.terapkan_opname(con, sid) == 0
+    assert db.get_stock_map(con) == {pid: 10}            # ledger tidak tersentuh
+    assert db.get_scan(con, sid)["terapkan_pada"] is not None
+
+    with pytest.raises(ValueError):                      # terapkan kedua ditolak
+        db.terapkan_opname(con, sid)
+
+
+def test_terapkan_opname_scan_tidak_ada_raise():
+    con = _con()
+    with pytest.raises(ValueError):
+        db.terapkan_opname(con, 999)
+
+
+def test_terapkan_opname_dua_koneksi_hanya_satu_yang_menang(tmp_path):
+    # Balapan terapkan-ganda: dua koneksi (mis. dua request yang saling tumpang
+    # tindih) menerapkan scan yang sama. Compare-and-set bikin yang kedua kalah,
+    # tanpa meninggalkan baris ledger duplikat.
+    path = str(tmp_path / "balapan.db")
+    a = db.connect(path)
+    pid = db.add_product(a, "Gula 1kg", 12000, np.zeros(2, dtype=np.float32))
+    db.set_stock(a, pid, 10)
+    sid = db.add_scan(a, tipe="manual")
+    db.add_scan_item(a, sid, pid, qty_terdeteksi=8)
+
+    b = db.connect(path)
+    assert db.terapkan_opname(a, sid) == 1
+    with pytest.raises(ValueError):
+        db.terapkan_opname(b, sid)
+
+    # satu baris awal (set_stock) + satu baris opname saja, bukan dua opname
+    ledger = db.get_ledger(db.connect(path), pid)
+    assert len(ledger) == 2
+    assert [r["sumber"] for r in ledger] == ["opname", "manual"]
 
 
 # ---- Galeri embedding (enroll dari scan) ----
