@@ -229,10 +229,12 @@ def create_app(db_path="stoklens.db", embedder=None, photo_detector=None):
             raise HTTPException(409, "Opname ini sudah diterapkan")
         try:
             jumlah = db.terapkan_opname(c, scan_id)
-        except ValueError as e:
+        except db.OpnameSudahDiterapkan as e:
             # Cek di atas cuma untuk pesan; guard sebenarnya ada di helper
             # (compare-and-set). Sampai sini artinya request lain menang balapan
-            # setelah cek — jawabannya tetap 409, bukan 500.
+            # setelah cek — jawabannya 409, bukan 500. Catatan: kalau dua
+            # penulis benar-benar tumpang tindih, SQLite bisa lebih dulu
+            # melempar "database is locked" dan itu tetap jadi 500.
             raise HTTPException(409, "Opname ini sudah diterapkan") from e
         return {"ok": True, "jumlah_item": jumlah}
 
