@@ -33,8 +33,9 @@ Kalau `pytest` merah di kondisi repo bersih → lapor di grup, jangan didiamkan.
 | File | Tanggung jawab | Test |
 |---|---|---|
 | `stoklens/expiry.py` | Parser tanggal expired dari teks OCR (format Indonesia: EXP/ED/BAIK SEBELUM, nama bulan ID) | `test_expiry.py` |
-| `stoklens/db.py` | SQLite: products (dengan embedding BLOB), scans, scan_items, stock_ledger | `test_db.py` |
-| `stoklens/matcher.py` | Cosine matching crop→galeri produk, majority vote per track, guided mode | `test_matcher.py` |
+| `stoklens/db.py` | SQLite: products (embedding BLOB), scans, scan_items, stock_ledger, product_embeddings (galeri enroll-dari-scan), unknown_crops | `test_db.py` |
+| `stoklens/matcher.py` | Cosine matching crop→galeri produk (ambil similarity TERTINGGI lintas galeri, bukan rata-rata), majority vote per track, guided mode | `test_matcher.py` |
+| `stoklens/crops.py` | Simpan file crop item tak dikenali ke `data/crops/<scan_id>/`, path dicatat di DB, disajikan lewat mount `/crops` | `test_crops.py` |
 | `stoklens/counter.py` | Agregasi track → qty per produk, filter track pendek | `test_counter.py` |
 | `stoklens/crossing.py` | **Line-crossing counting** — anti dobel hitung (baca docstring-nya, panjang & penting) | `test_crossing.py` |
 | `stoklens/report.py` | Selisih fisik vs tercatat → rupiah (shrinkage, rugi expired, nilai stok) | `test_report.py` |
