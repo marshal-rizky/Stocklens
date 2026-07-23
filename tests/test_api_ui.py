@@ -87,6 +87,21 @@ def test_opname_manual_terapkan(tmp_path):
     assert client.get(f"/api/products/{p1}").json()["qty"] == 37
 
 
+def test_opname_manual_terapkan_report_pakai_stok_sebelum_terapkan(tmp_path):
+    # Kunci urutan: report HARUS dibangun sebelum terapkan ke ledger. Kalau
+    # terapkan jalan duluan, qty_tercatat = qty_fisik dan semua selisih jadi 0
+    # (laporan sampah, tapi tetap HTTP 200). Jangan disederhanakan jadi cek stok.
+    client, p1 = _client(tmp_path)     # stok tercatat awal 40
+    rep = client.post("/api/opname-manual", json={
+        "lokasi_rak": "Rak 1", "terapkan": True,
+        "items": [{"product_id": p1, "qty_fisik": 37}],
+    }).json()["report"]
+    assert rep["items"][0]["qty_tercatat"] == 40    # stok SEBELUM terapkan
+    assert rep["items"][0]["selisih"] == -3
+    assert rep["total_shrinkage_rp"] == 9600
+    assert client.get(f"/api/products/{p1}").json()["qty"] == 37   # tetap diterapkan
+
+
 def test_list_scans_urutan_dan_total(tmp_path):
     dbp = str(tmp_path / "t.db")
     con = db.connect(dbp)
@@ -143,6 +158,26 @@ def test_opname_terapkan_dua_kali_ditolak(tmp_path):
     assert r2.status_code == 409
     assert "sudah diterapkan" in r2.json()["detail"].lower()
     assert client.get(f"/api/products/{p1}").json()["qty"] == 30
+
+
+def test_opname_terapkan_kalah_balapan_jadi_409_bukan_500(tmp_path, monkeypatch):
+    # Cek terapkan_pada di endpoint cuma untuk pesan; guard sebenarnya
+    # compare-and-set di db.terapkan_opname. Kalau request lain menang balapan
+    # SETELAH cek itu lolos, helper melempar dan endpoint harus tetap menjawab
+    # 409 — bukan bocor jadi 500. Cabang except itu mustahil dipicu lewat
+    # TestClient satu thread, jadi balapannya disimulasikan di sini.
+    client, p1 = _client(tmp_path)
+    scan_id = client.post("/api/opname-manual", json={
+        "items": [{"product_id": p1, "qty_fisik": 33}],
+    }).json()["scan_id"]
+
+    def kalah_balapan(con, sid):
+        raise db.OpnameSudahDiterapkan(f"Scan #{sid} sudah diterapkan")
+
+    monkeypatch.setattr(db, "terapkan_opname", kalah_balapan)
+    r = client.post(f"/api/opname/{scan_id}/terapkan")
+    assert r.status_code == 409
+    assert "sudah diterapkan" in r.json()["detail"].lower()
 
 
 def test_opname_manual_terapkan_true_tandai_terapkan_pada(tmp_path):

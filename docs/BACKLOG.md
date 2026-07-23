@@ -64,8 +64,14 @@ rak sendiri.
 
 3. Export CSV **per-laporan opname** (sekarang hanya buku stok global) — juri/user
    yang buka satu laporan mungkin berharap bisa unduh laporan itu saja.
-4. Konsolidasi dua jalur terapkan-ke-ledger (`/api/opname-manual` inline vs
-   `/api/opname/{id}/terapkan`) jadi satu helper bersama + transaksi atomik.
+4. ✅ **SELESAI** (branch `fix/konsolidasi-terapkan-ledger`, seluruh rangkaian
+   commit-nya — `5046891` sendirian belum utuh) — Konsolidasi dua jalur
+   terapkan-ke-ledger (`/api/opname-manual` inline vs `/api/opname/{id}/terapkan`)
+   jadi satu helper bersama `db.terapkan_opname()` + transaksi atomik. Termasuk:
+   guard urutan (report dibangun sebelum terapkan), `isolation_level=""` di-set
+   eksplisit di `db.connect()` karena atomicity-nya bersandar ke situ, dan guard
+   terapkan-ganda jadi compare-and-set di dalam helper (bukan cek-lalu-tulis
+   lintas koneksi yang bisa kalah balapan).
 5. ✅ **SELESAI** (commit `7b3e1d7`, branch `fix/api-status-code`) — `api()` di `app.js`
    belum meng-expose status code — `barang_detail.js` dan `report_view.js` terpaksa
    pakai raw fetch untuk bedakan 404/409. Tambah opsi di `api()` lalu hapus duplikasi.
