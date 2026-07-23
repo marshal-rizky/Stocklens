@@ -21,8 +21,18 @@
 
 ## Akurasi pengenalan (PRIORITAS TERTINGGI — dari analisis 18 Jul)
 
-**A. Enroll dari hasil scan ("unknown" → beri nama → masuk galeri).**
+**A. Enroll dari hasil scan ("unknown" → beri nama → masuk galeri).** ✅ **SELESAI**
+(Unit 1–4, merged via PR #13/#15/#16 — lihat `docs/plans/2026-07-18-enroll-dari-scan.md`).
 Dampak terbesar ke akurasi, lebih besar daripada menambah ratusan foto dataset.
+
+> ⚠️ *Catatan implementasi di bawah sudah USANG dan salah satu sarannya SENGAJA
+> DITOLAK saat implementasi.* Dipertahankan cuma sebagai jejak analisis. Yang
+> benar-benar dibangun: galeri multi-embedding (entri terpisah, matching ambil
+> similarity TERTINGGI), **bukan** merata-ratakan embedding. Merata-ratakan foto
+> enrollment tampak-depan dengan crop scan menyerong menghasilkan vektor yang
+> tidak cocok ke dua-duanya. Endpoint finalnya `POST /api/unknown/{crop_id}/assign`
+> dan `.../produk-baru`, bukan `POST /api/products/{id}/tambah-embedding`.
+> Jangan bangun ulang dari catatan ini — baca plan doc-nya.
 
 *Masalah:* enrollment sekarang dipotret terpisah (close-up, cahaya beda, sudut lurus),
 sedangkan crop hasil scan kecil, agak blur, dan menyerong. Ketidakcocokan kondisi ini
