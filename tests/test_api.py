@@ -55,3 +55,39 @@ def test_scans_endpoint_terima_count_mode(tmp_path, monkeypatch):
     )
     assert r.status_code == 200
     assert captured["count_mode"] == "track"
+
+
+# --- lokasi file DB (dipakai docker compose lewat env) ---------------------
+# Container me-mount volume ke /app/data lalu set STOKLENS_DB ke situ. Tanpa
+# ini DB tertulis di layer container dan hilang tiap `docker compose down`.
+
+def test_db_path_diambil_dari_env(tmp_path, monkeypatch):
+    dbp = tmp_path / "dari-env.db"
+    monkeypatch.setenv("STOKLENS_DB", str(dbp))
+    client = TestClient(create_app())
+    assert client.get("/api/products").status_code == 200
+    assert dbp.exists()
+
+
+def test_folder_induk_db_dibuat_kalau_belum_ada(tmp_path, monkeypatch):
+    # Kasus nyata: compose menaruh DB di /app/data yang baru ada setelah volume
+    # ter-mount. Tanpa mkdir eksplisit, sqlite gagal "unable to open database
+    # file" — dan sebelumnya ini cuma selamat karena efek samping mkdir milik
+    # /crops, yang tujuan tertulisnya sama sekali lain.
+    dbp = tmp_path / "belum" / "ada" / "stoklens.db"
+    monkeypatch.setenv("STOKLENS_DB", str(dbp))
+    client = TestClient(create_app())
+    assert client.get("/api/products").status_code == 200
+    assert dbp.exists()
+
+
+def test_db_path_eksplisit_menang_atas_env(tmp_path, monkeypatch):
+    # Test lama memanggil create_app(db_path=...) — argumen tidak boleh kalah
+    # oleh env yang kebetulan ter-set di mesin developer.
+    dari_env = tmp_path / "env.db"
+    monkeypatch.setenv("STOKLENS_DB", str(dari_env))
+    eksplisit = tmp_path / "eksplisit.db"
+    client = TestClient(create_app(db_path=str(eksplisit)))
+    assert client.get("/api/products").status_code == 200
+    assert eksplisit.exists()
+    assert not dari_env.exists()
