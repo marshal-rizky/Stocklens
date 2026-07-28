@@ -39,7 +39,7 @@ dianggap mengundurkan diri.
 | Minggu | Jalur koding / dokumen | Jalur lapangan (paralel) |
 |---|---|---|
 | **1** (28 Jul–3 Agu) | ~~merge PR #19~~ ✅ • ~~`docker-compose.yml` + `Dockerfile` + README setup~~ ✅ • ~~Backlog B: aturan kondisi foto~~ ✅ • ~~rapikan angka test di docs~~ ✅ • **sisa: verifikasi pendaftaran** | **Izin toko + mulai kumpul foto rak** (target ≥500). Ini bottleneck utama — jangan tunda |
-| **2** (4–10 Agu) | **Fine-tune YOLO** (WAJIB rulebook): pre-train SKU-110K → fine-tune dataset sendiri → tukar model. Lihat `PANDUAN-FINETUNE.md` • **mulai draft proposal sekarang**, jangan tunggu model | Labeling Roboflow + QC |
+| **2** (4–10 Agu) | **Fine-tune YOLO** (WAJIB rulebook): ~~pre-train SKU-110K~~ ✅ **sudah selesai 28 Jul** (mAP50 0,868 — dikerjakan lebih awal karena tidak butuh dataset sendiri) → sisa: fine-tune dataset sendiri → tukar model. Lihat `PANDUAN-FINETUNE.md` • **mulai draft proposal sekarang**, jangan tunggu model | Labeling Roboflow + QC |
 | **3** (11–17 Agu) | Tuning threshold/parameter dari hasil uji • proposal draft lengkap • tulis skrip kedua video | **Uji lapangan**: enroll 10–20 barang, scan, bandingkan vs hitung manual. Catat tabel akurasi |
 | **4** (18–24 Agu) | **Rekam & edit 2 video** • finalisasi proposal PDF • cek plagiarisme • **hapus semua jejak institusi** • **submit 23 Agu** | Testimoni/feedback toko pilot untuk video |
 | **25 Agu** | Submit ulang bila ada perbaikan • **stop commit sebelum 23.55 WIB** | — |

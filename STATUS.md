@@ -53,7 +53,8 @@ Format judul YouTube & aturan "dilarang cut" ada di `docs/ROADMAP.md`. Salah for
 
 | Pekerjaan | PIC | Status | Blocker |
 |---|---|---|---|
-| Pre-train SKU-110K | | belum | |
+| Pre-train SKU-110K | | **selesai** | dikerjakan lebih awal 28 Jul — mAP50 0,868, 37 menit di RTX 4070 |
+| **Salin bukti training ke Drive tim** | | belum | `best.pt`, `results.png`, `results.csv`, confusion matrix ada di `C:\Users\User\StokLens-training\` — di luar repo & di-gitignore, jadi HILANG kalau laptop ketua bermasalah |
 | Fine-tune dataset sendiri → `stoklens-yolo.pt` | | belum | menunggu dataset |
 | Labeling Roboflow + QC | | belum | menunggu foto |
 | Catat baseline vs sesudah (Step 0 & 3 PANDUAN-FINETUNE) | | belum | |
