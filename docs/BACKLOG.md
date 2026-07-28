@@ -82,17 +82,17 @@ rak sendiri.
    di kriteria "Kesiapan MVP" (15%). Export CSV global yang sudah ada tidak dihapus,
    tapi jangan ditambah. Boleh ditinjau ulang setelah 25 Agustus.
 4. ✅ **SELESAI** (branch `fix/konsolidasi-terapkan-ledger`, seluruh rangkaian
-   commit-nya — `5046891` sendirian belum utuh) — Konsolidasi dua jalur
+   commit-nya — `c1dfe4f` sendirian belum utuh) — Konsolidasi dua jalur
    terapkan-ke-ledger (`/api/opname-manual` inline vs `/api/opname/{id}/terapkan`)
    jadi satu helper bersama `db.terapkan_opname()` + transaksi atomik. Termasuk:
    guard urutan (report dibangun sebelum terapkan), `isolation_level=""` di-set
    eksplisit di `db.connect()` karena atomicity-nya bersandar ke situ, dan guard
    terapkan-ganda jadi compare-and-set di dalam helper (bukan cek-lalu-tulis
    lintas koneksi yang bisa kalah balapan).
-5. ✅ **SELESAI** (commit `7b3e1d7`, branch `fix/api-status-code`) — `api()` di `app.js`
+5. ✅ **SELESAI** (commit `b41703c`, branch `fix/api-status-code`) — `api()` di `app.js`
    belum meng-expose status code — `barang_detail.js` dan `report_view.js` terpaksa
    pakai raw fetch untuk bedakan 404/409. Tambah opsi di `api()` lalu hapus duplikasi.
-6. ✅ **SELESAI** (commit `81150d8`, branch `fix/report-404-scan-tak-ada`) — `GET
+6. ✅ **SELESAI** (commit `5bee344`, branch `fix/report-404-scan-tak-ada`) — `GET
    /report/{scan_id}` mengembalikan `scan: null` untuk id tak dikenal, tidak
    konsisten dengan endpoint /api/* lain yang 404.
 7. `GET /api/scans` menghitung `build_report` per scan per request (N+1) — aman untuk

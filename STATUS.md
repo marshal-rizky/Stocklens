@@ -41,7 +41,7 @@ Format judul YouTube & aturan "dilarang cut" ada di `docs/ROADMAP.md`. Salah for
 
 | Pekerjaan | PIC | Status | Blocker |
 |---|---|---|---|
-| Merge PR #19 konsolidasi ledger | | selesai | — (`514f7bb`) |
+| Merge PR #19 konsolidasi ledger | | selesai | — (`b8b35c2`) |
 | `Dockerfile` + `docker-compose.yml` + README setup | | selesai | — |
 | Verifikasi docker jalan sungguhan | | selesai | dijawab lewat workflow CI `Docker`, bukan lewat laptop — build + smoke test tiap PR |
 | Backlog B: aturan kondisi foto ke `PANDUAN-DATASET.md` | | selesai | — |

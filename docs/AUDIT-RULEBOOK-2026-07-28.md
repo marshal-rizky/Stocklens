@@ -1,7 +1,7 @@
 # Audit StokLens — AIC COMPFEST 18
 
 > Dibuat 2026-07-28. Sumber: rulebook resmi `[AIC] AI Innovation Challenge.pdf` (28 hal),
-> repo `marshal-rizky/Stocklens` (commit `612e85f` di main), riset web.
+> repo `marshal-rizky/Stocklens` (commit `d910bf9` di main), riset web.
 
 ---
 
@@ -66,7 +66,7 @@ Boleh submit berkali-kali, **dinilai submisi terakhir**. Tidak submit = mundur.
 
 ### Conventional Commits — WAJIB
 Rulebook mewajibkan `feat:` / `fix:` / `refactor:`. Repo mayoritas **sudah patuh** ✅.
-Satu pelanggaran: `612e85f` "Update CATATAN-TIM.md" (edit via web GitHub).
+Satu pelanggaran: `d910bf9` "Update CATATAN-TIM.md" (edit via web GitHub).
 
 ### Standby Discord
 **9 & 10 Sep, 20.00** — panitia bisa minta **live demo**, wajib jawab ≤2 jam.
@@ -187,7 +187,7 @@ RFID/barcode, etika (tidak memotret orang — sudah di PANDUAN-DATASET), privasi
 
 | Item | Status |
 |---|---|
-| PR #19 konsolidasi ledger | ✅ **Beres** — sudah merged ke main (`514f7bb`) |
+| PR #19 konsolidasi ledger | ✅ **Beres** — sudah merged ke main (`b8b35c2`) |
 | Backlog B (aturan kondisi foto) | ✅ **Beres** — masuk `PANDUAN-DATASET.md` §"Kondisi foto" |
 | Backlog #3 export CSV per-laporan | ✅ **Beres** — ditandai DIBATALKAN di `BACKLOG.md` |
 | Backlog #7 N+1 | ✅ **Beres** — klaim `/api/dashboard` dikoreksi di `BACKLOG.md`; hanya `/api/scans` yang N+1 (`api.py:214`) |
@@ -249,7 +249,7 @@ Bukan angka statistik — penilaian berdasar bobot rubrik vs kondisi repo.
 ### Minggu 1 (28 Jul – 3 Agu)
 - [ ] **HARI INI**: verifikasi pendaftaran, ukuran tim, Discord ← **satu-satunya
       yang belum jalan dan memblokir semuanya**
-- [x] Push PR #19 → CI hijau → merge (`514f7bb`)
+- [x] Push PR #19 → CI hijau → merge (`b8b35c2`)
 - [x] `docker-compose.yml` + `Dockerfile` + README setup
 - [x] Backlog B ke PANDUAN-DATASET
 - [ ] **Mulai kumpul foto rak** — bottleneck, bukan koding
@@ -286,7 +286,7 @@ Bukan angka statistik — penilaian berdasar bobot rubrik vs kondisi repo.
 ## 7. SUMBER
 
 - `[AIC] AI Innovation Challenge.pdf` — rulebook resmi COMPFEST 18, 28 halaman
-- Repo `marshal-rizky/Stocklens` @ `612e85f`
+- Repo `marshal-rizky/Stocklens` @ `d910bf9`
 - [BINUS Juara 3 CompFest#17 AIC](https://binus.ac.id/bandung/computer-science/2025/09/30/computer-science-binus-juara-3-di-compfest17-ai-innovation-challenge/)
 - [Mahasiswa SoCS BINUS di COMPFEST UI 2025](https://socs.binus.ac.id/2025/12/01/mahasiswa-school-of-computer-science-tuai-banyak-prestasi-di-compfest-ui-2025/)
 - [AI Innovation Challenge — COMPFEST 18](https://compfest.id/competition/aic)
