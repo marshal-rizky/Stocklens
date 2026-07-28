@@ -9,13 +9,51 @@ Prototype untuk AI Innovation Challenge COMPFEST 18.
 **Anggota tim baru: baca [docs/CATATAN-TIM.md](docs/CATATAN-TIM.md) dulu** — peta modul,
 keputusan desain + alasannya, mode hitung, parameter tuning, dan daftar pekerjaan tersisa.
 
-## Install
+## Menjalankan dengan Docker (cara tercepat)
+
+Butuh Docker Desktop / Docker Engine dengan plugin Compose. Satu perintah, tanpa
+menyiapkan Python:
+
+```bash
+docker compose up --build
+```
+
+Buka **http://localhost:8000** — otomatis diarahkan ke UI mobile di `/ui/beranda`.
+Hentikan dengan `Ctrl+C`, lalu `docker compose down`.
+
+Catatan penjalanan pertama:
+
+- Build memasang **torch versi CPU** (sengaja — image jadi jauh lebih kecil, dan
+  demo tidak butuh GPU). Untuk training tetap pakai GPU lokal, lihat
+  [docs/PANDUAN-FINETUNE.md](docs/PANDUAN-FINETUNE.md).
+- Bobot CLIP (±600 MB) dan EasyOCR diunduh saat **fitur terkait pertama dipakai**,
+  bukan saat build — jadi enrollment pertama terasa lambat. Unduhan ini disimpan di
+  volume `model-cache`, cukup sekali.
+- Data opname (SQLite + crop hasil scan) ditulis ke folder `./data` di host, jadi
+  tetap ada setelah `docker compose down`.
+
+Menjalankan CLI di dalam container (server harus sedang jalan):
+
+```bash
+docker compose exec app python -m scripts.demo_scan report
+```
+
+## Install tanpa Docker (untuk yang mengembangkan kode)
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Instalasi pertama mengunduh bobot model (torch, CLIP, YOLO) — butuh koneksi & waktu.
+Butuh Python 3.11. Instalasi pertama mengunduh bobot model (torch, CLIP, YOLO) —
+butuh koneksi & waktu. Jalankan server:
+
+```bash
+uvicorn stoklens.api:create_app --factory
+```
+
+Lokasi file DB bisa diatur lewat env `STOKLENS_DB` (default `stoklens.db` di
+direktori kerja). Untuk mengetes dari HP di WiFi yang sama, tambahkan
+`--host 0.0.0.0` lalu buka `http://<IP-laptop>:8000`.
 
 ## Tes
 
@@ -26,27 +64,42 @@ pytest -m slow        # smoke test embedder/enrollment (download bobot CLIP)
 
 ## Alur demo
 
+Jalankan dari **root repo**, dan perhatikan bentuk `python -m scripts.demo_scan` —
+`python scripts/demo_scan.py` gagal dengan `ModuleNotFoundError: No module named
+'stoklens'` karena paket `stoklens` tidak di-install (repo ini tanpa `pyproject.toml`).
+
 ```bash
 # 0. PoC counting (tanpa enrollment, kelas COCO generik)
-python scripts/poc_track.py video_rak.mp4
+python -m scripts.poc_track video_rak.mp4
 
 # 1. Daftarkan barang (3-5 foto per barang, sudut beda)
-python scripts/demo_scan.py enroll --nama "Indomie Goreng" --harga 3200 --qty 40 --foto f1.jpg f2.jpg f3.jpg
+python -m scripts.demo_scan enroll --nama "Indomie Goreng" --harga 3200 --qty 40 --foto f1.jpg f2.jpg f3.jpg
 
 # 2a. Opname via FOTO (mode default untuk toko kecil — 1 foto per sub-segmen rak)
-python scripts/demo_scan.py scan-foto --foto rak1a.jpg rak1b.jpg --lokasi "Rak 1"
+python -m scripts.demo_scan scan-foto --foto rak1a.jpg rak1b.jpg --lokasi "Rak 1"
 
 # 2b. Opname via VIDEO sweep (gudang besar; default count_mode=line,
 #     kamera statis pakai --count-mode track — lihat docs/CATATAN-TIM.md)
-python scripts/demo_scan.py scan --video rak1.mp4
+python -m scripts.demo_scan scan --video rak1.mp4
 
 # 3. Laporan terakhir
-python scripts/demo_scan.py report
+python -m scripts.demo_scan report
 
 # 4. Dashboard web
 uvicorn stoklens.api:create_app --factory
 # buka http://127.0.0.1:8000
 ```
+
+## Dokumentasi tim
+
+| File | Isi |
+|---|---|
+| [docs/CATATAN-TIM.md](docs/CATATAN-TIM.md) | Peta modul, keputusan desain + alasannya, parameter tuning |
+| [docs/ROADMAP.md](docs/ROADMAP.md) | Rencana 28 hari ke deadline 25 Agustus 2026 |
+| [STATUS.md](STATUS.md) | Papan status mingguan — siapa mengerjakan apa |
+| [docs/CARA-KERJA-TIM.md](docs/CARA-KERJA-TIM.md) | Peran, aturan review, anti-konflik-semantik |
+| [docs/PANDUAN-DATASET.md](docs/PANDUAN-DATASET.md) | SOP foto rak & labeling Roboflow |
+| [docs/PANDUAN-FINETUNE.md](docs/PANDUAN-FINETUNE.md) | Alur fine-tune YOLO dua tahap |
 
 ## SOP perekaman (ringkas — detail di design doc §6)
 

@@ -30,7 +30,7 @@ merusak ultralytics 8.4.90 / open_clip 3.3.0. Selalu cek dulu:
 `pip index versions torch --index-url https://download.pytorch.org/whl/<cuXXX>`
 dan pilih index yang punya versi torch yang sama dengan yang sedang terpasang.
 
-Hasil verifikasi setelah upgrade: 82 test cepat + 2 test slow hijau, semua modul
+Hasil verifikasi setelah upgrade: seluruh test cepat + 2 test slow hijau, semua modul
 (ultralytics, open_clip, easyocr, stoklens) import normal. **CLIP jadi ~3,3× lebih
 cepat** (19 ms → 6 ms per gambar).
 
