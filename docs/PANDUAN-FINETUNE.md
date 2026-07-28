@@ -79,27 +79,91 @@ print("BASELINE mAP50:", metrics.box.map50)   # catat angka ini!
 
 (`/content/dataset` = hasil unzip export Roboflow; `data.yaml` sudah dibuatkan Roboflow.)
 
-## Step 1 — Pre-train di SKU-110K (±3–6 jam, sekali saja)
+## Step 1 — Pre-train di SKU-110K — ✅ SUDAH DIJALANKAN 2026-07-28
+
+**Tidak perlu diulang.** Step ini tidak butuh dataset sendiri, jadi sengaja
+dikerjakan lebih awal supaya GPU tidak menganggur menunggu foto rak terkumpul.
+Hasilnya jadi titik awal Step 2.
+
+### Hasil yang sudah didapat (RTX 4070, 20 epoch, 37 menit)
+
+| Epoch | mAP50 | mAP50-95 |
+|---|---|---|
+| 1 | 0,756 | 0,408 |
+| 11 | 0,850 | 0,505 |
+| **20 (final)** | **0,868** | **0,525** |
+
+Validasi akhir 588 gambar / 90.968 objek: precision **0,894**, recall **0,816**,
+inferensi **1,7 ms** per gambar. Kurva sudah melandai — epoch 11→20 cuma naik
+0,018 mAP50, jadi menambah epoch tidak sepadan.
+
+Checkpoint: `pretrain_sku110k/weights/best.pt` (5,2 MB).
+
+### Kalau tetap perlu menjalankan ulang
 
 ```python
+# WAJIB dibungkus __main__ — lihat penjelasan di bawah
 from ultralytics import YOLO
-model = YOLO("yolo11n.pt")
-# ultralytics auto-download SKU-110K (±13 GB) — pastikan Colab storage cukup
-model.train(data="SKU-110K.yaml", epochs=20, imgsz=640, batch=16,
-            project="stoklens", name="pretrain_sku110k")
+
+
+def main():
+    model = YOLO("yolo11n.pt")
+    model.train(data="SKU-110K.yaml", epochs=20, imgsz=640, batch=16,
+                workers=4,
+                project=r"C:\Users\<kamu>\StokLens-training",  # DI LUAR repo
+                name="pretrain_sku110k")
+
+
+if __name__ == "__main__":
+    main()
 ```
 
-- Kalau kena limit Colab: kecilkan `epochs=10` — untuk transfer learning sudah lumayan.
-- Simpan `stoklens/pretrain_sku110k/weights/best.pt` ke Drive. Ini checkpoint antara.
+**Dua jebakan yang sudah memakan korban — jangan salin perintah versi Colab
+mentah-mentah ke Windows:**
+
+1. **`project` harus DI LUAR repo.** Versi lama dokumen ini menulis
+   `project="stoklens"`. Di Colab itu aman (`/content`), tapi di repo kita
+   `stoklens/` adalah **nama package Python-nya** — hasil training akan
+   menumpuk di dalam source code dan berisiko ikut ter-commit.
+
+2. **Bungkus dalam `if __name__ == "__main__":`.** DataLoader PyTorch di
+   Windows memakai `spawn`, yang meng-import ulang modul utama di tiap worker.
+   Tanpa guard ini prosesnya beranak-pinak lalu mati dengan *"An attempt has
+   been made to start a new process before the current process has finished
+   its bootstrapping phase"* — dan matinya SETELAH mengunduh 11,4 GB. Di
+   Linux/Colab tidak terjadi karena pakai `fork`.
+
+**Catatan lapangan lain:**
+
+- Unduhan `SKU110K_fixed.tar.gz` **11,4 GB**, hasil ekstraksi **13,6 GB**
+  (23.495 file) ke `~/stoklens/datasets/`. Sediakan ±25 GB kosong.
+- `batch=16` @ 640px memakan **11,7 dari 12 GB VRAM** — nyaris mentok. Jangan
+  pakai GPU untuk hal lain selama training; turunkan ke `batch=8` kalau OOM.
+- Peringatan `Corrupt JPEG data` akan muncul ratusan kali. **Normal** — SKU-110K
+  memang punya JPEG cacat ringan, libjpeg memulihkannya sendiri.
+- Kalau dijalankan di Colab gratis dan kena limit: `epochs=10` sudah lumayan
+  untuk transfer learning.
 
 ## Step 2 — Fine-tune di dataset sendiri (±1–2 jam)
 
+Berlaku dua jebakan yang sama seperti Step 1 — `project` di luar repo, dan
+dibungkus `__main__`:
+
 ```python
 from ultralytics import YOLO
-model = YOLO("/content/drive/MyDrive/stoklens/pretrain_sku110k_best.pt")
-model.train(data="/content/dataset/data.yaml", epochs=60, imgsz=640, batch=16,
-            patience=15,          # early stop kalau 15 epoch tidak membaik
-            project="stoklens", name="finetune_gudang")
+
+
+def main():
+    model = YOLO(r"C:\Users\<kamu>\StokLens-training\pretrain_sku110k\weights\best.pt")
+    model.train(data="dataset/data.yaml", epochs=60, imgsz=640, batch=16,
+                patience=15,      # early stop kalau 15 epoch tidak membaik
+                workers=4,
+                project=r"C:\Users\<kamu>\StokLens-training",
+                name="finetune_gudang")
+
+
+if __name__ == "__main__":
+    main()
 ```
 
 ## Step 3 — Evaluasi & bukti (bahan pitch!)
@@ -156,7 +220,8 @@ Garis besar kalau dikerjakan:
 
 ## Checklist compliance rulebook
 
-- [ ] Angka baseline tercatat (Step 0)
+- [ ] Angka baseline tercatat (Step 0) — **menunggu dataset sendiri**
+- [x] Step 1 pre-train SKU-110K selesai + angkanya tercatat (28 Jul, mAP50 0,868)
 - [ ] Kurva training + config tersimpan (Step 1 & 2)
 - [ ] Tabel sebelum/sesudah + contoh prediksi (Step 3)
 - [ ] Model custom terpasang & dipakai demo (Step 4)
