@@ -63,9 +63,11 @@ aturan terpisah untuk dataset detektor (wajib rak asli; foto meja & foto stock
 internet dilarang) vs enrollment (potret di kondisi scan), plus sampel ekstra untuk
 rak kaca dan urutan faktor perusak match.
 
-**C. Auto-labeling untuk hemat waktu tim.**
-Pakai model hasil pre-train SKU-110K untuk melabeli otomatis foto rak kita, tim tinggal
-MENGOREKSI di Roboflow, bukan menggambar dari nol. Estimasi: 20–40 jam-orang → 3–5 jam.
+**C. Auto-labeling untuk hemat waktu tim.** ✅ **SIAP DIPAKAI** (2026-07-28) — model
+pre-train SKU-110K sudah jadi (mAP50 0,868), dan cara pakainya sudah ditulis di
+`PANDUAN-DATASET.md` §"Auto-labeling" lengkap dengan skrip, alasan `conf=0.25`, dan
+daftar hal yang tetap wajib dikoreksi manusia (renceng, etalase kaca, rak remang).
+Estimasi tetap: 20–40 jam-orang → 3–5 jam. **Menunggu foto, bukan menunggu kode.**
 
 *Catatan riset (18 Jul):* dataset produk Indonesia publik praktis TIDAK ADA yang layak
 — Roboflow `rak-minimarket` 53 gambar, `dataset-rak-minimarket` 26 gambar, sisanya
