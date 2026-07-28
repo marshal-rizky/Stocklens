@@ -33,8 +33,9 @@ Kalau `pytest` merah di kondisi repo bersih → lapor di grup, jangan didiamkan.
 | File | Tanggung jawab | Test |
 |---|---|---|
 | `stoklens/expiry.py` | Parser tanggal expired dari teks OCR (format Indonesia: EXP/ED/BAIK SEBELUM, nama bulan ID) | `test_expiry.py` |
-| `stoklens/db.py` | SQLite: products (dengan embedding BLOB), scans, scan_items, stock_ledger | `test_db.py` |
-| `stoklens/matcher.py` | Cosine matching crop→galeri produk, majority vote per track, guided mode | `test_matcher.py` |
+| `stoklens/db.py` | SQLite: products (embedding BLOB), scans, scan_items, stock_ledger, product_embeddings (galeri enroll-dari-scan), unknown_crops | `test_db.py` |
+| `stoklens/matcher.py` | Cosine matching crop→galeri produk (ambil similarity TERTINGGI lintas galeri, bukan rata-rata), majority vote per track, guided mode | `test_matcher.py` |
+| `stoklens/crops.py` | Simpan file crop item tak dikenali ke `data/crops/<scan_id>/`, path dicatat di DB, disajikan lewat mount `/crops` | `test_crops.py` |
 | `stoklens/counter.py` | Agregasi track → qty per produk, filter track pendek | `test_counter.py` |
 | `stoklens/crossing.py` | **Line-crossing counting** — anti dobel hitung (baca docstring-nya, panjang & penting) | `test_crossing.py` |
 | `stoklens/report.py` | Selisih fisik vs tercatat → rupiah (shrinkage, rugi expired, nilai stok) | `test_report.py` |
@@ -160,37 +161,7 @@ pause 1 detik di tumpukan padat • cahaya cukup • 1080p 30fps tanpa zoom.
 6. **Yang TIDAK boleh masuk git** (sudah di-.gitignore, jangan di-force): `*.db`, bobot model `*.pt`, video/foto uji, dataset. Share lewat Drive/Roboflow.
 7. Pembagian kerja ikuti batas file/folder (lihat peta modul) — dua orang di file yang sama = ngobrol dulu di grup.
 
-## Integrasi UI dari Google Stitch
 
-Desain UI dibuat di Google Stitch → export HTML/CSS. Cara masuk ke repo:
-
-1. Hasil export ditaruh di `stoklens/webui/` (branch `fitur/ui-*`), JANGAN ganti `api.py` langsung.
-2. Stitch menghasilkan desain statis — datanya masih dummy. Integrasi = sambungkan ke endpoint JSON
-   yang SUDAH JADI di `stoklens/api.py` (semua sudah ada test-nya di `tests/test_api_ui.py`,
-   contoh bentuk request/response bisa dilihat di situ):
-
-   | Endpoint | Fungsi |
-   |---|---|
-   | `GET /api/dashboard` | KPI beranda: nilai_stok_rp, potensi_laba_rp, stok_menipis[], scan_terakhir |
-   | `GET /api/products` | List barang + qty + margin_pct |
-   | `GET /api/products/{id}` | Detail + ledger (kartu stok) |
-   | `PATCH /api/products/{id}` | Edit nama/harga_modal/harga_jual/stok_minimum |
-   | `POST /api/adjustments` | Penyesuaian stok manual `{product_id, delta, alasan}` |
-   | `POST /api/opname-manual` | Opname tanpa video `{items:[{product_id, qty_fisik}], lokasi_rak, terapkan}` → laporan selisih |
-   | `POST /products` (multipart) | Enrollment barang: nama, harga_modal, qty_awal, fotos[] |
-   | `POST /scans` (multipart) | Opname via video: video, lokasi_rak |
-   | `POST /api/scans-foto` (multipart) | Opname via foto: fotos[], lokasi_rak, guided_product_id?, read_expiry? |
-   | `GET /report/{scan_id}` | Laporan opname JSON (+ key `scan` berisi info scan & `terapkan_pada`) |
-   | `GET /api/scans` | Daftar riwayat opname + total shrinkage/rugi |
-   | `POST /api/opname/{scan_id}/terapkan` | Terapkan hasil opname ke buku stok (409 kalau sudah) |
-   | `GET /api/export/stok.csv` | Export buku stok CSV |
-   | `GET /api/scans/{scan_id}/unknown` | Daftar crop tak dikenali (belum resolve) di satu scan |
-   | `POST /api/unknown/{crop_id}/assign` | Kaitkan crop ke produk existing (tambah ke galeri embedding) |
-   | `POST /api/unknown/{crop_id}/produk-baru` | Buat produk baru dari crop tak dikenali |
-3. Pertahankan token desain (warna primary `#2563EB`, CTA `#F97316`, touch target ≥48dp, angka rupiah
-   `tabular-nums`) supaya konsisten dengan design doc — kirim token ini ke prompt Stitch sekalian.
-4. Checklist sebelum PR: tidak ada horizontal scroll di 360px, form tidak ketutup keyboard,
-   dark mode kebaca, tombol minimal 48dp.
 
 ## Pekerjaan tersisa (ambil, tulis nama di grup)
 

@@ -1,28 +1,29 @@
 # Enroll dari Scan — Implementation Plan
 
-> Unit 1 & 2 dikerjakan di branch `fitur/enroll-dari-scan` (merged ke main via PR #13).
-> Unit 3 dikerjakan di branch terpisah `fitur/enroll-dari-scan-unit3` (belum merge —
-> unit-unit lanjutan sebaiknya juga pakai branch sendiri-sendiri, jangan pakai nama
-> `fitur/enroll-dari-scan` lagi karena sudah merge & PR-nya closed).
-> Pola tiap unit: implement → spec review → quality review → fix loop. Jangan merge
-> sebelum CI hijau.
+> Semua unit sudah merged ke `main`. Dokumen ini disimpan sebagai catatan desain +
+> alasannya, bukan lagi daftar kerjaan. Branch kerjanya (`fitur/enroll-dari-scan`,
+> `-unit3`, `-unit4`) sudah closed — jangan dipakai ulang.
+> Pola tiap unit: implement → spec review → quality review → fix loop.
 
-## STATUS (update 2026-07-21, untuk dilanjutkan di sesi lain)
+## STATUS — ✅ SELESAI SEMUA (update 2026-07-23)
 
 | Unit | Status | Catatan |
 |---|---|---|
-| 1. DB galeri + matcher | ✅ **SELESAI** — spec review ✅, quality review ✅ | 91 test — merged main (PR #13) |
-| 2. Pipeline simpan crop | ✅ **SELESAI** — spec review ✅, quality review ✅ (1 Critical + 3 Important sudah diperbaiki) | 110 test — merged main (PR #13) |
-| 3. API | ✅ **SELESAI** — spec review ✅, quality review ✅ (3 Important + 3 Minor sudah diperbaiki, re-review ✅) | 122 test — branch `fitur/enroll-dari-scan-unit3`, belum merge, PR belum dibuka (`gh` belum ter-auth di environment kerja) |
-| 4. UI | ⬜ **BELUM MULAI** — mulai dari sini | baca "Catatan untuk Unit 4" di bawah |
+| 1. DB galeri + matcher | ✅ **SELESAI** — spec ✅, quality ✅ | merged main (PR #13) |
+| 2. Pipeline simpan crop | ✅ **SELESAI** — spec ✅, quality ✅ (1 Critical + 3 Important diperbaiki) | merged main (PR #13) |
+| 3. API | ✅ **SELESAI** — spec ✅, quality ✅ (3 Important + 3 Minor diperbaiki, re-review ✅) | merged main (PR #15) |
+| 4. UI | ✅ **SELESAI** — spec ✅, quality ✅ (4 Important + 2 Minor lewat 3 putaran fix — race stale-closure di sheet, focus trap dialog pertama di codebase, dan regresi tombol permanent-disabled yang lahir dari fix race-nya sendiri) | merged main (PR #16). Coherence review lintas-unit (API↔UI, embedding benar-benar dipakai matcher di scan berikutnya) ✅ |
 
-**Cara melanjutkan di sesi baru:**
-1. Kalau Unit 3 belum di-merge: buka PR dari `fitur/enroll-dari-scan-unit3` ke `main`
-   dulu (`gh pr create` atau manual di GitHub), minta 1 review, tunggu CI hijau, merge.
-2. `git checkout main && git pull` (setelah Unit 3 merge), buat branch baru untuk
-   Unit 4 (mis. `fitur/enroll-dari-scan-unit4`), jalankan `python -m pytest -q`
-   (harus 122 hijau), lalu kerjakan Unit 4 di bawah dengan pola subagent
-   (implement → spec review → quality review → fix loop).
+**Yang tersisa: uji lapangan.** Kodenya lengkap dan "definisi selesai" di bagian bawah
+file ini sudah tercapai secara kode, tapi belum pernah dijalankan di HP dengan barang
+sungguhan. Itu langkah berikutnya, bukan koding.
+
+**Pelajaran yang mahal (jangan diulang):** guard test backlog #5 melarang `fetch(` APA
+PUN di `report_view.js`, sementara Unit 4 sengaja menambah satu fetch fire-and-forget di
+file yang sama. Dua branch itu hijau sendiri-sendiri dan git me-merge-nya bersih —
+konfliknya semantik, jadi CI baru merah SETELAH merge (diperbaiki di PR #20). Kalau dua
+branch menyentuh file yang sama, jalankan test gabungannya sebelum merge, jangan andalkan
+git bilang "no conflict".
 
 ### Wajib untuk Unit 3 (temuan review yang HARUS dipatuhi)
 
