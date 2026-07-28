@@ -199,12 +199,11 @@ def create_app(db_path="stoklens.db", embedder=None, photo_detector=None):
         scan_id = db.add_scan(c, lokasi_rak=body.lokasi_rak, tipe="manual")
         for item in body.items:
             db.add_scan_item(c, scan_id, item.product_id, item.qty_fisik)
+        # Report WAJIB dihitung sebelum terapkan: qty_tercatat-nya diambil dari
+        # ledger saat ini, kalau ledger ditulis duluan semua selisih jadi 0.
         rep = build_report(db.get_report_rows(c, scan_id))
         if body.terapkan:
-            for item in body.items:
-                db.set_stock(c, item.product_id, item.qty_fisik, sumber="opname",
-                             alasan=f"opname #{scan_id}")
-            db.mark_scan_applied(c, scan_id)
+            db.terapkan_opname(c, scan_id)
         return {"scan_id": scan_id, "diterapkan": body.terapkan, "report": rep}
 
     @app.get("/api/scans")
@@ -228,12 +227,16 @@ def create_app(db_path="stoklens.db", embedder=None, photo_detector=None):
         # Guard terapkan ganda: snapshot lama tidak boleh menimpa stok sekarang.
         if scan["terapkan_pada"] is not None:
             raise HTTPException(409, "Opname ini sudah diterapkan")
-        items = db.get_scan_items(c, scan_id)
-        for item in items:
-            db.set_stock(c, item["product_id"], item["qty_terdeteksi"],
-                         sumber="opname", alasan=f"opname #{scan_id}")
-        db.mark_scan_applied(c, scan_id)
-        return {"ok": True, "jumlah_item": len(items)}
+        try:
+            jumlah = db.terapkan_opname(c, scan_id)
+        except db.OpnameSudahDiterapkan as e:
+            # Cek di atas cuma untuk pesan; guard sebenarnya ada di helper
+            # (compare-and-set). Sampai sini artinya request lain menang balapan
+            # setelah cek — jawabannya 409, bukan 500. Catatan: kalau dua
+            # penulis benar-benar tumpang tindih, SQLite bisa lebih dulu
+            # melempar "database is locked" dan itu tetap jadi 500.
+            raise HTTPException(409, "Opname ini sudah diterapkan") from e
+        return {"ok": True, "jumlah_item": jumlah}
 
     @app.get("/api/dashboard")
     def api_dashboard():
