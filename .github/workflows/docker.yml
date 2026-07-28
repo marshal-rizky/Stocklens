@@ -1,0 +1,104 @@
+# Verifikasi deliverable wajib rulebook AIC #1: aplikasi harus bisa dijalankan
+# lokal lewat docker compose.
+#
+# Kenapa job terpisah dari ci.yml: build image ini berat (torch + ultralytics +
+# easyocr, ±5-10 menit) sementara `test` di ci.yml selesai <20 detik. Kalau
+# digabung, setiap PR dokumen ikut menunggu build image tanpa alasan.
+#
+# Kenapa ada sama sekali: tidak seorang pun di tim wajib punya Docker terpasang
+# untuk tahu image-nya masih bisa di-build. Sebelum job ini ada, satu-satunya
+# cara memverifikasi adalah "ada yang mencoba di laptopnya" — dan itu tidak
+# pernah terjadi. Job ini juga jadi bukti tertulis untuk juri.
+name: Docker
+
+# Daftar paths sengaja ditulis dua kali, bukan pakai YAML anchor —
+# parser workflow GitHub tidak mendukung anchor. Kalau menambah entri,
+# tambahkan di KEDUA blok.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "Dockerfile"
+      - "docker-compose.yml"
+      - ".dockerignore"
+      - "requirements.txt"
+      - "stoklens/**"
+      - ".github/workflows/docker.yml"
+  pull_request:
+    paths:
+      - "Dockerfile"
+      - "docker-compose.yml"
+      - ".dockerignore"
+      - "requirements.txt"
+      - "stoklens/**"
+      - ".github/workflows/docker.yml"
+  # Supaya siapa pun bisa memicu manual dari tab Actions tanpa harus
+  # mengubah file dulu.
+  workflow_dispatch:
+
+jobs:
+  build-dan-smoke-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker compose build
+
+      - name: Jalankan container
+        run: docker compose up -d
+
+      # Startup meng-import stoklens.api -> crops.py -> cv2. Jadi langkah ini
+      # sekaligus membuktikan libgl1/libglib2.0-0 di Dockerfile sudah cukup —
+      # kalau kurang, container mati dengan "libGL.so.1: cannot open shared
+      # object file" dan loop di bawah habis waktunya.
+      - name: Tunggu aplikasi siap
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS http://localhost:8000/ui/beranda > /dev/null; then
+              echo "Aplikasi merespons setelah ${i} detik."
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::Aplikasi tidak merespons dalam 60 detik."
+          exit 1
+
+      - name: Smoke test endpoint inti
+        run: |
+          set -e
+          echo "--- GET / harus redirect ke /ui/beranda ---"
+          kode=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8000/)
+          lokasi=$(curl -s -o /dev/null -w '%{redirect_url}' http://localhost:8000/)
+          echo "status=${kode} lokasi=${lokasi}"
+          case "$kode" in 30*) ;; *) echo "::error::Diharapkan redirect, dapat ${kode}"; exit 1;; esac
+
+          echo "--- GET /api/products harus 200 JSON ---"
+          curl -fsS http://localhost:8000/api/products | head -c 200
+          echo
+
+          echo "--- GET /report/99999 harus 404 ---"
+          kode=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8000/report/99999)
+          [ "$kode" = "404" ] || { echo "::error::Diharapkan 404, dapat ${kode}"; exit 1; }
+
+      # Membuktikan volume ./data:/app/data benar-benar bekerja. Kalau
+      # STOKLENS_DB salah arah atau volume tidak ter-mount, file ini tidak
+      # pernah muncul di host dan seluruh data opname akan hilang tiap
+      # `docker compose down` — gagalnya senyap, makanya diuji eksplisit.
+      - name: Verifikasi DB tertulis ke volume host
+        run: |
+          ls -la data/
+          test -f data/stoklens.db || { echo "::error::data/stoklens.db tidak terbentuk di host."; exit 1; }
+          echo "OK: DB ada di volume host."
+
+      - name: Ukuran image
+        run: docker compose images
+
+      - name: Log container (kalau gagal)
+        if: failure()
+        run: docker compose logs --no-color
+
+      - name: Bersihkan
+        if: always()
+        run: docker compose down -v
