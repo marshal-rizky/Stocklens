@@ -26,7 +26,7 @@ Tanpa ini, semua jadwal di bawah tidak ada artinya.
 
 | # | Deliverable | Spesifikasi | Status |
 |---|---|---|---|
-| 1 | Repo GitHub **public** | README setup guide + **docker compose** | ⚠️ File `Dockerfile` + `docker-compose.yml` + panduan README **sudah ada**, tapi **belum pernah benar-benar di-`docker compose up --build`** (mesin yang menulisnya tidak punya Docker). **Satu orang wajib menjalankan sekali dan mencentangnya di `STATUS.md`.** |
+| 1 | Repo GitHub **public** | README setup guide + **docker compose** | ⚠️ docker belum ada |
 | 2 | Video **proof of work** | ≤7 mnt, YouTube **unlisted**, `COMPFEST 18 AIC: PROOF OF WORK - [Tim] - [Proyek]` | ❌ |
 | 3 | Video **promosi inovasi** | ≤5 mnt, YouTube **public**, MP4 ≥720p, `COMPFEST 18 AIC: [Tim] - [Proyek]` | ❌ |
 | 4 | **Proposal PDF** | ≤20 hal di luar cover/pustaka/lampiran | ❌ |
@@ -38,7 +38,7 @@ dianggap mengundurkan diri.
 
 | Minggu | Jalur koding / dokumen | Jalur lapangan (paralel) |
 |---|---|---|
-| **1** (28 Jul–3 Agu) | ~~merge PR #19~~ ✅ • ~~`docker-compose.yml` + `Dockerfile` + README setup~~ ✅ • ~~Backlog B: aturan kondisi foto~~ ✅ • ~~rapikan angka test di docs~~ ✅ • **sisa: verifikasi pendaftaran** | **Izin toko + mulai kumpul foto rak** (target ≥500). Ini bottleneck utama — jangan tunda |
+| **1** (28 Jul–3 Agu) | Verifikasi pendaftaran • merge PR #19 • **`docker-compose.yml` + `Dockerfile` + README setup** (deliverable wajib) • Backlog B: aturan kondisi foto ke `PANDUAN-DATASET.md` • rapikan angka test di docs | **Izin toko + mulai kumpul foto rak** (target ≥500). Ini bottleneck utama — jangan tunda |
 | **2** (4–10 Agu) | **Fine-tune YOLO** (WAJIB rulebook): pre-train SKU-110K → fine-tune dataset sendiri → tukar model. Lihat `PANDUAN-FINETUNE.md` • **mulai draft proposal sekarang**, jangan tunggu model | Labeling Roboflow + QC |
 | **3** (11–17 Agu) | Tuning threshold/parameter dari hasil uji • proposal draft lengkap • tulis skrip kedua video | **Uji lapangan**: enroll 10–20 barang, scan, bandingkan vs hitung manual. Catat tabel akurasi |
 | **4** (18–24 Agu) | **Rekam & edit 2 video** • finalisasi proposal PDF • cek plagiarisme • **hapus semua jejak institusi** • **submit 23 Agu** | Testimoni/feedback toko pilot untuk video |
@@ -110,14 +110,12 @@ punya bobot gabungan 30% dan belum dikerjakan sama sekali.
 Pipeline video (YOLO+BoT-SORT+ReID+line-crossing) • Photo mode • Enrollment
 few-shot CLIP • Enroll dari hasil scan • OCR expired Indonesia • Akuntansi
 (ledger, adjustment, opname manual, KPI, export CSV) • JSON API lengkap •
-UI mobile web • CI GitHub Actions • **docker compose** • suite test hijau
-(cek jumlahnya dengan `pytest -q --collect-only`, jangan disalin ke docs).
+UI mobile web • CI GitHub Actions • **146 test cepat + 2 test slow**.
 
 ## Dokumen terkait
 
 - `AUDIT-RULEBOOK-2026-07-28.md` — audit lengkap terhadap rulebook, rincian
   penilaian, dan estimasi peluang
-- `../STATUS.md` — papan status mingguan (PIC, progres, blocker)
 - `CARA-KERJA-TIM.md` — aturan kerja tim 3–5 orang
 - `PANDUAN-DATASET.md` — SOP foto & labeling
 - `PANDUAN-FINETUNE.md` — alur fine-tune YOLO

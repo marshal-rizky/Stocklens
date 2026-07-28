@@ -1,8 +1,0 @@
-# File yang dibaca Linux di dalam container WAJIB berakhiran LF, apa pun OS
-# yang meng-checkout. Sebagian besar tim memakai Windows dengan autocrlf aktif,
-# dan Dockerfile/compose ber-CRLF bisa gagal parse di baris lanjutan `\`.
-Dockerfile      text eol=lf
-.dockerignore   text eol=lf
-*.yml           text eol=lf
-*.yaml          text eol=lf
-*.sh            text eol=lf

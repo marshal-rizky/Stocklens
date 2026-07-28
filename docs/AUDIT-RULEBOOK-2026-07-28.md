@@ -50,7 +50,7 @@ Juara 1: **rendah-ke-sedang**. Rincian di §5.
 
 | # | Deliverable | Spesifikasi | Status |
 |---|---|---|---|
-| 1 | Repo GitHub **public** | README setup guide + **docker compose** | ⚠️ file lengkap sejak 28 Jul sore, **verifikasi jalan-sungguhan belum** |
+| 1 | Repo GitHub **public** | README setup guide + **docker compose** | ⚠️ docker belum |
 | 2 | Video **proof of work** | ≤7 mnt, YouTube **unlisted**, judul `COMPFEST 18 AIC: PROOF OF WORK - [Tim] - [Proyek]` | ❌ |
 | 3 | Video **promosi inovasi** | ≤5 mnt, YouTube **public**, MP4 ≥720p, judul `COMPFEST 18 AIC: [Tim] - [Proyek]` | ❌ |
 | 4 | **Proposal PDF** | ≤20 hal (di luar cover/pustaka/lampiran) | ❌ |
@@ -94,9 +94,8 @@ frontend terpisah dengan bersih?"*
 
 Persis yang kalian lakukan. Aturan "logika murni dipisah dari wrapper model berat"
 membuat `torch`/`ultralytics`/`easyocr` hanya di-import di `embedder.py` dan di
-dalam fungsi (`scan.py:54`, `photo.py:52`, `ocr.py:8`). Seluruh suite test cepat
-jalan **tanpa** torch — CI GitHub Actions membuktikannya tiap PR (deps-nya sengaja
-tidak memasang torch stack). Bukti modularitas yang bisa didemokan, bukan diklaim.
+dalam fungsi (`scan.py:54`, `photo.py:52`, `ocr.py:8`). 146 test cepat jalan
+**tanpa** torch — bukti modularitas yang bisa didemokan, bukan diklaim.
 
 ### 3.2 Orisinalitas (20%) — kuat, tapi jangan lebay
 Pesaing nyata dari riset web:
@@ -174,7 +173,7 @@ RFID/barcode, etika (tidak memotret orang — sudah di PANDUAN-DATASET), privasi
 ## 4. AUDIT KODE & PROSES
 
 ### 4.1 Yang bagus (pertahankan)
-- Pemisahan logika murni vs wrapper model — seluruh suite test jalan tanpa torch
+- Pemisahan logika murni vs wrapper model — 146 test tanpa torch
 - Injectable detector/embedder → CI tanpa GPU
 - Dokumentasi keputusan **beserta alasan penolakan** — langka
 - Git: branch per fitur, PR, CI wajib hijau, Conventional Commits
@@ -182,21 +181,15 @@ RFID/barcode, etika (tidak memotret orang — sudah di PANDUAN-DATASET), privasi
 - Plan doc per fitur dengan status unit + catatan review
 
 ### 4.2 Utang teknis
-
-> Kolom Status diperbarui 2026-07-28 sore, setelah sebagian temuan langsung dieksekusi.
-
 | Item | Status |
 |---|---|
-| PR #19 konsolidasi ledger | ✅ **Beres** — sudah merged ke main (`514f7bb`) |
-| Backlog B (aturan kondisi foto) | ✅ **Beres** — masuk `PANDUAN-DATASET.md` §"Kondisi foto" |
-| Backlog #3 export CSV per-laporan | ✅ **Beres** — ditandai DIBATALKAN di `BACKLOG.md` |
-| Backlog #7 N+1 | ✅ **Beres** — klaim `/api/dashboard` dikoreksi di `BACKLOG.md`; hanya `/api/scans` yang N+1 (`api.py:214`) |
-| Jumlah test di docs | ✅ **Beres** — angka pastinya dihapus dari semua docs, diganti perintah `pytest -q --collect-only`. Menyamakan tiga angka salah cuma menunda masalah; angkanya berubah tiap PR |
-| Header CATATAN-TIM | ✅ **Beres** — jadi 2026-07-28 |
-| `docker compose` | ⚠️ **Separuh** — `Dockerfile` + `docker-compose.yml` + `.dockerignore` + panduan README sudah ada, tapi belum pernah di-build sungguhan. Wajib diverifikasi satu orang |
-| CLI di README tidak jalan | ✅ **Beres** — `python scripts/demo_scan.py` selalu gagal (`ModuleNotFoundError`); seluruh docs & docstring diganti ke `python -m scripts.demo_scan`. Bug lama, baru ketahuan saat review docker |
-| `STATUS.md` | ✅ **Beres** — dibuat, dirujuk `CARA-KERJA-TIM.md` §6 |
-| Deprecation | ⬜ Belum — `starlette.testclient` minta `httpx2`. Tidak memblokir, biarkan sampai penyisihan lewat |
+| PR #19 konsolidasi ledger | Kode siap, CI merah karena stale — merge disiapkan lokal, tinggal push |
+| Backlog B (aturan kondisi foto) | **0%**, padahal "PRIORITAS TERTINGGI" |
+| Backlog #3 export CSV per-laporan | **Batalkan** — menambah overbuilt |
+| Backlog #7 N+1 | Klaim salah: `/api/dashboard` panggil `build_report` sekali. Hanya `/api/scans` N+1 |
+| Jumlah test di docs | Tidak konsisten: 31 / 56 / 82 vs nyata 146+2 |
+| Header CATATAN-TIM | "Update terakhir 2026-07-09" padahal isi 23 Juli |
+| Deprecation | `starlette.testclient` minta `httpx2` |
 
 ### 4.3 Risiko proses yang terbukti dua kali
 Konflik semantik: dua branch hijau sendiri-sendiri, git merge bersih, CI merah
@@ -227,14 +220,12 @@ Asumsi: eksekusi 90–95%, tim 3–5 aktif, terdaftar sah.
 Bukan angka statistik — penilaian berdasar bobot rubrik vs kondisi repo.
 
 ### Menaikkan peluang (urut efisiensi)
-1. ~~Perbaiki jadwal ke 25 Agu~~ ✅ (`ROADMAP.md` direvisi total)
-2. Video promosi + proposal — 30% bobot, bahan sudah ada ← **prioritas nomor 1 sekarang**
+1. Perbaiki jadwal ke 25 Agu
+2. Video promosi + proposal — 30% bobot, bahan sudah ada
 3. Fine-tune YOLO — wajib rulebook, mengisi 25% implementasi
 4. Angka uji lapangan nyata — mengubah pitch dari klaim jadi bukti
-5. ~~docker compose + README~~ ✅
-6. ~~Bingkai ulang scope agar tidak terbaca overbuilt~~ ✅ sebagian — aturannya sudah
-   tertulis di `ROADMAP.md`, `CARA-KERJA-TIM.md`, dan `BACKLOG.md`; sisanya baru
-   terjadi saat proposal & video benar-benar ditulis
+5. docker compose + README
+6. Bingkai ulang scope agar tidak terbaca overbuilt
 
 ### Menurunkan peluang
 - Bangun fitur baru di luar alur inti
@@ -247,13 +238,12 @@ Bukan angka statistik — penilaian berdasar bobot rubrik vs kondisi repo.
 ## 6. RENCANA 28 HARI (pengganti ROADMAP.md)
 
 ### Minggu 1 (28 Jul – 3 Agu)
-- [ ] **HARI INI**: verifikasi pendaftaran, ukuran tim, Discord ← **satu-satunya
-      yang belum jalan dan memblokir semuanya**
-- [x] Push PR #19 → CI hijau → merge (`514f7bb`)
-- [x] `docker-compose.yml` + `Dockerfile` + README setup
-- [x] Backlog B ke PANDUAN-DATASET
+- [ ] **HARI INI**: verifikasi pendaftaran, ukuran tim, Discord
+- [ ] Push PR #19 → CI hijau → merge
+- [ ] `docker-compose.yml` + `Dockerfile` + README setup
+- [ ] Backlog B ke PANDUAN-DATASET
 - [ ] **Mulai kumpul foto rak** — bottleneck, bukan koding
-- [x] Rapikan angka test di docs
+- [ ] Rapikan angka test di docs
 
 ### Minggu 2 (4–10 Agu)
 - [ ] Pre-train SKU-110K → fine-tune dataset sendiri → `stoklens-yolo.pt`
