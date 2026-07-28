@@ -9,6 +9,12 @@
 # untuk tahu image-nya masih bisa di-build. Sebelum job ini ada, satu-satunya
 # cara memverifikasi adalah "ada yang mencoba di laptopnya" — dan itu tidak
 # pernah terjadi. Job ini juga jadi bukti tertulis untuk juri.
+#
+# YANG TIDAK DICAKUP job ini (jangan salah baca hijaunya): enrollment dan scan
+# sungguhan tidak diuji, karena keduanya mengunduh bobot CLIP ±600 MB dan
+# EasyOCR saat pertama dipakai. Jadi hijau di sini berarti "image jalan dan
+# melayani HTTP", BUKAN "alur AI-nya terbukti jalan di dalam container".
+# Uji lapangan tetap wajib dilakukan manusia.
 name: Docker
 
 # Daftar paths sengaja ditulis dua kali, bukan pakai YAML anchor —

@@ -26,7 +26,7 @@ Tanpa ini, semua jadwal di bawah tidak ada artinya.
 
 | # | Deliverable | Spesifikasi | Status |
 |---|---|---|---|
-| 1 | Repo GitHub **public** | README setup guide + **docker compose** | ⚠️ File `Dockerfile` + `docker-compose.yml` + panduan README **sudah ada**, tapi **belum pernah benar-benar di-`docker compose up --build`** (mesin yang menulisnya tidak punya Docker). **Satu orang wajib menjalankan sekali dan mencentangnya di `STATUS.md`.** |
+| 1 | Repo GitHub **public** | README setup guide + **docker compose** | ✅ Terverifikasi otomatis tiap PR lewat workflow `Docker` — build image, container merespons, endpoint inti benar, DB tertulis ke volume host. Ukuran image 2,19 GB, build ±1,5 menit di runner |
 | 2 | Video **proof of work** | ≤7 mnt, YouTube **unlisted**, `COMPFEST 18 AIC: PROOF OF WORK - [Tim] - [Proyek]` | ❌ |
 | 3 | Video **promosi inovasi** | ≤5 mnt, YouTube **public**, MP4 ≥720p, `COMPFEST 18 AIC: [Tim] - [Proyek]` | ❌ |
 | 4 | **Proposal PDF** | ≤20 hal di luar cover/pustaka/lampiran | ❌ |

@@ -50,7 +50,7 @@ Juara 1: **rendah-ke-sedang**. Rincian di §5.
 
 | # | Deliverable | Spesifikasi | Status |
 |---|---|---|---|
-| 1 | Repo GitHub **public** | README setup guide + **docker compose** | ⚠️ file lengkap sejak 28 Jul sore, **verifikasi jalan-sungguhan belum** |
+| 1 | Repo GitHub **public** | README setup guide + **docker compose** | ✅ lengkap & terverifikasi di CI (28 Jul) |
 | 2 | Video **proof of work** | ≤7 mnt, YouTube **unlisted**, judul `COMPFEST 18 AIC: PROOF OF WORK - [Tim] - [Proyek]` | ❌ |
 | 3 | Video **promosi inovasi** | ≤5 mnt, YouTube **public**, MP4 ≥720p, judul `COMPFEST 18 AIC: [Tim] - [Proyek]` | ❌ |
 | 4 | **Proposal PDF** | ≤20 hal (di luar cover/pustaka/lampiran) | ❌ |
@@ -193,7 +193,7 @@ RFID/barcode, etika (tidak memotret orang — sudah di PANDUAN-DATASET), privasi
 | Backlog #7 N+1 | ✅ **Beres** — klaim `/api/dashboard` dikoreksi di `BACKLOG.md`; hanya `/api/scans` yang N+1 (`api.py:214`) |
 | Jumlah test di docs | ✅ **Beres** — angka pastinya dihapus dari semua docs, diganti perintah `pytest -q --collect-only`. Menyamakan tiga angka salah cuma menunda masalah; angkanya berubah tiap PR |
 | Header CATATAN-TIM | ✅ **Beres** — jadi 2026-07-28 |
-| `docker compose` | ⚠️ **Separuh** — `Dockerfile` + `docker-compose.yml` + `.dockerignore` + panduan README sudah ada, tapi belum pernah di-build sungguhan. Wajib diverifikasi satu orang |
+| `docker compose` | ✅ **Beres** — file lengkap + workflow CI `Docker` yang mem-build image dan smoke-test container tiap PR. Tidak lagi bergantung pada "ada yang coba di laptopnya" |
 | CLI di README tidak jalan | ✅ **Beres** — `python scripts/demo_scan.py` selalu gagal (`ModuleNotFoundError`); seluruh docs & docstring diganti ke `python -m scripts.demo_scan`. Bug lama, baru ketahuan saat review docker |
 | `STATUS.md` | ✅ **Beres** — dibuat, dirujuk `CARA-KERJA-TIM.md` §6 |
 | Deprecation | ⬜ Belum — `starlette.testclient` minta `httpx2`. Tidak memblokir, biarkan sampai penyisihan lewat |
