@@ -1,0 +1,89 @@
+# Papan Status StokLens
+
+> Diperbarui tiap **sync mingguan (Minggu malam)** — lihat `docs/CARA-KERJA-TIM.md` §6.
+> Kenapa file dan bukan chat grup: chat hilang, file bisa dibaca orang yang baru gabung.
+>
+> **Deadline penyisihan: 25 Agustus 2026, 23.55 WIB.**
+> Update terakhir: 2026-07-28.
+
+## Cara pakai
+
+1. Kolom **PIC** wajib berisi nama. Kosong = pekerjaan itu tidak terjadi.
+2. Kolom **Status**: `belum` / `jalan (x/y)` / `selesai` / `terblokir`.
+3. Kalau `terblokir`, kolom Blocker wajib diisi — itu bahan bahasan sync.
+4. Baris tidak dihapus setelah selesai; itu jejak untuk bab "proses pengembangan"
+   di proposal (bobot 15%).
+
+---
+
+## Deliverable penyisihan (4 item wajib)
+
+| # | Deliverable | PIC | Status | Blocker |
+|---|---|---|---|---|
+| 1 | Repo public + README setup + **docker compose** | | jalan (1/2) | **file sudah ada, `docker compose up --build` belum pernah dijalankan siapa pun** |
+| 2 | Video proof of work (≤7 mnt, unlisted) | | belum | butuh fitur final + uji lapangan |
+| 3 | Video promosi (≤5 mnt, public, ≥720p) | | belum | butuh skrip |
+| 4 | Proposal PDF (≤20 hal) | | belum | — mulai minggu 2, jangan tunggu model |
+
+Format judul YouTube & aturan "dilarang cut" ada di `docs/ROADMAP.md`. Salah format = gugur.
+
+## Verifikasi administratif (BLOKIR — belum ada yang mengonfirmasi)
+
+| Item | PIC | Status | Blocker |
+|---|---|---|---|
+| Tim terdaftar & berstatus TIM TERVERIFIKASI | | belum | |
+| Anggota 3–5 orang, syarat usia/status pelajar terpenuhi | | belum | |
+| Presensi AIC Talks 25 Juli (bonus 1.5%) | | belum | sudah lewat — cek masih terhitung/tidak |
+| Semua anggota di Discord AIC, nickname sesuai format | | belum | |
+| VPS/GPU credits gratis (30 pendaftar pertama) | | belum | |
+
+## Minggu 1 (28 Jul – 3 Agu)
+
+| Pekerjaan | PIC | Status | Blocker |
+|---|---|---|---|
+| Merge PR #19 konsolidasi ledger | | selesai | — (`514f7bb`) |
+| `Dockerfile` + `docker-compose.yml` + README setup | | jalan (1/2) | ditulis tanpa Docker terpasang |
+| **Verifikasi `docker compose up --build` sungguhan** | | belum | **ambil ini hari ini** — cek: halaman terbuka di :8000, enroll 1 barang jalan, `docker compose down` lalu `up` lagi dan datanya masih ada |
+| Backlog B: aturan kondisi foto ke `PANDUAN-DATASET.md` | | selesai | — |
+| Rapikan angka test & baris stale di docs | | selesai | — |
+| **Izin toko** (target 2–3 lokasi) | | belum | **bottleneck utama** |
+| **Kumpul foto rak** (target ≥500) | | 0/500 | menunggu izin toko |
+
+## Minggu 2 (4–10 Agu)
+
+| Pekerjaan | PIC | Status | Blocker |
+|---|---|---|---|
+| Pre-train SKU-110K | | belum | |
+| Fine-tune dataset sendiri → `stoklens-yolo.pt` | | belum | menunggu dataset |
+| Labeling Roboflow + QC | | belum | menunggu foto |
+| Catat baseline vs sesudah (Step 0 & 3 PANDUAN-FINETUNE) | | belum | |
+| **Draft proposal mulai** | | belum | — jangan tunggu model |
+
+## Minggu 3 (11–17 Agu)
+
+| Pekerjaan | PIC | Status | Blocker |
+|---|---|---|---|
+| Uji lapangan: enroll 10–20 barang, scan vs hitung manual | | belum | |
+| Tabel akurasi + kurva training | | belum | |
+| Tuning parameter (tabel di `CATATAN-TIM.md`) | | belum | |
+| Proposal draft lengkap | | belum | |
+| Skrip kedua video | | belum | |
+
+## Minggu 4 (18–24 Agu)
+
+| Pekerjaan | PIC | Status | Blocker |
+|---|---|---|---|
+| Rekam video proof of work (tanpa cut, double screen + timestamp) | | belum | |
+| Rekam + edit video promosi | | belum | |
+| Upload YouTube, cek format judul & visibility | | belum | |
+| Proposal PDF final, cek plagiarisme, hapus jejak institusi | | belum | |
+| **Submit 23 Agustus** (buffer 2 hari) | | belum | |
+
+## Risiko yang sedang dipantau
+
+| Risiko | Pemantau | Kondisi sekarang |
+|---|---|---|
+| Izin toko & labeling molor | | belum mulai — risiko tertinggi |
+| 45% bobot ada di deliverable yang belum disentuh | | video & proposal masih 0% |
+| Terbaca *overbuilt* oleh juri | | mitigasi: BACKLOG dikunci, framing alur inti di proposal |
+| Konflik semantik antar-PR | | aturan ada di `CARA-KERJA-TIM.md` §5, belum diuji ulang |
