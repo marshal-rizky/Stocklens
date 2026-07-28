@@ -20,7 +20,7 @@
 
 | # | Deliverable | PIC | Status | Blocker |
 |---|---|---|---|---|
-| 1 | Repo public + README setup + **docker compose** | | jalan (1/2) | **file sudah ada, `docker compose up --build` belum pernah dijalankan siapa pun** |
+| 1 | Repo public + README setup + **docker compose** | | selesai | — terverifikasi otomatis tiap PR lewat workflow `Docker` |
 | 2 | Video proof of work (≤7 mnt, unlisted) | | belum | butuh fitur final + uji lapangan |
 | 3 | Video promosi (≤5 mnt, public, ≥720p) | | belum | butuh skrip |
 | 4 | Proposal PDF (≤20 hal) | | belum | — mulai minggu 2, jangan tunggu model |
@@ -42,8 +42,8 @@ Format judul YouTube & aturan "dilarang cut" ada di `docs/ROADMAP.md`. Salah for
 | Pekerjaan | PIC | Status | Blocker |
 |---|---|---|---|
 | Merge PR #19 konsolidasi ledger | | selesai | — (`514f7bb`) |
-| `Dockerfile` + `docker-compose.yml` + README setup | | jalan (1/2) | ditulis tanpa Docker terpasang |
-| **Verifikasi `docker compose up --build` sungguhan** | | belum | **ambil ini hari ini** — cek: halaman terbuka di :8000, enroll 1 barang jalan, `docker compose down` lalu `up` lagi dan datanya masih ada |
+| `Dockerfile` + `docker-compose.yml` + README setup | | selesai | — |
+| Verifikasi docker jalan sungguhan | | selesai | dijawab lewat workflow CI `Docker`, bukan lewat laptop — build + smoke test tiap PR |
 | Backlog B: aturan kondisi foto ke `PANDUAN-DATASET.md` | | selesai | — |
 | Rapikan angka test & baris stale di docs | | selesai | — |
 | **Izin toko** (target 2–3 lokasi) | | belum | **bottleneck utama** |
