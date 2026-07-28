@@ -4,7 +4,6 @@ Endpoint /api/* = kontrak untuk UI mobile (Google Stitch) — lihat docs/CATATAN
 """
 import csv
 import io
-import os
 import shutil
 import sqlite3
 import tempfile
@@ -58,24 +57,8 @@ class OpnameManual(BaseModel):
     terapkan: bool = False
 
 
-def create_app(db_path=None, embedder=None, photo_detector=None):
-    """photo_detector: fn(image_bgr)->boxes untuk mode foto; None = YOLO asli.
-
-    db_path: None = ambil dari env `STOKLENS_DB`, jatuh ke `stoklens.db` di
-    direktori kerja kalau env tidak ada. Env-nya dipakai `docker-compose.yml`
-    untuk menaruh DB di volume (`/app/data`) — tanpa itu file DB tertulis di
-    layer container dan hilang tiap `docker compose down`. Argumen eksplisit
-    selalu menang atas env supaya test tidak bisa terganggu env mesin developer.
-    """
-    if db_path is None:
-        db_path = os.environ.get("STOKLENS_DB", "stoklens.db")
-    # Folder induk DB dibuat eksplisit: docker compose menunjuk /app/data yang
-    # bisa saja belum ada, dan sqlite tidak membuat direktori sendiri — gagalnya
-    # berupa "unable to open database file" saat request pertama, jauh dari
-    # penyebabnya. `:memory:` dan nama file polos punya parent "." → dilewati.
-    induk = Path(db_path).parent
-    if str(induk) not in ("", "."):
-        induk.mkdir(parents=True, exist_ok=True)
+def create_app(db_path="stoklens.db", embedder=None, photo_detector=None):
+    """photo_detector: fn(image_bgr)->boxes untuk mode foto; None = YOLO asli."""
     app = FastAPI(title="StokLens")
     crops_prefix = crops.DIR_CROPS_DEFAULT.as_posix()
 

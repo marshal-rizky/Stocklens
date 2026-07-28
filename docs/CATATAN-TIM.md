@@ -1,7 +1,7 @@
 # Catatan Tim StokLens
 
 > Dokumen onboarding untuk anggota tim. Baca ini dulu sebelum menyentuh kode.
-> Update terakhir: 2026-07-28.
+> Update terakhir: 2026-07-09.
 
 ## Apa ini
 
@@ -12,36 +12,21 @@ Alur produk: daftarkan barang lewat foto (sekali per barang) → rekam video swe
 AI menghitung stok per barang + baca tanggal expired → laporan selisih vs catatan +
 nilai rupiah di dashboard.
 
-Dokumen terkait **di repo ini** (baca sesuai kebutuhan):
-- `ROADMAP.md` — rencana 28 hari sampai deadline 25 Agustus. **Baca kedua, setelah file ini.**
-- `CARA-KERJA-TIM.md` — peran, aturan review, anti-konflik-semantik
-- `AUDIT-RULEBOOK-2026-07-28.md` — audit terhadap rulebook + rincian bobot penilaian
-- `PANDUAN-DATASET.md` / `PANDUAN-FINETUNE.md` — SOP foto & labeling, alur fine-tune
-- `BACKLOG.md` — perbaikan yang ditunda (**bukan** daftar kerjaan bebas, baca peringatannya)
-- `plans/` — plan doc per fitur + catatan review; sumber cerita iteratif untuk proposal
-
-Dokumen di luar repo (minta ke ketua tim):
-- **Design doc (spec)** `2026-07-09-stoklens-design.md` & **implementation plan**
-  `2026-07-09-stoklens-prototype.md` — keputusan desain awal. Ringkasan yang masih
-  relevan sudah disalin ke file ini, jadi tidak wajib untuk mulai kerja.
-- **Rulebook AIC** `[AIC] AI Innovation Challenge.pdf` — WAJIB baca. Poin krusial:
-  model harus di-fine-tune, MVP tidak boleh overbuilt, Conventional Commits wajib.
+Dokumen terkait (di folder `study` punya ketua tim, minta salinannya):
+- **Design doc (spec)**: `docs/superpowers/specs/2026-07-09-stoklens-design.md` — keputusan desain + alasannya
+- **Implementation plan**: `docs/superpowers/plans/2026-07-09-stoklens-prototype.md` — task rinci + kode
+- **Rulebook AIC**: `[AIC] AI Innovation Challenge.pdf` — WAJIB baca; poin krusial: model harus di-fine-tune
 
 ## Setup dari nol
 
 ```bash
 # Python 3.11
 pip install -r requirements.txt   # download besar (~2GB, torch dkk), sekali saja
-pytest                            # seluruh test cepat, harus hijau, ±3 detik
+pytest                            # 31 test cepat, harus hijau, < 1 detik
 pytest -m slow                    # 2 smoke test model (download bobot CLIP sekali, ±600MB)
 ```
 
 Kalau `pytest` merah di kondisi repo bersih → lapor di grup, jangan didiamkan.
-
-> Docs ini **sengaja tidak menyebut jumlah test**. Angkanya pernah ditulis di tiga
-> file dengan tiga nilai berbeda (31 / 56 / 82) dan ketiganya salah — jumlah test
-> berubah tiap PR, jadi angka apa pun yang ditulis pasti basi. Butuh angkanya
-> (misal untuk proposal)? Jalankan `pytest -q --collect-only` saat itu juga.
 
 ## Peta modul
 
@@ -134,7 +119,7 @@ SOP foto: 1 foto = 1 sub-segmen dengan batas fisik; mulai foto berikutnya DARI b
 tersebut, jangan tumpang tindih; ambil close-up terpisah untuk tanggal expired.
 
 ```bash
-python -m scripts.demo_scan scan-foto --foto rak1a.jpg rak1b.jpg --lokasi "Rak 1"
+python scripts/demo_scan.py scan-foto --foto rak1a.jpg rak1b.jpg --lokasi "Rak 1"
 ```
 
 ## Mode hitung video — WAJIB paham sebelum demo
@@ -145,8 +130,8 @@ python -m scripts.demo_scan scan-foto --foto rak1a.jpg rak1b.jpg --lokasi "Rak 1
 | `track` | Kamera statis / video uji di meja | Semua track lolos filter dihitung |
 
 ```bash
-python -m scripts.demo_scan scan --video rak.mp4                     # sweep (default line)
-python -m scripts.demo_scan scan --video meja.mp4 --count-mode track  # statis
+python scripts/demo_scan.py scan --video rak.mp4                    # sweep (default line)
+python scripts/demo_scan.py scan --video meja.mp4 --count-mode track  # statis
 ```
 
 ## Parameter tuning saat uji lapangan
@@ -168,10 +153,6 @@ pause 1 detik di tumpukan padat • cahaya cukup • 1080p 30fps tanpa zoom.
 
 ## Alur kerja Git (repo: github.com/marshal-rizky/Stocklens)
 
-> Ringkas. Aturan lengkap — siapa boleh merge, checklist reviewer, aturan
-> anti-konflik-semantik — ada di `CARA-KERJA-TIM.md`. Kalau dua dokumen ini beda,
-> `CARA-KERJA-TIM.md` yang menang.
-
 1. **Jangan commit langsung ke `main`.** Bikin branch per fitur: `git checkout -b fitur/nama-fitur`.
 2. Sebelum mulai kerja: `git pull origin main` dulu — mulai dari kode terbaru.
 3. Commit kecil & sering, push, buka **Pull Request** — minimal 1 orang lain melihat sebelum merge.
@@ -184,28 +165,18 @@ pause 1 detik di tumpukan padat • cahaya cukup • 1080p 30fps tanpa zoom.
 
 ## Pekerjaan tersisa (ambil, tulis nama di grup)
 
-> **Batas keras sejak 2026-07-28:** alur inti (enroll → scan → laporan selisih) sudah
-> lengkap dan rulebook AIC menilai MVP yang *overbuilt* secara **negatif**. Daftar di
-> bawah sengaja tidak berisi fitur baru. Jadwal harian yang mengikat ada di
-> `ROADMAP.md` (28 hari ke 25 Agustus); aturan kerjanya di `CARA-KERJA-TIM.md`.
-
 1. **Uji PoC** (bisa hari ini, tanpa dataset): rekam video rak/lemari →
-   `python -m scripts.poc_track video.mp4` → validasi counting masuk akal.
+   `python scripts/poc_track.py video.mp4` → validasi counting masuk akal.
 2. **Uji end-to-end kecil**: enroll 3–5 barang dapur/warung → scan → cek dashboard.
    Catat akurasi hitungan vs manual. Ini bahan kalibrasi parameter di atas.
 3. **Dataset gudang** (paling besar): izin 2–3 toko grosir → rekam → label 20–30 SKU
    di Roboflow (~500–1000 frame). Target: dataset siap sebelum fine-tune.
-   Baca `PANDUAN-DATASET.md` §"Kondisi foto" dulu — salah kondisi foto = dataset terbuang.
 4. **Fine-tune YOLO** jadi detektor "produk retail" generik (WAJIB per rulebook) —
-   laptop ketua (RTX 4070) cukup, YOLO11n/s ±50 epoch. Lihat `PANDUAN-FINETUNE.md`.
-5. **Uji lapangan enroll-dari-scan**: kodenya lengkap tapi belum pernah dijalankan di
-   HP dengan barang sungguhan (lihat `plans/2026-07-18-enroll-dari-scan.md`).
-6. **Proposal PDF + 2 video** — bobot gabungan 30%, belum disentuh. Ini pekerjaan
-   dengan rasio nilai/effort tertinggi yang tersisa, bukan koding.
-
-**Ditunda sampai penyisihan lewat (JANGAN dikerjakan sekarang):** fine-tune CLIP
-(opsional — syarat rulebook sudah dipenuhi YOLO) • poles dashboard/UI • fitur apa pun
-di luar alur inti. Alasannya di `ROADMAP.md` §"Scope penyisihan".
+   Colab cukup, YOLO11n/s ±50 epoch.
+5. **Fine-tune CLIP** (metric learning) — setelah dataset pairs ada; opsional kalau
+   matching zero-shot sudah cukup di uji lapangan.
+6. **Pitch deck** + validasi ke calon pilot user (toko tempat ambil dataset = kandidat).
+7. **Dashboard polish** (kalau sempat; prioritas terakhir — juri lebih peduli AI jalan).
 
 ## FAQ juri (siapkan jawaban ini di pitch)
 
