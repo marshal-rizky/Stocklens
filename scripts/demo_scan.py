@@ -1,18 +1,26 @@
 """CLI end-to-end StokLens.
 
+WAJIB dijalankan dengan `python -m scripts.demo_scan`, dari root repo.
+`python scripts/demo_scan.py` GAGAL (`ModuleNotFoundError: No module named
+'stoklens'`) karena Python menaruh `scripts/` di sys.path[0], bukan root repo,
+dan paket `stoklens` tidak di-install (repo ini tanpa pyproject/setup.py).
+
 Contoh:
-  python scripts/demo_scan.py enroll --nama "Indomie Goreng" --harga 3200 \
+  python -m scripts.demo_scan enroll --nama "Indomie Goreng" --harga 3200 \
       --qty 40 --foto foto1.jpg foto2.jpg
-  python scripts/demo_scan.py scan --video rak1.mp4
-  python scripts/demo_scan.py report --scan-id 1
+  python -m scripts.demo_scan scan --video rak1.mp4
+  python -m scripts.demo_scan report --scan-id 1
 """
 import argparse
 import json
+import os
 
 from stoklens import db
 from stoklens.report import build_report
 
-DB_PATH = "stoklens.db"
+# Sama seperti create_app(): env `STOKLENS_DB` supaya CLI dan server menunjuk
+# file DB yang sama, termasuk saat dijalankan lewat `docker compose exec`.
+DB_PATH = os.environ.get("STOKLENS_DB", "stoklens.db")
 
 
 def _embedder():
