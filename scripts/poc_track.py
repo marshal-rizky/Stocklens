@@ -1,6 +1,6 @@
 """PoC: hitung objek unik per kelas COCO di sebuah video.
 
-Pakai: python -m scripts.poc_track video_rak.mp4   (dari root repo)
+Pakai: python scripts/poc_track.py video_rak.mp4
 """
 import sys
 from collections import defaultdict
