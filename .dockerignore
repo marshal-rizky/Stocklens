@@ -1,7 +1,10 @@
 # Jangan ikut ke build context — bikin image gede & build lambat.
-.git
-.github
-.claude
+#
+# Semua entri berawalan titik di root: riwayat git, definisi CI, dan konfigurasi
+# editor/tooling masing-masing anggota. Tidak ada satu pun yang dibutuhkan
+# container saat runtime. Ditulis sebagai satu pola, bukan daftar nama, supaya
+# tidak perlu diperbarui tiap ada yang memakai editor atau alat bantu berbeda.
+.*
 __pycache__/
 *.py[cod]
 .pytest_cache/
