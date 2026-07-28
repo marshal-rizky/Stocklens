@@ -31,6 +31,12 @@ Catatan penjalanan pertama:
   volume `model-cache`, cukup sekali.
 - Data opname (SQLite + crop hasil scan) ditulis ke folder `./data` di host, jadi
   tetap ada setelah `docker compose down`.
+- Ukuran image ±2,2 GB (torch + ultralytics + easyocr). Build pertama ±2–10 menit
+  tergantung koneksi.
+
+Build image dan smoke test container dijalankan otomatis di GitHub Actions
+(workflow **Docker**) setiap kali file terkait berubah — jadi kalau ada yang
+merusaknya, ketahuan sebelum merge, tanpa perlu Docker di laptop masing-masing.
 
 Menjalankan CLI di dalam container (server harus sedang jalan):
 
