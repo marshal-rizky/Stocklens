@@ -1,0 +1,29 @@
+# Jangan ikut ke build context — bikin image gede & build lambat.
+.git
+.github
+.claude
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Data lokal & artefak (sama dengan .gitignore)
+data/
+dataset/
+runs/
+*.db
+*.sqlite*
+*.pt
+*.pth
+*.onnx
+
+# ...KECUALI model hasil fine-tune tim. Tanpa baris ini, begitu
+# `stoklens-yolo.pt` ada di root repo, `COPY . .` melewatinya TANPA error dan
+# container diam-diam jatuh ke yolo11n.pt generik — demo menampilkan model yang
+# tidak pernah di-fine-tune. Lihat docs/PANDUAN-FINETUNE.md Step 4.
+!stoklens-yolo.pt
+*.mp4
+*.avi
+*.mov
+*.mkv
