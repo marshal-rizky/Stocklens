@@ -48,39 +48,6 @@ barang" juga).
 - Jangan edit/filter/crop foto.
 - Jangan share foto ke luar tim (ada nama toko orang di dalamnya).
 
-### Kondisi foto — aturan keras (dari analisis 18 Juli)
-
-Ini bagian yang paling sering salah dan paling mahal akibatnya. Dua jenis foto,
-dua aturan berbeda — jangan dicampur.
-
-**Foto untuk DATASET DETEKTOR (YOLO):**
-
-| Wajib | Kenapa |
-|---|---|
-| Foto **rak asli** — kayu, kaca, besi; penuh maupun setengah kosong | Model belajar "barang rapat di rak", bukan "barang di ruang kosong" |
-| Rak kaca dapat **sampel ekstra** (+30–50% dari jatah rak biasa) | Pantulan dan barang tembus pandang jauh lebih sulit; porsi normal tidak cukup |
-
-| Dilarang | Kenapa |
-|---|---|
-| Foto barang **ditata di meja** | Hampir tidak berguna — kepadatan & oklusinya tidak pernah muncul di gudang |
-| **Foto stock internet / marketplace** | MERUSAK. Latar putih bersih tidak pernah ada di gudang; model belajar bias itu lalu gagal di rak asli. Juga melanggar ToS/hak cipta → risiko diskualifikasi (rulebook #17) |
-
-**Foto untuk ENROLLMENT (galeri CLIP per barang):**
-
-Aturan tunggal: **potret di kondisi yang sama dengan saat nanti di-scan.**
-
-- Jarak mirip jarak scan, **cahaya toko yang sama** (jangan bawa pulang lalu foto di rumah)
-- 3–5 sudut per barang, termasuk sudut menyerong — bukan cuma tampak depan lurus
-- **Jangan pakai foto stock/marketplace.** Desain kemasannya sering versi lama →
-  match gagal padahal barangnya benar
-
-Urutan faktor perusak match, dari yang paling parah: (1) beda skala/ketajaman,
-(2) beda cahaya/suhu warna, (3) beda sudut, (4) latar/rak, (5) foto stock internet.
-
-> Jaring pengaman kalau enrollment terlanjur tidak ideal: fitur **enroll-dari-scan**
-> — item `unknown` di laporan bisa ditap dan diberi nama, crop-nya masuk galeri
-> dalam kondisi scan yang persis. Itu perbaikan, **bukan** alasan untuk memotret asal.
-
 ### Log
 Isi sheet bersama (bikin di Google Sheets): tanggal • toko • jumlah foto • kondisi
 cahaya • siapa yang moto. Ini bahan cerita "metodologi" di pitch.
@@ -120,7 +87,6 @@ TIDAK usah (ultralytics sudah melakukan augmentasi sendiri saat training).
 
 - [ ] ≥500 foto, ≥2 lokasi, semua variasi tabel di atas terwakili
 - [ ] ≥20 foto rak kosong/hampir kosong
-- [ ] Tidak ada satu pun foto meja / foto stock internet yang lolos ke dataset
 - [ ] Semua terlabel 1 kelas `produk`, QC lolos
 - [ ] Sheet log terisi
 - [ ] Export YOLO 80/10/10 tersimpan di Drive tim (JANGAN commit ke git)

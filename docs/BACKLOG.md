@@ -2,15 +2,9 @@
 
 > Daftar perbaikan yang DISENGAJA ditunda. Ambil satu, bikin branch `fitur/...` atau
 > `fix/...`, kerjakan, PR. Jangan dikerjakan diam-diam tanpa klaim di grup.
-> Update terakhir: 2026-07-28 (sinkron dengan `AUDIT-RULEBOOK-2026-07-28.md`).
->
-> ⚠️ **Sejak 28 Juli, backlog ini TIDAK boleh dipakai sebagai daftar kerjaan bebas.**
-> Rulebook AIC menghukum MVP yang *overbuilt*, dan alur inti sudah lengkap. Sebelum
-> mengambil item mana pun, cek dulu: *"ini bagian dari enroll → scan → laporan
-> selisih?"* Kalau bukan → jangan dikerjakan sampai penyisihan lewat. Prioritas 28
-> hari ke depan ada di `ROADMAP.md`, bukan di sini.
+> Update terakhir: 2026-07-18 (tambah bagian Akurasi pengenalan — prioritas tertinggi).
 
-## Selesai (branch `fitur/ui-beranda-redesign`, sudah merged ke main)
+## Selesai (branch `fitur/ui-beranda-redesign`, menunggu merge)
 
 1. ~~**Beranda: satu scroll vertikal saja.**~~ ✅ SELESAI.
    KPI horizontal diganti: kartu hero "Nilai stok" full-width + 2 metrik berdampingan
@@ -57,11 +51,13 @@ di DB), endpoint `POST /api/products/{id}/tambah-embedding` (rata-ratakan embedd
 lama dengan yang baru — lihat `matcher.average_embedding`), dan UI di `report_view.js`
 untuk menampilkan crop unknown + aksi "Ini barang apa?".
 
-**B. Perbarui `PANDUAN-DATASET.md` dengan aturan kondisi foto.** ✅ **SELESAI**
-(2026-07-28) — lihat `PANDUAN-DATASET.md` §"Kondisi foto — aturan keras". Isinya:
-aturan terpisah untuk dataset detektor (wajib rak asli; foto meja & foto stock
-internet dilarang) vs enrollment (potret di kondisi scan), plus sampel ekstra untuk
-rak kaca dan urutan faktor perusak match.
+**B. Perbarui `PANDUAN-DATASET.md` dengan aturan kondisi foto.**
+- Dataset detektor: WAJIB foto rak asli (kayu/kaca/besi, padat/setengah kosong).
+  Foto barang di meja hampir tidak berguna; foto stock internet MERUSAK (bias ke
+  latar putih yang tak pernah ada di gudang).
+- Enrollment: potret di kondisi yang sama dengan saat scan — jarak mirip, cahaya toko
+  yang sama, 3–5 sudut. Jangan pakai foto stock/marketplace.
+- Rak kaca perlu sampel ekstra (pantulan & barang tembus pandang lebih sulit).
 
 **C. Auto-labeling untuk hemat waktu tim.**
 Pakai model hasil pre-train SKU-110K untuk melabeli otomatis foto rak kita, tim tinggal
@@ -76,11 +72,8 @@ rak sendiri.
 
 ## Teknis (temuan final review branch UI, belum dikerjakan)
 
-3. ❌ **DIBATALKAN 2026-07-28** — Export CSV **per-laporan opname** (sekarang hanya
-   buku stok global). Alasan pembatalan: export sudah di luar alur inti
-   (enroll → scan → laporan selisih), dan rulebook menilai *overbuilt* secara negatif
-   di kriteria "Kesiapan MVP" (15%). Export CSV global yang sudah ada tidak dihapus,
-   tapi jangan ditambah. Boleh ditinjau ulang setelah 25 Agustus.
+3. Export CSV **per-laporan opname** (sekarang hanya buku stok global) — juri/user
+   yang buka satu laporan mungkin berharap bisa unduh laporan itu saja.
 4. ✅ **SELESAI** (branch `fix/konsolidasi-terapkan-ledger`, seluruh rangkaian
    commit-nya — `5046891` sendirian belum utuh) — Konsolidasi dua jalur
    terapkan-ke-ledger (`/api/opname-manual` inline vs `/api/opname/{id}/terapkan`)
@@ -95,12 +88,8 @@ rak sendiri.
 6. ✅ **SELESAI** (commit `81150d8`, branch `fix/report-404-scan-tak-ada`) — `GET
    /report/{scan_id}` mengembalikan `scan: null` untuk id tak dikenal, tidak
    konsisten dengan endpoint /api/* lain yang 404.
-7. `GET /api/scans` menghitung `build_report` per scan per request (N+1) — aman untuk
-   prototype, perbaiki kalau riwayat sudah ratusan.
-
-   > **Koreksi 2026-07-28:** versi lama item ini ikut menuduh `/api/dashboard` N+1.
-   > Salah — endpoint itu memanggil `build_report` **sekali** untuk scan terakhir saja.
-   > Yang benar-benar N+1 cuma `/api/scans`. Jangan "memperbaiki" `/api/dashboard`.
+7. `GET /api/scans` & `/api/dashboard` menghitung `build_report` per scan per request
+   (N+1) — aman untuk prototype, perbaiki kalau riwayat sudah ratusan.
 
 ## Keterbatasan yang diterima (known limitations)
 
