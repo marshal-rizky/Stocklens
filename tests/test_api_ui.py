@@ -119,6 +119,50 @@ def test_list_scans_urutan_dan_total(tmp_path):
     assert rows[1]["total_shrinkage_rp"] == (40 - 37) * 3200
 
 
+def test_api_scans_jumlah_query_tidak_naik_seiring_jumlah_scan(tmp_path, monkeypatch):
+    # Inti backlog #7: GET /api/scans dulu memanggil get_report_rows() per
+    # scan (2 query per scan), jadi jumlah query tumbuh mengikuti jumlah scan.
+    # Di sini dibuktikan lewat sqlite3.Connection.set_trace_callback: hitung
+    # SELECT yang benar-benar dieksekusi untuk 2 scan vs 6 scan, harus SAMA.
+    dbp = str(tmp_path / "t.db")
+    con = db.connect(dbp)
+    p1 = db.add_product(con, "Indomie", 3200, np.zeros(4, dtype=np.float32))
+    db.set_stock(con, p1, 40)
+
+    def _tambah_scan(jumlah):
+        for i in range(jumlah):
+            sid = db.add_scan(con, lokasi_rak=f"Rak {i}")
+            db.add_scan_item(con, sid, p1, qty_terdeteksi=i)
+
+    client = TestClient(create_app(db_path=dbp))
+
+    selects = []
+    asli_connect = db.connect
+
+    def _connect_terlacak(*a, **kw):
+        c = asli_connect(*a, **kw)
+        c.set_trace_callback(
+            lambda sql: selects.append(sql)
+            if sql.strip().upper().startswith("SELECT") else None)
+        return c
+
+    monkeypatch.setattr(db, "connect", _connect_terlacak)
+
+    _tambah_scan(2)
+    selects.clear()
+    r1 = client.get("/api/scans")
+    assert r1.status_code == 200
+    jumlah_query_2_scan = len(selects)
+
+    _tambah_scan(4)  # total jadi 6 scan
+    selects.clear()
+    r2 = client.get("/api/scans")
+    assert r2.status_code == 200
+    jumlah_query_6_scan = len(selects)
+
+    assert jumlah_query_2_scan == jumlah_query_6_scan
+
+
 def test_opname_terapkan(tmp_path):
     client, p1 = _client(tmp_path)
     r = client.post("/api/opname-manual", json={

@@ -264,6 +264,37 @@ def get_report_rows(con, scan_id):
     ]
 
 
+def get_report_rows_by_scan(con):
+    """Baris report untuk SEMUA scan sekaligus, query konstan (bukan N+1).
+
+    Return {scan_id: [baris...]} — baris identik strukturnya dengan
+    get_report_rows(scan_id) (siap disuap ke report.build_report). Scan tanpa
+    item cukup di-`.get(scan_id, [])` oleh pemanggil, tidak muncul sebagai key.
+
+    Sengaja TIDAK menerima daftar scan_id untuk difilter dengan `IN (...)`:
+    parameternya akan tumbuh mengikuti jumlah scan dan kena batas variabel
+    per statement SQLite. Semua baris scan_items+products diambil satu kali
+    lalu dikelompokkan di Python (pola sama seperti all_products galeri).
+    """
+    stock = get_stock_map(con)
+    rows = con.execute(
+        "SELECT si.scan_id AS scan_id, p.id AS pid, p.nama, p.harga_modal,"
+        " si.qty_terdeteksi, si.confidence_avg, si.expired_terdekat, si.qty_expired"
+        " FROM scan_items si JOIN products p ON p.id = si.product_id"
+        " ORDER BY si.scan_id, p.nama"
+    ).fetchall()
+    out = defaultdict(list)
+    for r in rows:
+        out[r["scan_id"]].append({
+            "nama": r["nama"], "harga_modal": r["harga_modal"],
+            "qty_tercatat": stock.get(r["pid"], 0),
+            "qty_terdeteksi": r["qty_terdeteksi"], "qty_expired": r["qty_expired"],
+            "expired_terdekat": r["expired_terdekat"],
+            "confidence_avg": r["confidence_avg"],
+        })
+    return out
+
+
 def latest_scan_id(con):
     row = con.execute("SELECT MAX(id) AS mid FROM scans").fetchone()
     return row["mid"]

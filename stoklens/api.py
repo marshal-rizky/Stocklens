@@ -226,9 +226,13 @@ def create_app(db_path=None, embedder=None, photo_detector=None):
     @app.get("/api/scans")
     def api_scans():
         c = con()
+        scans = db.list_scans(c)
+        # Satu query untuk semua scan (bukan get_report_rows per-scan di loop) —
+        # jumlah query jadi konstan, tidak tumbuh mengikuti jumlah scan.
+        rows_per_scan = db.get_report_rows_by_scan(c)
         out = []
-        for s in db.list_scans(c):
-            rep = build_report(db.get_report_rows(c, s["id"]))
+        for s in scans:
+            rep = build_report(rows_per_scan.get(s["id"], []))
             out.append(s | {
                 "total_shrinkage_rp": rep["total_shrinkage_rp"],
                 "total_rugi_expired_rp": rep["total_rugi_expired_rp"],
