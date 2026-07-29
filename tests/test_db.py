@@ -78,7 +78,10 @@ def test_get_report_rows_by_scan_tanpa_item_kosong_bukan_error():
     con = _con()
     sid = db.add_scan(con, lokasi_rak="Kosong")
     hasil = db.get_report_rows_by_scan(con)
-    assert hasil.get(sid, []) == []   # bukan KeyError di pemanggil
+    assert hasil.get(sid, []) == []   # pemanggil wajib pakai .get(id, [])
+    assert sid not in hasil           # bukan defaultdict: scan kosong tak jadi key
+    with pytest.raises(KeyError):     # indexing langsung harus tetap KeyError
+        hasil[sid]
 
 
 def test_get_report_rows_by_scan_unknown_tidak_ikut():

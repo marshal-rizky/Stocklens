@@ -153,6 +153,12 @@ def test_api_scans_jumlah_query_tidak_naik_seiring_jumlah_scan(tmp_path, monkeyp
     r1 = client.get("/api/scans")
     assert r1.status_code == 200
     jumlah_query_2_scan = len(selects)
+    # Jaga-jaga: kalau trace callback tidak benar-benar terpasang (mis. api.py
+    # diubah dari lookup lambat `db.connect(...)` ke sesuatu yang tidak lagi
+    # dipatch di sini — import langsung, koneksi dimemoisasi, pool, dll),
+    # `selects` diam-diam tetap kosong dan assert di bawah lolos vakum (0==0)
+    # walau N+1 balik lagi. Jangan sampai test ini bisa lulus tanpa mengukur apa pun.
+    assert jumlah_query_2_scan > 0, "trace callback tidak terpasang — test tidak mengukur apa pun"
 
     _tambah_scan(4)  # total jadi 6 scan
     selects.clear()
@@ -161,6 +167,7 @@ def test_api_scans_jumlah_query_tidak_naik_seiring_jumlah_scan(tmp_path, monkeyp
     jumlah_query_6_scan = len(selects)
 
     assert jumlah_query_2_scan == jumlah_query_6_scan
+    con.close()
 
 
 def test_opname_terapkan(tmp_path):

@@ -97,8 +97,11 @@ rak sendiri.
 6. ✅ **SELESAI** (commit `5bee344`, branch `fix/report-404-scan-tak-ada`) — `GET
    /report/{scan_id}` mengembalikan `scan: null` untuk id tak dikenal, tidak
    konsisten dengan endpoint /api/* lain yang 404.
-7. `GET /api/scans` menghitung `build_report` per scan per request (N+1) — aman untuk
-   prototype, perbaiki kalau riwayat sudah ratusan.
+7. ✅ **SELESAI** (commit `3c9513f`, branch `fix/n-plus-1-riwayat-opname`) — `GET
+   /api/scans` menghitung `build_report` per scan per request (N+1). Tambah
+   `db.get_report_rows_by_scan()` (query konstan, dikelompokkan per scan_id di
+   Python) dan pakai di endpoint itu; `get_report_rows()` lama tetap dipakai
+   enam pemanggil lain, tidak diubah.
 
    > **Koreksi 2026-07-28:** versi lama item ini ikut menuduh `/api/dashboard` N+1.
    > Salah — endpoint itu memanggil `build_report` **sekali** untuk scan terakhir saja.

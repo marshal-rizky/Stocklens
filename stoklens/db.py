@@ -292,7 +292,8 @@ def get_report_rows_by_scan(con):
             "expired_terdekat": r["expired_terdekat"],
             "confidence_avg": r["confidence_avg"],
         })
-    return out
+    return dict(out)  # bukan defaultdict — indexing scan_id tak dikenal harus
+    # KeyError, bukan diam-diam balik [] sambil menumbuhkan mapping-nya
 
 
 def latest_scan_id(con):
