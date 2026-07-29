@@ -44,6 +44,73 @@ def test_scan_dan_report_rows():
     }]
 
 
+# ---- Report rows untuk banyak scan sekaligus (query konstan, bukan N+1) ----
+
+def test_get_report_rows_by_scan_dua_scan_beda_qty_terdeteksi():
+    con = _con()
+    pid = db.add_product(con, "Gula 1kg", 12000, np.zeros(4, dtype=np.float32))
+    db.set_stock(con, pid, 10)
+    sid1 = db.add_scan(con, lokasi_rak="Rak 1")
+    db.add_scan_item(con, sid1, pid, qty_terdeteksi=8, confidence_avg=0.91,
+                     expired_terdekat="2026-08-01", qty_expired=2)
+    sid2 = db.add_scan(con, lokasi_rak="Rak 2")
+    db.add_scan_item(con, sid2, pid, qty_terdeteksi=5)
+
+    hasil = db.get_report_rows_by_scan(con)
+
+    # tiap scan dapat qty_terdeteksi-nya sendiri, meski produknya sama
+    assert hasil[sid1] == [{
+        "nama": "Gula 1kg", "harga_modal": 12000, "qty_tercatat": 10,
+        "qty_terdeteksi": 8, "qty_expired": 2,
+        "expired_terdekat": "2026-08-01", "confidence_avg": 0.91,
+    }]
+    assert hasil[sid2] == [{
+        "nama": "Gula 1kg", "harga_modal": 12000, "qty_tercatat": 10,
+        "qty_terdeteksi": 5, "qty_expired": 0,
+        "expired_terdekat": None, "confidence_avg": None,
+    }]
+    # dan strukturnya identik dengan get_report_rows() per-scan yang lama
+    assert hasil[sid1] == db.get_report_rows(con, sid1)
+    assert hasil[sid2] == db.get_report_rows(con, sid2)
+
+
+def test_get_report_rows_by_scan_tanpa_item_kosong_bukan_error():
+    con = _con()
+    sid = db.add_scan(con, lokasi_rak="Kosong")
+    hasil = db.get_report_rows_by_scan(con)
+    assert hasil.get(sid, []) == []   # pemanggil wajib pakai .get(id, [])
+    assert sid not in hasil           # bukan defaultdict: scan kosong tak jadi key
+    with pytest.raises(KeyError):     # indexing langsung harus tetap KeyError
+        hasil[sid]
+
+
+def test_get_report_rows_by_scan_unknown_tidak_ikut():
+    con = _con()
+    pid = db.add_product(con, "Gula 1kg", 12000, np.zeros(4, dtype=np.float32))
+    sid = db.add_scan(con)
+    db.add_scan_item(con, sid, pid, qty_terdeteksi=5)
+    db.add_scan_item(con, sid, None, qty_terdeteksi=3)  # unknown, product_id NULL
+
+    hasil = db.get_report_rows_by_scan(con)
+
+    assert len(hasil[sid]) == 1
+    assert hasil[sid][0]["qty_terdeteksi"] == 5
+    assert hasil[sid][0]["qty_tercatat"] == 0   # produk tak ada di ledger -> default 0
+
+
+def test_get_report_rows_by_scan_urutan_ikut_nama_produk():
+    con = _con()
+    p_zebra = db.add_product(con, "Zebra", 1000, np.zeros(4, dtype=np.float32))
+    p_apel = db.add_product(con, "Apel", 2000, np.zeros(4, dtype=np.float32))
+    sid = db.add_scan(con)
+    db.add_scan_item(con, sid, p_zebra, qty_terdeteksi=1)
+    db.add_scan_item(con, sid, p_apel, qty_terdeteksi=2)
+
+    hasil = db.get_report_rows_by_scan(con)
+
+    assert [r["nama"] for r in hasil[sid]] == ["Apel", "Zebra"]
+
+
 def test_list_scans_urutan_terbaru_dulu():
     con = _con()
     sid1 = db.add_scan(con, lokasi_rak="Rak 1", tipe="manual")
