@@ -359,3 +359,37 @@ def test_get_tidak_terdeteksi_item_unknown_tidak_menutupi_produk():
     sid = db.add_scan(con, tipe="foto")
     db.add_scan_item(con, sid, None, 5, 0.4)    # unknown saja
     assert [h["nama"] for h in db.get_tidak_terdeteksi(con, sid)] == ["Indomie"]
+
+
+# --- tanggal pakai waktu lokal, bukan UTC ----------------------------------
+# SQLite datetime('now') mengembalikan UTC. Di WIB (UTC+7) itu berarti opname
+# antara 00:00-07:00 tampil BERTANGGAL HARI SEBELUMNYA di daftar laporan dan
+# kartu stok. Terverifikasi: tersimpan 12:10, lokal 19:10.
+
+def _dekat(stempel, toleransi_detik=5):
+    """True kalau stempel string DB dekat dengan waktu lokal sekarang."""
+    import datetime
+    t = datetime.datetime.strptime(stempel, "%Y-%m-%d %H:%M:%S")
+    return abs((datetime.datetime.now() - t).total_seconds()) < toleransi_detik
+
+
+def test_tanggal_scan_pakai_waktu_lokal():
+    con = _con()
+    sid = db.add_scan(con, tipe="foto")
+    assert _dekat(db.get_scan(con, sid)["tanggal"])
+
+
+def test_tanggal_ledger_pakai_waktu_lokal():
+    con = _con()
+    pid = db.add_product(con, "A", 100, np.zeros(4, dtype=np.float32))
+    db.set_stock(con, pid, 5)
+    assert _dekat(db.get_ledger(con, pid)[0]["tanggal_update"])
+
+
+def test_terapkan_pada_pakai_waktu_lokal():
+    con = _con()
+    pid = db.add_product(con, "A", 100, np.zeros(4, dtype=np.float32))
+    sid = db.add_scan(con, tipe="manual")
+    db.add_scan_item(con, sid, pid, 3)
+    db.terapkan_opname(con, sid)
+    assert _dekat(db.get_scan(con, sid)["terapkan_pada"])
