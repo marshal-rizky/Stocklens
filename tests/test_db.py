@@ -319,3 +319,77 @@ def test_get_unknown_crop_bawa_embedding():
     c = db.get_unknown_crop(con, cid)
     assert np.allclose(c["embedding"], [0.5, 0.5])
     assert db.get_unknown_crop(con, 999) is None
+
+
+# --- barang tak terdeteksi saat scan ---------------------------------------
+
+def test_get_tidak_terdeteksi_hanya_yang_berstok_dan_tak_terdeteksi():
+    con = _con()
+    a = db.add_product(con, "Indomie", 3200, np.zeros(4, dtype=np.float32))
+    b = db.add_product(con, "Yakult", 2000, np.zeros(4, dtype=np.float32))
+    c = db.add_product(con, "Belum pernah distok", 500, np.zeros(4, dtype=np.float32))
+    db.set_stock(con, a, 40)
+    db.set_stock(con, b, 20)
+    # c sengaja tanpa entri ledger sama sekali
+
+    sid = db.add_scan(con, tipe="foto")
+    db.add_scan_item(con, sid, a, 38, 0.9)      # hanya Indomie terdeteksi
+
+    hasil = db.get_tidak_terdeteksi(con, sid)
+    assert [h["nama"] for h in hasil] == ["Yakult"], (
+        "hanya produk berstok > 0 yang tidak terdeteksi; produk tanpa stok "
+        "bukan 'hilang', cuma belum pernah diisi")
+    assert hasil[0]["qty_tercatat"] == 20
+    assert hasil[0]["nilai_rp"] == 20 * 2000
+
+
+def test_get_tidak_terdeteksi_stok_nol_tidak_dihitung():
+    con = _con()
+    a = db.add_product(con, "Habis", 1000, np.zeros(4, dtype=np.float32))
+    db.set_stock(con, a, 0)
+    sid = db.add_scan(con, tipe="foto")
+    assert db.get_tidak_terdeteksi(con, sid) == []
+
+
+def test_get_tidak_terdeteksi_item_unknown_tidak_menutupi_produk():
+    """Baris scan_items dengan product_id NULL (unknown) bukan bukti terdeteksi."""
+    con = _con()
+    a = db.add_product(con, "Indomie", 3200, np.zeros(4, dtype=np.float32))
+    db.set_stock(con, a, 10)
+    sid = db.add_scan(con, tipe="foto")
+    db.add_scan_item(con, sid, None, 5, 0.4)    # unknown saja
+    assert [h["nama"] for h in db.get_tidak_terdeteksi(con, sid)] == ["Indomie"]
+
+
+# --- tanggal pakai waktu lokal, bukan UTC ----------------------------------
+# SQLite datetime('now') mengembalikan UTC. Di WIB (UTC+7) itu berarti opname
+# antara 00:00-07:00 tampil BERTANGGAL HARI SEBELUMNYA di daftar laporan dan
+# kartu stok. Terverifikasi: tersimpan 12:10, lokal 19:10.
+
+def _dekat(stempel, toleransi_detik=5):
+    """True kalau stempel string DB dekat dengan waktu lokal sekarang."""
+    import datetime
+    t = datetime.datetime.strptime(stempel, "%Y-%m-%d %H:%M:%S")
+    return abs((datetime.datetime.now() - t).total_seconds()) < toleransi_detik
+
+
+def test_tanggal_scan_pakai_waktu_lokal():
+    con = _con()
+    sid = db.add_scan(con, tipe="foto")
+    assert _dekat(db.get_scan(con, sid)["tanggal"])
+
+
+def test_tanggal_ledger_pakai_waktu_lokal():
+    con = _con()
+    pid = db.add_product(con, "A", 100, np.zeros(4, dtype=np.float32))
+    db.set_stock(con, pid, 5)
+    assert _dekat(db.get_ledger(con, pid)[0]["tanggal_update"])
+
+
+def test_terapkan_pada_pakai_waktu_lokal():
+    con = _con()
+    pid = db.add_product(con, "A", 100, np.zeros(4, dtype=np.float32))
+    sid = db.add_scan(con, tipe="manual")
+    db.add_scan_item(con, sid, pid, 3)
+    db.terapkan_opname(con, sid)
+    assert _dekat(db.get_scan(con, sid)["terapkan_pada"])

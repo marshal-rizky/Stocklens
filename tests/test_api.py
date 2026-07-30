@@ -91,3 +91,68 @@ def test_db_path_eksplisit_menang_atas_env(tmp_path, monkeypatch):
     assert client.get("/api/products").status_code == 200
     assert eksplisit.exists()
     assert not dari_env.exists()
+
+
+# --- validasi input (edge case review 2026-07-30) --------------------------
+# Semua kasus di bawah sebelumnya lolos atau meledak jadi 500. Yang diperbaiki
+# di sini bukan cuma nilainya, tapi ketidakkonsistenannya: /api/adjustments
+# SUDAH menjaga stok negatif dan /api/scans-foto SUDAH memvalidasi file bukan
+# gambar jadi 400, sementara jalur lain tidak.
+
+def _app(tmp_path, **kw):
+    dbp = str(tmp_path / "t.db")
+    con = db.connect(dbp)
+    pid = db.add_product(con, "Indomie", 3200, np.zeros(4, dtype=np.float32))
+    db.add_product(con, "Yakult", 2000, np.zeros(4, dtype=np.float32))
+    db.set_stock(con, pid, 40)
+    con.close()
+    return TestClient(create_app(db_path=dbp, **kw)), pid
+
+
+def test_qty_fisik_negatif_ditolak(tmp_path):
+    """Sebelumnya lolos dan menulis stok ledger jadi negatif."""
+    client, pid = _app(tmp_path)
+    r = client.post("/api/opname-manual",
+                    json={"items": [{"product_id": pid, "qty_fisik": -50}]})
+    assert r.status_code == 422
+    assert db.get_stock_map(db.connect(str(tmp_path / "t.db")))[pid] == 40
+
+
+def test_patch_harga_negatif_ditolak(tmp_path):
+    client, pid = _app(tmp_path)
+    for field in ("harga_modal", "harga_jual", "stok_minimum"):
+        r = client.patch(f"/api/products/{pid}", json={field: -1})
+        assert r.status_code == 422, field
+
+
+def test_patch_nama_duplikat_400_bukan_500(tmp_path):
+    """products.nama UNIQUE — IntegrityError harus jadi 400 dengan pesan jelas."""
+    client, pid = _app(tmp_path)
+    r = client.patch(f"/api/products/{pid}", json={"nama": "Yakult"})
+    assert r.status_code == 400
+    assert "Yakult" in r.json()["detail"]
+
+
+def test_enrollment_tanpa_foto_400_bukan_500(tmp_path):
+    client, _ = _app(tmp_path, embedder=object())
+    r = client.post("/products", data={"nama": "Baru", "harga_modal": 1000})
+    assert r.status_code == 400
+    assert "foto" in r.json()["detail"].lower()
+
+
+def test_enrollment_file_bukan_gambar_400_bukan_500(tmp_path):
+    """Samakan dengan /api/scans-foto yang sudah mengembalikan 400."""
+    client, _ = _app(tmp_path, embedder=object())
+    r = client.post("/products", data={"nama": "Baru", "harga_modal": 1000},
+                    files={"fotos": ("rusak.jpg", b"ini teks biasa", "image/jpeg")})
+    assert r.status_code == 400
+    assert "rusak.jpg" in r.json()["detail"]
+
+
+def test_enrollment_angka_negatif_ditolak(tmp_path):
+    client, _ = _app(tmp_path, embedder=object())
+    for field in ("harga_modal", "qty_awal", "stok_minimum"):
+        data = {"nama": f"P-{field}", "harga_modal": 1000, field: -1}
+        r = client.post("/products", data=data,
+                        files={"fotos": ("a.jpg", b"x", "image/jpeg")})
+        assert r.status_code == 422, field

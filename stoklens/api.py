@@ -13,7 +13,8 @@ from pathlib import Path
 from fastapi import FastAPI, Form, HTTPException, UploadFile
 from fastapi.responses import PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from starlette.concurrency import run_in_threadpool
 
 from . import accounting, crops, db
 from .report import build_report
@@ -22,11 +23,30 @@ from .webui import router as webui_router
 _STATIC_DIR = Path(__file__).parent / "webui" / "static"
 
 
+def _gambar_valid(path) -> bool:
+    """True kalau berkas benar-benar gambar yang bisa dibuka.
+
+    Pakai PIL.verify() dan bukan cv2.imread: enroll_product juga membuka foto
+    lewat PIL, jadi yang divalidasi harus pustaka yang sama — kalau tidak, ada
+    berkas yang lolos di sini tapi tetap meledak beberapa baris kemudian.
+    """
+    from PIL import Image
+    try:
+        with Image.open(path) as img:
+            img.verify()
+        return True
+    except Exception:
+        return False
+
+
+# ge=0 di seluruh field angka: harga dan stok negatif tidak punya arti, dan
+# sebelumnya diterima diam-diam — harga_modal negatif membuat shrinkage jadi
+# angka negatif yang tampil sebagai "kerugian" yang tidak masuk akal.
 class ProductPatch(BaseModel, extra="forbid"):
     nama: str | None = None
-    harga_modal: int | None = None
-    harga_jual: int | None = None
-    stok_minimum: int | None = None
+    harga_modal: int | None = Field(default=None, ge=0)
+    harga_jual: int | None = Field(default=None, ge=0)
+    stok_minimum: int | None = Field(default=None, ge=0)
 
 
 class UnknownAssign(BaseModel):
@@ -35,10 +55,10 @@ class UnknownAssign(BaseModel):
 
 class UnknownProdukBaru(BaseModel):
     nama: str
-    harga_modal: int
-    harga_jual: int | None = None
-    stok_minimum: int = 0
-    qty_awal: int = 0
+    harga_modal: int = Field(ge=0)
+    harga_jual: int | None = Field(default=None, ge=0)
+    stok_minimum: int = Field(default=0, ge=0)
+    qty_awal: int = Field(default=0, ge=0)
 
 
 class Adjustment(BaseModel):
@@ -49,7 +69,10 @@ class Adjustment(BaseModel):
 
 class OpnameItem(BaseModel):
     product_id: int
-    qty_fisik: int
+    # ge=0: sebelumnya qty_fisik negatif lolos dan menulis stok ledger jadi
+    # negatif — padahal /api/adjustments sudah menjaga hal yang sama lewat
+    # accounting.apply_adjustment. Ini menutup ketidakkonsistenannya.
+    qty_fisik: int = Field(ge=0)
 
 
 class OpnameManual(BaseModel):
@@ -97,36 +120,72 @@ def create_app(db_path=None, embedder=None, photo_detector=None):
     crops.DIR_CROPS_DEFAULT.mkdir(parents=True, exist_ok=True)
     app.mount("/crops", StaticFiles(directory=str(crops.DIR_CROPS_DEFAULT)), name="crops")
 
+    # CATATAN PENTING untuk ketiga endpoint berat di bawah (enrollment, scan
+    # video, scan foto): pipeline-nya sinkron dan berat (YOLO + CLIP + OCR).
+    # Kerja itu WAJIB lewat run_in_threadpool — kalau dijalankan langsung di
+    # dalam `async def`, ia menempati event loop dan SELURUH aplikasi beku
+    # selama scan (halaman tidak bisa dibuka, tombol tidak merespons). Terukur:
+    # GET /api/products tidak bisa mulai sampai scan selesai. Dijaga oleh
+    # tests/test_api_concurrency.py.
+    #
+    # Koneksi SQLite dibuat DI DALAM fungsi thread, bukan di luar lalu dibawa
+    # masuk: sqlite3.connect default check_same_thread=True, jadi koneksi milik
+    # event loop yang dipakai di thread lain melempar ProgrammingError.
+
     @app.post("/products")
-    async def create_product(nama: str = Form(...), harga_modal: int = Form(...),
-                             qty_awal: int = Form(0),
-                             harga_jual: int = Form(None),
-                             stok_minimum: int = Form(0),
+    async def create_product(nama: str = Form(...),
+                             harga_modal: int = Form(..., ge=0),
+                             qty_awal: int = Form(0, ge=0),
+                             harga_jual: int = Form(None, ge=0),
+                             stok_minimum: int = Form(0, ge=0),
                              fotos: list[UploadFile] = None):
         from .enroll import enroll_product
-        tmp = Path(tempfile.mkdtemp())
-        paths = []
-        for f in fotos:
-            p = tmp / f.filename
-            p.write_bytes(await f.read())
-            paths.append(p)
-        c = con()
-        pid = enroll_product(c, get_embedder(), nama, harga_modal, paths,
-                             harga_jual=harga_jual, qty_awal=qty_awal)
-        if stok_minimum > 0:
-            db.update_product(c, pid, stok_minimum=stok_minimum)
-        shutil.rmtree(tmp, ignore_errors=True)
-        return {"product_id": pid}
+        # Tanpa guard ini `for f in fotos` melempar TypeError -> 500. UI sudah
+        # mewajibkan minimal satu foto, tapi API tidak boleh bergantung ke UI.
+        if not fotos:
+            raise HTTPException(400, "Minimal satu foto barang diperlukan")
+        # Baca isi upload di event loop (I/O, murah), sisanya di threadpool.
+        isi = [(f.filename, await f.read()) for f in fotos]
+
+        def kerja():
+            tmp = Path(tempfile.mkdtemp())
+            try:
+                paths = []
+                for nama_file, data in isi:
+                    p = tmp / nama_file
+                    p.write_bytes(data)
+                    # Divalidasi di sini, bukan dibiarkan meledak di
+                    # enroll_product -> Image.open: pesan 500 di sana tidak
+                    # menyebut file mana yang rusak. Pola & pesan disamakan
+                    # dengan /api/scans-foto yang sudah 400.
+                    if not _gambar_valid(p):
+                        raise HTTPException(
+                            400, f"File bukan gambar valid: {nama_file}")
+                    paths.append(p)
+                c = con()
+                pid = enroll_product(c, get_embedder(), nama, harga_modal, paths,
+                                     harga_jual=harga_jual, qty_awal=qty_awal)
+                if stok_minimum > 0:
+                    db.update_product(c, pid, stok_minimum=stok_minimum)
+                return pid
+            finally:
+                shutil.rmtree(tmp, ignore_errors=True)
+
+        return {"product_id": await run_in_threadpool(kerja)}
 
     @app.post("/scans")
     async def create_scan(video: UploadFile, lokasi_rak: str = Form(None),
                           count_mode: str = Form("line")):
         from .scan import run_scan
-        tmp = Path(tempfile.mkdtemp()) / video.filename
-        tmp.write_bytes(await video.read())
-        sid = run_scan(con(), get_embedder(), tmp, lokasi_rak=lokasi_rak,
-                       count_mode=count_mode)
-        return {"scan_id": sid}
+        nama_file, data = video.filename, await video.read()
+
+        def kerja():
+            tmp = Path(tempfile.mkdtemp()) / nama_file
+            tmp.write_bytes(data)
+            return run_scan(con(), get_embedder(), tmp, lokasi_rak=lokasi_rak,
+                            count_mode=count_mode)
+
+        return {"scan_id": await run_in_threadpool(kerja)}
 
     @app.get("/report/{scan_id}")
     def report(scan_id: int):
@@ -136,7 +195,8 @@ def create_app(db_path=None, embedder=None, photo_detector=None):
             raise HTTPException(404, "Scan tidak ditemukan")
         # Key "scan" tambahan (additive) — konsumen lama yang cuma baca
         # items/total_* tetap aman.
-        return build_report(db.get_report_rows(c, scan_id)) | {
+        return build_report(db.get_report_rows(c, scan_id),
+                            tidak_terdeteksi=db.get_tidak_terdeteksi(c, scan_id)) | {
             "scan": scan,
         }
 
@@ -144,22 +204,31 @@ def create_app(db_path=None, embedder=None, photo_detector=None):
     async def api_scan_foto(fotos: list[UploadFile], lokasi_rak: str = Form(None),
                             guided_product_id: int = Form(None),
                             read_expiry: bool = Form(True)):
-        import cv2
-        import numpy as np
         from .photo import scan_photos
-        images = []
-        for f in fotos:
-            img = cv2.imdecode(np.frombuffer(await f.read(), np.uint8),
-                               cv2.IMREAD_COLOR)
-            if img is None:
-                raise HTTPException(400, f"File bukan gambar valid: {f.filename}")
-            images.append(img)
-        c = con()
-        sid = scan_photos(c, get_embedder(), images, detector=photo_detector,
-                          guided_product_id=guided_product_id,
-                          lokasi_rak=lokasi_rak, read_expiry=read_expiry)
-        return {"scan_id": sid,
-                "report": build_report(db.get_report_rows(c, sid))}
+        isi = [(f.filename, await f.read()) for f in fotos]
+
+        def kerja():
+            import cv2
+            import numpy as np
+            # Decode ikut masuk threadpool: untuk foto 12 MP ini sendiri sudah
+            # berat, dan HTTPException yang dilempar dari sini tetap ditangani
+            # FastAPI seperti biasa.
+            images = []
+            for nama_file, data in isi:
+                img = cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_COLOR)
+                if img is None:
+                    raise HTTPException(400, f"File bukan gambar valid: {nama_file}")
+                images.append(img)
+            c = con()
+            sid = scan_photos(c, get_embedder(), images, detector=photo_detector,
+                              guided_product_id=guided_product_id,
+                              lokasi_rak=lokasi_rak, read_expiry=read_expiry)
+            return sid, build_report(
+                db.get_report_rows(c, sid),
+                tidak_terdeteksi=db.get_tidak_terdeteksi(c, sid))
+
+        sid, rep = await run_in_threadpool(kerja)
+        return {"scan_id": sid, "report": rep}
 
     # ---------- JSON API untuk UI mobile ----------
 
@@ -193,7 +262,14 @@ def create_app(db_path=None, embedder=None, photo_detector=None):
         if db.get_product(c, product_id) is None:
             raise HTTPException(404, "Produk tidak ditemukan")
         fields = {k: v for k, v in patch.model_dump().items() if v is not None}
-        db.update_product(c, product_id, **fields)
+        try:
+            db.update_product(c, product_id, **fields)
+        except sqlite3.IntegrityError as e:
+            # products.nama UNIQUE. Tanpa tangkapan ini user yang mengganti nama
+            # jadi nama yang sudah dipakai cuma melihat error 500 generik.
+            # Pesannya disamakan dengan /api/unknown/{crop_id}/produk-baru.
+            raise HTTPException(
+                400, f"Nama produk '{fields.get('nama')}' sudah dipakai") from e
         return {"ok": True}
 
     @app.post("/api/adjustments")
@@ -218,7 +294,8 @@ def create_app(db_path=None, embedder=None, photo_detector=None):
             db.add_scan_item(c, scan_id, item.product_id, item.qty_fisik)
         # Report WAJIB dihitung sebelum terapkan: qty_tercatat-nya diambil dari
         # ledger saat ini, kalau ledger ditulis duluan semua selisih jadi 0.
-        rep = build_report(db.get_report_rows(c, scan_id))
+        rep = build_report(db.get_report_rows(c, scan_id),
+                           tidak_terdeteksi=db.get_tidak_terdeteksi(c, scan_id))
         if body.terapkan:
             db.terapkan_opname(c, scan_id)
         return {"scan_id": scan_id, "diterapkan": body.terapkan, "report": rep}

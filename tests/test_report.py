@@ -24,4 +24,34 @@ def test_surplus_bukan_shrinkage():
 def test_report_kosong():
     rep = build_report([])
     assert rep == {"items": [], "total_nilai_rp": 0,
-                   "total_shrinkage_rp": 0, "total_rugi_expired_rp": 0}
+                   "total_shrinkage_rp": 0, "total_rugi_expired_rp": 0,
+                   "tidak_terdeteksi": [], "total_tidak_terdeteksi_rp": 0}
+
+
+# --- barang tak terdeteksi -------------------------------------------------
+# Barang berstok yang tidak muncul di scan HARUS terlihat user (kasus paling
+# penting: barang habis tanpa tercatat), tapi nilainya TIDAK boleh masuk
+# shrinkage otomatis. Alasannya: scan satu rak tidak melihat rak lain, jadi
+# menghitungnya otomatis melaporkan seluruh barang rak lain sebagai hilang.
+
+def test_tidak_terdeteksi_tampil_tapi_tidak_menambah_shrinkage():
+    rows = [{"nama": "Indomie", "harga_modal": 3200, "qty_tercatat": 40,
+             "qty_terdeteksi": 38, "qty_expired": 0}]
+    hilang = [{"id": 2, "nama": "Yakult", "harga_modal": 2000,
+               "qty_tercatat": 20, "nilai_rp": 40000}]
+    rep = build_report(rows, tidak_terdeteksi=hilang)
+
+    assert [i["nama"] for i in rep["tidak_terdeteksi"]] == ["Yakult"]
+    assert rep["total_tidak_terdeteksi_rp"] == 40000
+    # shrinkage tetap HANYA dari selisih Indomie (2 x 3200)
+    assert rep["total_shrinkage_rp"] == 6400
+    # dan tidak menyusup ke daftar item biasa
+    assert [i["nama"] for i in rep["items"]] == ["Indomie"]
+
+
+def test_tidak_terdeteksi_default_kosong():
+    """Pemanggil lama yang tidak mengoper argumen ini tetap jalan."""
+    rep = build_report([{"nama": "A", "harga_modal": 100, "qty_tercatat": 1,
+                         "qty_terdeteksi": 1, "qty_expired": 0}])
+    assert rep["tidak_terdeteksi"] == []
+    assert rep["total_tidak_terdeteksi_rp"] == 0

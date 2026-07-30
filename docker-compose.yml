@@ -23,6 +23,12 @@ services:
       - model-cache:/root/.cache
     environment:
       STOKLENS_DB: /app/data/stoklens.db
+      # Tanpa ini waktu lokal di dalam container = UTC, sehingga tanggal opname
+      # antara 00:00-07:00 WIB tampil bertanggal hari sebelumnya. Aplikasi
+      # menulis stempel waktu lokal (db._sekarang), jadi zona waktunya harus
+      # benar. Ubah kalau tim/toko ada di WITA (Asia/Makassar) atau WIT
+      # (Asia/Jayapura).
+      TZ: Asia/Jakarta
     restart: unless-stopped
 
 volumes:

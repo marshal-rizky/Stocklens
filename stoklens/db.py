@@ -8,6 +8,7 @@ commit internal mereka akan memotongnya di tengah.
 import json
 import sqlite3
 from collections import defaultdict
+from datetime import datetime
 
 import numpy as np
 
@@ -107,6 +108,26 @@ def connect(path, factory=sqlite3.Connection) -> sqlite3.Connection:
     return con
 
 
+def _sekarang() -> str:
+    """Stempel waktu LOKAL, format sama dengan datetime('now') SQLite.
+
+    Kenapa dihitung di Python dan bukan mengandalkan DEFAULT (datetime('now'))
+    di SQL: `datetime('now')` mengembalikan UTC, dan di WIB (UTC+7) itu membuat
+    opname antara 00:00-07:00 tampil BERTANGGAL HARI SEBELUMNYA di daftar
+    laporan dan kartu stok.
+
+    Mengganti DEFAULT di SCHEMA saja tidak cukup — schema dipasang dengan
+    CREATE TABLE IF NOT EXISTS, jadi DB yang sudah ada tetap memakai default
+    lama dan perilakunya jadi berbeda antara DB lama dan baru. Mengirim nilainya
+    eksplisit dari Python bekerja di dua-duanya.
+
+    Baris lama tetap UTC dan sengaja TIDAK dimigrasikan: nilainya hanya untuk
+    tampilan, dan menulis ulang stempel riwayat lebih berisiko daripada
+    manfaatnya.
+    """
+    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+
 def add_product(con, nama, harga_modal, embedding, harga_jual=None, foto_refs=()):
     blob = np.asarray(embedding, dtype=np.float32).tobytes()
     cur = con.execute(
@@ -173,9 +194,9 @@ def count_product_embeddings(con, product_id):
 
 def set_stock(con, product_id, qty, sumber="manual", alasan=None):
     con.execute(
-        "INSERT INTO stock_ledger(product_id, qty_tercatat, sumber, alasan)"
-        " VALUES(?,?,?,?)",
-        (product_id, qty, sumber, alasan),
+        "INSERT INTO stock_ledger(product_id, qty_tercatat, sumber, alasan,"
+        " tanggal_update) VALUES(?,?,?,?,?)",
+        (product_id, qty, sumber, alasan, _sekarang()),
     )
     con.commit()
 
@@ -225,8 +246,8 @@ def get_stock_map(con):
 
 def add_scan(con, video_ref=None, lokasi_rak=None, tipe="video"):
     cur = con.execute(
-        "INSERT INTO scans(video_ref, lokasi_rak, tipe) VALUES(?,?,?)",
-        (video_ref, lokasi_rak, tipe),
+        "INSERT INTO scans(video_ref, lokasi_rak, tipe, tanggal) VALUES(?,?,?,?)",
+        (video_ref, lokasi_rak, tipe, _sekarang()),
     )
     con.commit()
     return cur.lastrowid
@@ -296,6 +317,44 @@ def get_report_rows_by_scan(con):
     # KeyError, bukan diam-diam balik [] sambil menumbuhkan mapping-nya
 
 
+def get_tidak_terdeteksi(con, scan_id):
+    """Produk berstok > 0 yang TIDAK punya baris scan_items di scan ini.
+
+    Kenapa perlu: get_report_rows() JOIN ke scan_items, jadi barang yang sama
+    sekali tidak terdeteksi tidak punya baris dan HILANG dari laporan — bukan
+    tampil sebagai "selisih -20", tapi tidak ada. Padahal itu justru kasus
+    paling penting bagi pemilik warung (barang habis tanpa tercatat).
+
+    Syarat `qty_tercatat > 0`: produk yang belum pernah diisi stok bukan
+    "hilang", cuma belum dipakai — memunculkannya hanya jadi kebisingan.
+
+    Baris unknown (`product_id IS NULL`) TIDAK dianggap bukti terdeteksi:
+    ia tidak memberi tahu produk mana yang terlihat.
+    """
+    stock = get_stock_map(con)
+    terdeteksi = {
+        r["product_id"]
+        for r in con.execute(
+            "SELECT DISTINCT product_id FROM scan_items"
+            " WHERE scan_id=? AND product_id IS NOT NULL",
+            (scan_id,),
+        ).fetchall()
+    }
+    rows = con.execute(
+        "SELECT id, nama, harga_modal FROM products ORDER BY nama"
+    ).fetchall()
+    out = []
+    for r in rows:
+        qty = stock.get(r["id"], 0)
+        if qty > 0 and r["id"] not in terdeteksi:
+            out.append({
+                "id": r["id"], "nama": r["nama"],
+                "harga_modal": r["harga_modal"], "qty_tercatat": qty,
+                "nilai_rp": qty * r["harga_modal"],
+            })
+    return out
+
+
 def latest_scan_id(con):
     row = con.execute("SELECT MAX(id) AS mid FROM scans").fetchone()
     return row["mid"]
@@ -350,18 +409,20 @@ def terapkan_opname(con, scan_id):
     items = get_scan_items(con, scan_id)   # item tanpa product_id tidak ke ledger
     alasan = f"opname #{scan_id}"
     try:
+        sekarang = _sekarang()
         con.executemany(
-            "INSERT INTO stock_ledger(product_id, qty_tercatat, sumber, alasan)"
-            " VALUES(?,?,?,?)",
-            [(i["product_id"], i["qty_terdeteksi"], "opname", alasan) for i in items],
+            "INSERT INTO stock_ledger(product_id, qty_tercatat, sumber, alasan,"
+            " tanggal_update) VALUES(?,?,?,?,?)",
+            [(i["product_id"], i["qty_terdeteksi"], "opname", alasan, sekarang)
+             for i in items],
         )
         # Compare-and-set: penandaan sekaligus guard. Cek-lalu-tulis di layer API
         # bisa kalah balapan (dua request lolos cek sebelum salah satu menulis);
         # di sini yang kalah dapat rowcount 0 dan ledger-nya di-rollback.
         cur = con.execute(
-            "UPDATE scans SET terapkan_pada = datetime('now')"
+            "UPDATE scans SET terapkan_pada = ?"
             " WHERE id=? AND terapkan_pada IS NULL",
-            (scan_id,),
+            (sekarang, scan_id),
         )
         if cur.rowcount == 0:
             # scan tidak ada, ATAU sudah diterapkan (balapan antar-request)

@@ -165,3 +165,14 @@ def test_barang_detail_dan_report_view_tidak_pakai_raw_fetch(tmp_path):
     assert "fetch(" not in client.get("/static/barang_detail.js").text
 
 
+
+
+def test_report_view_js_punya_section_tidak_terdeteksi(tmp_path):
+    """Section barang tak terdeteksi ada, dan tidak diwarnai sebagai kerugian pasti."""
+    js = _client(tmp_path).get("/static/report_view.js").text
+    assert "sectionTidakTerdeteksi" in js
+    assert "tidak_terdeteksi" in js
+    assert "Tidak terdeteksi" in js
+    # badge netral, BUKAN badge-neg: belum tentu hilang
+    assert "badge-netral" in js
+    assert "badge-neg" not in js.split("sectionTidakTerdeteksi")[1].split("function renderReport")[0]

@@ -404,6 +404,13 @@ a.card {
 .badge-neg { background: var(--neg); color: var(--on-accent); }
 .badge-pos { background: var(--pos); color: var(--on-accent); }
 
+/* Netral, BUKAN merah: barang tak terdeteksi belum tentu hilang — mewarnainya
+   merah membuat user membacanya sebagai kerugian yang sudah pasti. */
+.badge-netral {
+  background: var(--border);
+  color: var(--text-2);
+}
+
 /* ---------- State error (gagal fetch) ---------- */
 
 .error-state {
@@ -1032,6 +1039,19 @@ a.card {
 
 .halaman-footer {
   margin: 20px 0;
+}
+
+/* ---------- Tidak terdeteksi (report_view.js) ---------- */
+
+.tidak-terdeteksi-section {
+  margin-top: 20px;
+}
+
+.section-catatan {
+  margin: 0 0 12px;
+  color: var(--text-2);
+  font-size: 14px;
+  line-height: 1.5;
 }
 
 /* ---------- Belum dikenali (report_view.js) ---------- */

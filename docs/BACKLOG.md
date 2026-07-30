@@ -107,6 +107,29 @@ rak sendiri.
    > Salah — endpoint itu memanggil `build_report` **sekali** untuk scan terakhir saja.
    > Yang benar-benar N+1 cuma `/api/scans`. Jangan "memperbaiki" `/api/dashboard`.
 
+## Edge case yang sengaja ditunda (dari deep review 2026-07-30)
+
+Temuan minor dari review edge case pengguna. Yang dire dan penting sudah
+dikerjakan — lihat `plans/2026-07-30-edge-case-hardening.md`. Sisanya di bawah
+**terverifikasi nyata** tapi dinilai tidak sepadan dikerjakan sebelum 25 Agustus.
+
+8. `POST /api/opname-manual` menerima `product_id` yang tidak ada → 200, lalu
+   item itu hilang senyap dari laporan (JOIN membuangnya). User yang mengirim 30
+   item dengan satu id salah tidak diberi tahu apa pun.
+9. `POST /api/opname-manual` dengan `items: []` → membuat scan kosong dan
+   menandainya "sudah diterapkan". Tidak merusak data, cuma bikin daftar laporan
+   penuh baris tak berguna.
+10. `product_id` dobel dalam satu opname manual → produk yang sama muncul dua
+    baris di laporan, dan `terapkan` menulis dua baris ledger (yang terakhir
+    menang). UI checklist tidak memungkinkan ini; API langsung memungkinkan.
+11. **Tidak ada batas jumlah maupun ukuran foto** di `/api/scans-foto` — 60 foto
+    diterima. Foto 12 MP jadi ±36 MB per gambar setelah decode dan semuanya
+    ditahan di RAM sekaligus, jadi memilih seluruh galeri bisa membuat laptop
+    demo OOM. **Kandidat paling layak diambil** dari daftar ini.
+12. Koneksi SQLite tidak pernah ditutup (`0` panggilan `.close()` di `api.py`) —
+    mengandalkan GC. Tidak terbukti menyebabkan kegagalan saat diuji terisolasi,
+    tapi menyisakan file handle menggantung.
+
 ## Keterbatasan yang diterima (known limitations)
 
 - Harga jual tidak bisa dikosongkan kembali setelah diisi (PATCH membuang null) —

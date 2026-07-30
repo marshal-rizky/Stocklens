@@ -83,9 +83,56 @@ function kartuTotalsLaporan(report) {
 }
 
 /**
+ * Section "Tidak terdeteksi" — produk berstok yang tidak muncul sama sekali di
+ * scan. Sebelum ada ini, barang seperti itu HILANG dari laporan: bukan tampil
+ * sebagai selisih negatif, tapi tidak ada barisnya sama sekali. Padahal barang
+ * habis tanpa tercatat justru kasus yang paling ingin diketahui pemilik warung.
+ *
+ * Nilainya sengaja TIDAK masuk shrinkage — scan satu rak tidak melihat rak
+ * lain, jadi angkanya belum tentu berarti hilang. Kalimat penjelas di bawah
+ * ada supaya user tidak salah membacanya sebagai kerugian yang sudah pasti.
+ * @param {object} report
+ * @returns {string} HTML, string kosong kalau tidak ada
+ */
+function sectionTidakTerdeteksi(report) {
+  const daftar = report.tidak_terdeteksi || [];
+  if (!daftar.length) return "";
+  return (
+    '<section class="tidak-terdeteksi-section">' +
+    '<div class="section-head"><h2>Tidak terdeteksi — perlu dicek</h2></div>' +
+    '<p class="section-catatan">Barang ini tercatat punya stok tapi tidak ' +
+    "terlihat di foto/video opname. Belum dihitung sebagai shrinkage — " +
+    "periksa dulu, lalu koreksi lewat Penyesuaian stok kalau memang habis." +
+    "</p>" +
+    '<div class="laporan-item-list">' +
+    daftar
+      .map(
+        (h) =>
+          '<div class="card laporan-item">' +
+          '<div class="laporan-item-atas"><span class="laporan-item-nama">' +
+          escapeHtml(h.nama) +
+          '</span><span class="badge badge-netral">tidak terlihat</span></div>' +
+          '<div class="laporan-item-baris"><span>Tercatat: <b class="tabular">' +
+          h.qty_tercatat +
+          '</b></span><span>Nilai: <b class="tabular">' +
+          rp(h.nilai_rp) +
+          "</b></span></div>" +
+          "</div>"
+      )
+      .join("") +
+    "</div>" +
+    '<div class="laporan-item-sub">Total nilai belum terkonfirmasi: <b class="tabular">' +
+    rp(report.total_tidak_terdeteksi_rp || 0) +
+    "</b></div>" +
+    "</section>"
+  );
+}
+
+/**
  * Render laporan opname (totals + item) ke containerEl.
  * @param {HTMLElement} containerEl
- * @param {object} report - {items, total_nilai_rp, total_shrinkage_rp, total_rugi_expired_rp}
+ * @param {object} report - {items, total_nilai_rp, total_shrinkage_rp,
+ *   total_rugi_expired_rp, tidak_terdeteksi, total_tidak_terdeteksi_rp}
  * @param {{scanId?: number|string, tampilkanTerapkan?: boolean, sudahDiterapkan?: boolean}} [opts]
  */
 function renderReport(containerEl, report, opts) {
@@ -106,6 +153,7 @@ function renderReport(containerEl, report, opts) {
     '<div class="laporan-item-list">' +
     items +
     "</div>" +
+    sectionTidakTerdeteksi(report) +
     tombolHtml;
 
   if (opts.scanId) muatBelumDikenali(containerEl, opts.scanId);
