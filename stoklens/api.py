@@ -13,7 +13,7 @@ from pathlib import Path
 from fastapi import FastAPI, Form, HTTPException, UploadFile
 from fastapi.responses import PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
 from . import accounting, crops, db
@@ -23,11 +23,30 @@ from .webui import router as webui_router
 _STATIC_DIR = Path(__file__).parent / "webui" / "static"
 
 
+def _gambar_valid(path) -> bool:
+    """True kalau berkas benar-benar gambar yang bisa dibuka.
+
+    Pakai PIL.verify() dan bukan cv2.imread: enroll_product juga membuka foto
+    lewat PIL, jadi yang divalidasi harus pustaka yang sama — kalau tidak, ada
+    berkas yang lolos di sini tapi tetap meledak beberapa baris kemudian.
+    """
+    from PIL import Image
+    try:
+        with Image.open(path) as img:
+            img.verify()
+        return True
+    except Exception:
+        return False
+
+
+# ge=0 di seluruh field angka: harga dan stok negatif tidak punya arti, dan
+# sebelumnya diterima diam-diam — harga_modal negatif membuat shrinkage jadi
+# angka negatif yang tampil sebagai "kerugian" yang tidak masuk akal.
 class ProductPatch(BaseModel, extra="forbid"):
     nama: str | None = None
-    harga_modal: int | None = None
-    harga_jual: int | None = None
-    stok_minimum: int | None = None
+    harga_modal: int | None = Field(default=None, ge=0)
+    harga_jual: int | None = Field(default=None, ge=0)
+    stok_minimum: int | None = Field(default=None, ge=0)
 
 
 class UnknownAssign(BaseModel):
@@ -36,10 +55,10 @@ class UnknownAssign(BaseModel):
 
 class UnknownProdukBaru(BaseModel):
     nama: str
-    harga_modal: int
-    harga_jual: int | None = None
-    stok_minimum: int = 0
-    qty_awal: int = 0
+    harga_modal: int = Field(ge=0)
+    harga_jual: int | None = Field(default=None, ge=0)
+    stok_minimum: int = Field(default=0, ge=0)
+    qty_awal: int = Field(default=0, ge=0)
 
 
 class Adjustment(BaseModel):
@@ -50,7 +69,10 @@ class Adjustment(BaseModel):
 
 class OpnameItem(BaseModel):
     product_id: int
-    qty_fisik: int
+    # ge=0: sebelumnya qty_fisik negatif lolos dan menulis stok ledger jadi
+    # negatif — padahal /api/adjustments sudah menjaga hal yang sama lewat
+    # accounting.apply_adjustment. Ini menutup ketidakkonsistenannya.
+    qty_fisik: int = Field(ge=0)
 
 
 class OpnameManual(BaseModel):
@@ -111,12 +133,17 @@ def create_app(db_path=None, embedder=None, photo_detector=None):
     # event loop yang dipakai di thread lain melempar ProgrammingError.
 
     @app.post("/products")
-    async def create_product(nama: str = Form(...), harga_modal: int = Form(...),
-                             qty_awal: int = Form(0),
-                             harga_jual: int = Form(None),
-                             stok_minimum: int = Form(0),
+    async def create_product(nama: str = Form(...),
+                             harga_modal: int = Form(..., ge=0),
+                             qty_awal: int = Form(0, ge=0),
+                             harga_jual: int = Form(None, ge=0),
+                             stok_minimum: int = Form(0, ge=0),
                              fotos: list[UploadFile] = None):
         from .enroll import enroll_product
+        # Tanpa guard ini `for f in fotos` melempar TypeError -> 500. UI sudah
+        # mewajibkan minimal satu foto, tapi API tidak boleh bergantung ke UI.
+        if not fotos:
+            raise HTTPException(400, "Minimal satu foto barang diperlukan")
         # Baca isi upload di event loop (I/O, murah), sisanya di threadpool.
         isi = [(f.filename, await f.read()) for f in fotos]
 
@@ -127,6 +154,13 @@ def create_app(db_path=None, embedder=None, photo_detector=None):
                 for nama_file, data in isi:
                     p = tmp / nama_file
                     p.write_bytes(data)
+                    # Divalidasi di sini, bukan dibiarkan meledak di
+                    # enroll_product -> Image.open: pesan 500 di sana tidak
+                    # menyebut file mana yang rusak. Pola & pesan disamakan
+                    # dengan /api/scans-foto yang sudah 400.
+                    if not _gambar_valid(p):
+                        raise HTTPException(
+                            400, f"File bukan gambar valid: {nama_file}")
                     paths.append(p)
                 c = con()
                 pid = enroll_product(c, get_embedder(), nama, harga_modal, paths,
@@ -228,7 +262,14 @@ def create_app(db_path=None, embedder=None, photo_detector=None):
         if db.get_product(c, product_id) is None:
             raise HTTPException(404, "Produk tidak ditemukan")
         fields = {k: v for k, v in patch.model_dump().items() if v is not None}
-        db.update_product(c, product_id, **fields)
+        try:
+            db.update_product(c, product_id, **fields)
+        except sqlite3.IntegrityError as e:
+            # products.nama UNIQUE. Tanpa tangkapan ini user yang mengganti nama
+            # jadi nama yang sudah dipakai cuma melihat error 500 generik.
+            # Pesannya disamakan dengan /api/unknown/{crop_id}/produk-baru.
+            raise HTTPException(
+                400, f"Nama produk '{fields.get('nama')}' sudah dipakai") from e
         return {"ok": True}
 
     @app.post("/api/adjustments")
