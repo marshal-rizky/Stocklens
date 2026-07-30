@@ -296,6 +296,44 @@ def get_report_rows_by_scan(con):
     # KeyError, bukan diam-diam balik [] sambil menumbuhkan mapping-nya
 
 
+def get_tidak_terdeteksi(con, scan_id):
+    """Produk berstok > 0 yang TIDAK punya baris scan_items di scan ini.
+
+    Kenapa perlu: get_report_rows() JOIN ke scan_items, jadi barang yang sama
+    sekali tidak terdeteksi tidak punya baris dan HILANG dari laporan — bukan
+    tampil sebagai "selisih -20", tapi tidak ada. Padahal itu justru kasus
+    paling penting bagi pemilik warung (barang habis tanpa tercatat).
+
+    Syarat `qty_tercatat > 0`: produk yang belum pernah diisi stok bukan
+    "hilang", cuma belum dipakai — memunculkannya hanya jadi kebisingan.
+
+    Baris unknown (`product_id IS NULL`) TIDAK dianggap bukti terdeteksi:
+    ia tidak memberi tahu produk mana yang terlihat.
+    """
+    stock = get_stock_map(con)
+    terdeteksi = {
+        r["product_id"]
+        for r in con.execute(
+            "SELECT DISTINCT product_id FROM scan_items"
+            " WHERE scan_id=? AND product_id IS NOT NULL",
+            (scan_id,),
+        ).fetchall()
+    }
+    rows = con.execute(
+        "SELECT id, nama, harga_modal FROM products ORDER BY nama"
+    ).fetchall()
+    out = []
+    for r in rows:
+        qty = stock.get(r["id"], 0)
+        if qty > 0 and r["id"] not in terdeteksi:
+            out.append({
+                "id": r["id"], "nama": r["nama"],
+                "harga_modal": r["harga_modal"], "qty_tercatat": qty,
+                "nilai_rp": qty * r["harga_modal"],
+            })
+    return out
+
+
 def latest_scan_id(con):
     row = con.execute("SELECT MAX(id) AS mid FROM scans").fetchone()
     return row["mid"]

@@ -319,3 +319,43 @@ def test_get_unknown_crop_bawa_embedding():
     c = db.get_unknown_crop(con, cid)
     assert np.allclose(c["embedding"], [0.5, 0.5])
     assert db.get_unknown_crop(con, 999) is None
+
+
+# --- barang tak terdeteksi saat scan ---------------------------------------
+
+def test_get_tidak_terdeteksi_hanya_yang_berstok_dan_tak_terdeteksi():
+    con = _con()
+    a = db.add_product(con, "Indomie", 3200, np.zeros(4, dtype=np.float32))
+    b = db.add_product(con, "Yakult", 2000, np.zeros(4, dtype=np.float32))
+    c = db.add_product(con, "Belum pernah distok", 500, np.zeros(4, dtype=np.float32))
+    db.set_stock(con, a, 40)
+    db.set_stock(con, b, 20)
+    # c sengaja tanpa entri ledger sama sekali
+
+    sid = db.add_scan(con, tipe="foto")
+    db.add_scan_item(con, sid, a, 38, 0.9)      # hanya Indomie terdeteksi
+
+    hasil = db.get_tidak_terdeteksi(con, sid)
+    assert [h["nama"] for h in hasil] == ["Yakult"], (
+        "hanya produk berstok > 0 yang tidak terdeteksi; produk tanpa stok "
+        "bukan 'hilang', cuma belum pernah diisi")
+    assert hasil[0]["qty_tercatat"] == 20
+    assert hasil[0]["nilai_rp"] == 20 * 2000
+
+
+def test_get_tidak_terdeteksi_stok_nol_tidak_dihitung():
+    con = _con()
+    a = db.add_product(con, "Habis", 1000, np.zeros(4, dtype=np.float32))
+    db.set_stock(con, a, 0)
+    sid = db.add_scan(con, tipe="foto")
+    assert db.get_tidak_terdeteksi(con, sid) == []
+
+
+def test_get_tidak_terdeteksi_item_unknown_tidak_menutupi_produk():
+    """Baris scan_items dengan product_id NULL (unknown) bukan bukti terdeteksi."""
+    con = _con()
+    a = db.add_product(con, "Indomie", 3200, np.zeros(4, dtype=np.float32))
+    db.set_stock(con, a, 10)
+    sid = db.add_scan(con, tipe="foto")
+    db.add_scan_item(con, sid, None, 5, 0.4)    # unknown saja
+    assert [h["nama"] for h in db.get_tidak_terdeteksi(con, sid)] == ["Indomie"]

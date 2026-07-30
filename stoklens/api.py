@@ -161,7 +161,8 @@ def create_app(db_path=None, embedder=None, photo_detector=None):
             raise HTTPException(404, "Scan tidak ditemukan")
         # Key "scan" tambahan (additive) — konsumen lama yang cuma baca
         # items/total_* tetap aman.
-        return build_report(db.get_report_rows(c, scan_id)) | {
+        return build_report(db.get_report_rows(c, scan_id),
+                            tidak_terdeteksi=db.get_tidak_terdeteksi(c, scan_id)) | {
             "scan": scan,
         }
 
@@ -188,7 +189,9 @@ def create_app(db_path=None, embedder=None, photo_detector=None):
             sid = scan_photos(c, get_embedder(), images, detector=photo_detector,
                               guided_product_id=guided_product_id,
                               lokasi_rak=lokasi_rak, read_expiry=read_expiry)
-            return sid, build_report(db.get_report_rows(c, sid))
+            return sid, build_report(
+                db.get_report_rows(c, sid),
+                tidak_terdeteksi=db.get_tidak_terdeteksi(c, sid))
 
         sid, rep = await run_in_threadpool(kerja)
         return {"scan_id": sid, "report": rep}
@@ -250,7 +253,8 @@ def create_app(db_path=None, embedder=None, photo_detector=None):
             db.add_scan_item(c, scan_id, item.product_id, item.qty_fisik)
         # Report WAJIB dihitung sebelum terapkan: qty_tercatat-nya diambil dari
         # ledger saat ini, kalau ledger ditulis duluan semua selisih jadi 0.
-        rep = build_report(db.get_report_rows(c, scan_id))
+        rep = build_report(db.get_report_rows(c, scan_id),
+                           tidak_terdeteksi=db.get_tidak_terdeteksi(c, scan_id))
         if body.terapkan:
             db.terapkan_opname(c, scan_id)
         return {"scan_id": scan_id, "diterapkan": body.terapkan, "report": rep}

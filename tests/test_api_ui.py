@@ -299,3 +299,44 @@ def test_create_product_dengan_harga_jual_dan_stok_minimum(tmp_path):
     assert detail["harga_jual"] == 3500
     assert detail["stok_minimum"] == 2
     assert detail["qty"] == 5
+
+
+# --- barang tak terdeteksi muncul di laporan --------------------------------
+
+def test_report_endpoint_bawa_barang_tak_terdeteksi(tmp_path):
+    """Barang berstok yang tidak terdeteksi harus TERLIHAT, tanpa jadi shrinkage.
+
+    Kasus nyata: Yakult habis dicuri, jadi 0 deteksi. Sebelum perbaikan ini
+    barangnya hilang total dari laporan — user tidak diberi tahu apa pun.
+    """
+    dbp = str(tmp_path / "t.db")
+    con = db.connect(dbp)
+    a = db.add_product(con, "Indomie", 3200, np.zeros(4, dtype=np.float32))
+    b = db.add_product(con, "Yakult", 2000, np.zeros(4, dtype=np.float32))
+    db.set_stock(con, a, 40)
+    db.set_stock(con, b, 20)
+    sid = db.add_scan(con, tipe="foto")
+    db.add_scan_item(con, sid, a, 38, 0.9)      # Yakult tidak terdeteksi
+    con.close()
+
+    rep = TestClient(create_app(db_path=dbp)).get(f"/report/{sid}").json()
+
+    assert [h["nama"] for h in rep["tidak_terdeteksi"]] == ["Yakult"]
+    assert rep["total_tidak_terdeteksi_rp"] == 40000
+    # shrinkage TETAP hanya dari selisih Indomie — tidak boleh ikut naik
+    assert rep["total_shrinkage_rp"] == 6400
+
+
+def test_opname_manual_bawa_barang_tak_terdeteksi(tmp_path):
+    dbp = str(tmp_path / "t.db")
+    con = db.connect(dbp)
+    a = db.add_product(con, "Indomie", 3200, np.zeros(4, dtype=np.float32))
+    b = db.add_product(con, "Yakult", 2000, np.zeros(4, dtype=np.float32))
+    db.set_stock(con, a, 40)
+    db.set_stock(con, b, 20)
+    con.close()
+
+    r = TestClient(create_app(db_path=dbp)).post(
+        "/api/opname-manual", json={"items": [{"product_id": a, "qty_fisik": 38}]})
+    rep = r.json()["report"]
+    assert [h["nama"] for h in rep["tidak_terdeteksi"]] == ["Yakult"]
