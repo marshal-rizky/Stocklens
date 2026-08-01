@@ -9,6 +9,7 @@ import shutil
 import sqlite3
 import tempfile
 from collections import Counter
+from contextlib import closing
 from pathlib import Path
 
 from fastapi import FastAPI, Form, HTTPException, UploadFile
@@ -118,6 +119,20 @@ def create_app(db_path=None, embedder=None, photo_detector=None):
     app = FastAPI(title="StokLens")
     crops_prefix = crops.DIR_CROPS_DEFAULT.as_posix()
 
+    # Setiap pemakaian con() WAJIB dibungkus contextlib.closing. Tanpa itu
+    # koneksinya cuma menunggu garbage collector: CPython "biasanya" menutupnya,
+    # tapi tidak dijamin, dan sementara itu file DB tetap tertahan (di Windows
+    # sampai tidak bisa dihapus) sambil memakan file descriptor per request.
+    #
+    # Sengaja TIDAK memakai dependency FastAPI (`Depends`) walau itu pola yang
+    # biasa: endpoint di sini `def` (sinkron), dan FastAPI menjalankan
+    # dependency sinkron di worker threadpool yang BELUM TENTU thread yang sama
+    # dengan yang menjalankan handler-nya. Dengan check_same_thread=True bawaan
+    # sqlite3, koneksi yang lahir di dependency lalu dipakai di handler melempar
+    # ProgrammingError begitu ada dua request bersamaan — dan tidak terlihat
+    # sama sekali saat request datang satu-satu (anyio memakai ulang worker yang
+    # menganggur, jadi kebetulan se-thread). Dijaga oleh
+    # tests/test_api_koneksi.py::test_koneksi_aman_saat_request_bersamaan.
     def con():
         return db.connect(db_path)
 
@@ -178,12 +193,12 @@ def create_app(db_path=None, embedder=None, photo_detector=None):
                         raise HTTPException(
                             400, f"File bukan gambar valid: {nama_file}")
                     paths.append(p)
-                c = con()
-                pid = enroll_product(c, get_embedder(), nama, harga_modal, paths,
-                                     harga_jual=harga_jual, qty_awal=qty_awal)
-                if stok_minimum > 0:
-                    db.update_product(c, pid, stok_minimum=stok_minimum)
-                return pid
+                with closing(con()) as c:
+                    pid = enroll_product(c, get_embedder(), nama, harga_modal, paths,
+                                         harga_jual=harga_jual, qty_awal=qty_awal)
+                    if stok_minimum > 0:
+                        db.update_product(c, pid, stok_minimum=stok_minimum)
+                    return pid
             finally:
                 shutil.rmtree(tmp, ignore_errors=True)
 
@@ -198,23 +213,25 @@ def create_app(db_path=None, embedder=None, photo_detector=None):
         def kerja():
             tmp = Path(tempfile.mkdtemp()) / nama_file
             tmp.write_bytes(data)
-            return run_scan(con(), get_embedder(), tmp, lokasi_rak=lokasi_rak,
-                            count_mode=count_mode)
+            with closing(con()) as c:
+                return run_scan(c, get_embedder(), tmp, lokasi_rak=lokasi_rak,
+                                count_mode=count_mode)
 
         return {"scan_id": await run_in_threadpool(kerja)}
 
     @app.get("/report/{scan_id}")
     def report(scan_id: int):
-        c = con()
-        scan = db.get_scan(c, scan_id)
-        if scan is None:
-            raise HTTPException(404, "Scan tidak ditemukan")
-        # Key "scan" tambahan (additive) — konsumen lama yang cuma baca
-        # items/total_* tetap aman.
-        return build_report(db.get_report_rows(c, scan_id),
-                            tidak_terdeteksi=db.get_tidak_terdeteksi(c, scan_id)) | {
-            "scan": scan,
-        }
+        with closing(con()) as c:
+            scan = db.get_scan(c, scan_id)
+            if scan is None:
+                raise HTTPException(404, "Scan tidak ditemukan")
+            # Key "scan" tambahan (additive) — konsumen lama yang cuma baca
+            # items/total_* tetap aman.
+            return build_report(
+                db.get_report_rows(c, scan_id),
+                tidak_terdeteksi=db.get_tidak_terdeteksi(c, scan_id)) | {
+                    "scan": scan,
+                }
 
     @app.post("/api/scans-foto")
     async def api_scan_foto(fotos: list[UploadFile], lokasi_rak: str = Form(None),
@@ -259,13 +276,13 @@ def create_app(db_path=None, embedder=None, photo_detector=None):
                 if img is None:
                     raise HTTPException(400, f"File bukan gambar valid: {nama_file}")
                 images.append(img)
-            c = con()
-            sid = scan_photos(c, get_embedder(), images, detector=photo_detector,
-                              guided_product_id=guided_product_id,
-                              lokasi_rak=lokasi_rak, read_expiry=read_expiry)
-            return sid, build_report(
-                db.get_report_rows(c, sid),
-                tidak_terdeteksi=db.get_tidak_terdeteksi(c, sid))
+            with closing(con()) as c:
+                sid = scan_photos(c, get_embedder(), images, detector=photo_detector,
+                                  guided_product_id=guided_product_id,
+                                  lokasi_rak=lokasi_rak, read_expiry=read_expiry)
+                return sid, build_report(
+                    db.get_report_rows(c, sid),
+                    tidak_terdeteksi=db.get_tidak_terdeteksi(c, sid))
 
         sid, rep = await run_in_threadpool(kerja)
         return {"scan_id": sid, "report": rep}
@@ -282,158 +299,168 @@ def create_app(db_path=None, embedder=None, photo_detector=None):
 
     @app.get("/api/products")
     def api_products():
-        c = con()
-        stock = db.get_stock_map(c)
-        return [_product_row(p, stock) for p in db.all_products(c)]
+        with closing(con()) as c:
+            stock = db.get_stock_map(c)
+            return [_product_row(p, stock) for p in db.all_products(c)]
 
     @app.get("/api/products/{product_id}")
     def api_product_detail(product_id: int):
-        c = con()
-        p = db.get_product(c, product_id)
-        if p is None:
-            raise HTTPException(404, "Produk tidak ditemukan")
-        p = _product_row(p, db.get_stock_map(c))
-        p["ledger"] = db.get_ledger(c, product_id)
-        return p
+        with closing(con()) as c:
+            p = db.get_product(c, product_id)
+            if p is None:
+                raise HTTPException(404, "Produk tidak ditemukan")
+            p = _product_row(p, db.get_stock_map(c))
+            p["ledger"] = db.get_ledger(c, product_id)
+            return p
 
     @app.patch("/api/products/{product_id}")
     def api_product_patch(product_id: int, patch: ProductPatch):
-        c = con()
-        if db.get_product(c, product_id) is None:
-            raise HTTPException(404, "Produk tidak ditemukan")
-        fields = {k: v for k, v in patch.model_dump().items() if v is not None}
-        try:
-            db.update_product(c, product_id, **fields)
-        except sqlite3.IntegrityError as e:
-            # products.nama UNIQUE. Tanpa tangkapan ini user yang mengganti nama
-            # jadi nama yang sudah dipakai cuma melihat error 500 generik.
-            # Pesannya disamakan dengan /api/unknown/{crop_id}/produk-baru.
-            raise HTTPException(
-                400, f"Nama produk '{fields.get('nama')}' sudah dipakai") from e
-        return {"ok": True}
+        with closing(con()) as c:
+            if db.get_product(c, product_id) is None:
+                raise HTTPException(404, "Produk tidak ditemukan")
+            fields = {k: v for k, v in patch.model_dump().items() if v is not None}
+            try:
+                db.update_product(c, product_id, **fields)
+            except sqlite3.IntegrityError as e:
+                # products.nama UNIQUE. Tanpa tangkapan ini user yang mengganti
+                # nama jadi nama yang sudah dipakai cuma melihat error 500
+                # generik. Pesannya disamakan dengan
+                # /api/unknown/{crop_id}/produk-baru.
+                raise HTTPException(
+                    400, f"Nama produk '{fields.get('nama')}' sudah dipakai") from e
+            return {"ok": True}
 
     @app.post("/api/adjustments")
     def api_adjustment(adj: Adjustment):
-        c = con()
-        if db.get_product(c, adj.product_id) is None:
-            raise HTTPException(404, "Produk tidak ditemukan")
-        qty_lama = db.get_stock_map(c).get(adj.product_id, 0)
-        try:
-            qty_baru = accounting.apply_adjustment(qty_lama, adj.delta)
-        except ValueError as e:
-            raise HTTPException(400, str(e))
-        db.set_stock(c, adj.product_id, qty_baru, sumber="penyesuaian",
-                     alasan=adj.alasan)
-        return {"qty_lama": qty_lama, "qty_baru": qty_baru}
+        with closing(con()) as c:
+            if db.get_product(c, adj.product_id) is None:
+                raise HTTPException(404, "Produk tidak ditemukan")
+            qty_lama = db.get_stock_map(c).get(adj.product_id, 0)
+            try:
+                qty_baru = accounting.apply_adjustment(qty_lama, adj.delta)
+            except ValueError as e:
+                raise HTTPException(400, str(e))
+            db.set_stock(c, adj.product_id, qty_baru, sumber="penyesuaian",
+                         alasan=adj.alasan)
+            return {"qty_lama": qty_lama, "qty_baru": qty_baru}
 
     @app.post("/api/opname-manual")
     def api_opname_manual(body: OpnameManual):
-        c = con()
-        # Validasi SEBELUM add_scan: request yang ditolak tidak boleh
-        # meninggalkan baris scans/scan_items setengah jadi.
-        if not body.items:
-            raise HTTPException(400, "Opname harus berisi minimal satu barang")
-        ids = [i.product_id for i in body.items]
-        # Dobel ditolak, bukan digabung: menebak maksud user menyembunyikan bug
-        # di sisi pemanggil. Dan kalau lolos, kedua baris masuk laporan sehingga
-        # total_shrinkage_rp menghitung ganda.
-        # Daftar id diurutkan supaya pesannya deterministik.
-        dobel = sorted(i for i, n in Counter(ids).items() if n > 1)
-        if dobel:
-            raise HTTPException(
-                400, "product_id dobel dalam satu opname: "
-                     + ", ".join(map(str, dobel)))
-        # get_report_rows JOIN ke products, jadi id yang tidak ada terbuang dari
-        # laporan tanpa pesan apa pun — user tidak tahu itemnya tidak terhitung.
-        # Semua id diambil satu query, bukan get_product per item (hindari N+1).
-        # Sumbernya WAJIB tabel products, bukan get_stock_map: produk yang baru
-        # di-enroll belum punya baris stock_ledger dan tetap sah untuk di-opname.
-        dikenal = {p["id"] for p in db.all_products(c)}
-        asing = sorted(set(ids) - dikenal)
-        if asing:
-            raise HTTPException(
-                400, "product_id tidak dikenal: " + ", ".join(map(str, asing)))
-        scan_id = db.add_scan(c, lokasi_rak=body.lokasi_rak, tipe="manual")
-        for item in body.items:
-            db.add_scan_item(c, scan_id, item.product_id, item.qty_fisik)
-        # Report WAJIB dihitung sebelum terapkan: qty_tercatat-nya diambil dari
-        # ledger saat ini, kalau ledger ditulis duluan semua selisih jadi 0.
-        rep = build_report(db.get_report_rows(c, scan_id),
-                           tidak_terdeteksi=db.get_tidak_terdeteksi(c, scan_id))
-        if body.terapkan:
-            db.terapkan_opname(c, scan_id)
-        return {"scan_id": scan_id, "diterapkan": body.terapkan, "report": rep}
+        with closing(con()) as c:
+            # Validasi SEBELUM add_scan: request yang ditolak tidak boleh
+            # meninggalkan baris scans/scan_items setengah jadi.
+            if not body.items:
+                raise HTTPException(400, "Opname harus berisi minimal satu barang")
+            ids = [i.product_id for i in body.items]
+            # Dobel ditolak, bukan digabung: menebak maksud user menyembunyikan
+            # bug di sisi pemanggil. Dan kalau lolos, kedua baris masuk laporan
+            # sehingga total_shrinkage_rp menghitung ganda.
+            # Daftar id diurutkan supaya pesannya deterministik.
+            dobel = sorted(i for i, n in Counter(ids).items() if n > 1)
+            if dobel:
+                raise HTTPException(
+                    400, "product_id dobel dalam satu opname: "
+                         + ", ".join(map(str, dobel)))
+            # get_report_rows JOIN ke products, jadi id yang tidak ada terbuang
+            # dari laporan tanpa pesan apa pun — user tidak tahu itemnya tidak
+            # terhitung. Semua id diambil satu query, bukan get_product per item
+            # (hindari N+1). Sumbernya WAJIB tabel products, bukan get_stock_map:
+            # produk yang baru di-enroll belum punya baris stock_ledger dan tetap
+            # sah untuk di-opname.
+            dikenal = {p["id"] for p in db.all_products(c)}
+            asing = sorted(set(ids) - dikenal)
+            if asing:
+                raise HTTPException(
+                    400, "product_id tidak dikenal: " + ", ".join(map(str, asing)))
+            scan_id = db.add_scan(c, lokasi_rak=body.lokasi_rak, tipe="manual")
+            for item in body.items:
+                db.add_scan_item(c, scan_id, item.product_id, item.qty_fisik)
+            # Report WAJIB dihitung sebelum terapkan: qty_tercatat-nya diambil
+            # dari ledger saat ini, kalau ledger ditulis duluan semua selisih
+            # jadi 0.
+            rep = build_report(db.get_report_rows(c, scan_id),
+                               tidak_terdeteksi=db.get_tidak_terdeteksi(c, scan_id))
+            if body.terapkan:
+                db.terapkan_opname(c, scan_id)
+            return {"scan_id": scan_id, "diterapkan": body.terapkan, "report": rep}
 
     @app.get("/api/scans")
     def api_scans():
-        c = con()
-        scans = db.list_scans(c)
-        # Satu query untuk semua scan (bukan get_report_rows per-scan di loop) —
-        # jumlah query jadi konstan, tidak tumbuh mengikuti jumlah scan.
-        rows_per_scan = db.get_report_rows_by_scan(c)
-        out = []
-        for s in scans:
-            rep = build_report(rows_per_scan.get(s["id"], []))
-            out.append(s | {
-                "total_shrinkage_rp": rep["total_shrinkage_rp"],
-                "total_rugi_expired_rp": rep["total_rugi_expired_rp"],
-            })
-        return out
+        with closing(con()) as c:
+            scans = db.list_scans(c)
+            # Satu query untuk semua scan (bukan get_report_rows per-scan di
+            # loop) — jumlah query jadi konstan, tidak tumbuh mengikuti jumlah
+            # scan.
+            rows_per_scan = db.get_report_rows_by_scan(c)
+            out = []
+            for s in scans:
+                rep = build_report(rows_per_scan.get(s["id"], []))
+                out.append(s | {
+                    "total_shrinkage_rp": rep["total_shrinkage_rp"],
+                    "total_rugi_expired_rp": rep["total_rugi_expired_rp"],
+                })
+            return out
 
     @app.post("/api/opname/{scan_id}/terapkan")
     def api_opname_terapkan(scan_id: int):
-        c = con()
-        scan = db.get_scan(c, scan_id)
-        if scan is None:
-            raise HTTPException(404, "Scan tidak ditemukan")
-        # Guard terapkan ganda: snapshot lama tidak boleh menimpa stok sekarang.
-        if scan["terapkan_pada"] is not None:
-            raise HTTPException(409, "Opname ini sudah diterapkan")
-        try:
-            jumlah = db.terapkan_opname(c, scan_id)
-        except db.OpnameSudahDiterapkan as e:
-            # Cek di atas cuma untuk pesan; guard sebenarnya ada di helper
-            # (compare-and-set). Sampai sini artinya request lain menang balapan
-            # setelah cek — jawabannya 409, bukan 500. Catatan: kalau dua
-            # penulis benar-benar tumpang tindih, SQLite bisa lebih dulu
-            # melempar "database is locked" dan itu tetap jadi 500.
-            raise HTTPException(409, "Opname ini sudah diterapkan") from e
-        return {"ok": True, "jumlah_item": jumlah}
+        with closing(con()) as c:
+            scan = db.get_scan(c, scan_id)
+            if scan is None:
+                raise HTTPException(404, "Scan tidak ditemukan")
+            # Guard terapkan ganda: snapshot lama tidak boleh menimpa stok
+            # sekarang.
+            if scan["terapkan_pada"] is not None:
+                raise HTTPException(409, "Opname ini sudah diterapkan")
+            try:
+                jumlah = db.terapkan_opname(c, scan_id)
+            except db.OpnameSudahDiterapkan as e:
+                # Cek di atas cuma untuk pesan; guard sebenarnya ada di helper
+                # (compare-and-set). Sampai sini artinya request lain menang
+                # balapan setelah cek — jawabannya 409, bukan 500. Catatan: kalau
+                # dua penulis benar-benar tumpang tindih, SQLite bisa lebih dulu
+                # melempar "database is locked" dan itu tetap jadi 500.
+                raise HTTPException(409, "Opname ini sudah diterapkan") from e
+            return {"ok": True, "jumlah_item": jumlah}
 
     @app.get("/api/dashboard")
     def api_dashboard():
-        c = con()
-        products = [dict(p) for p in db.all_products(c)]
-        stock = db.get_stock_map(c)
-        sid = db.latest_scan_id(c)
-        scan_terakhir = None
-        if sid is not None:
-            rep = build_report(db.get_report_rows(c, sid))
-            scan_terakhir = db.get_scan(c, sid) | {
-                "total_shrinkage_rp": rep["total_shrinkage_rp"],
-                "total_rugi_expired_rp": rep["total_rugi_expired_rp"],
+        with closing(con()) as c:
+            products = [dict(p) for p in db.all_products(c)]
+            stock = db.get_stock_map(c)
+            sid = db.latest_scan_id(c)
+            scan_terakhir = None
+            if sid is not None:
+                rep = build_report(db.get_report_rows(c, sid))
+                scan_terakhir = db.get_scan(c, sid) | {
+                    "total_shrinkage_rp": rep["total_shrinkage_rp"],
+                    "total_rugi_expired_rp": rep["total_rugi_expired_rp"],
+                }
+            return {
+                "nilai_stok_rp": accounting.nilai_stok(products, stock),
+                "potensi_laba_rp": accounting.potensi_laba(products, stock),
+                "stok_menipis": accounting.stok_menipis(products, stock),
+                "scan_terakhir": scan_terakhir,
             }
-        return {
-            "nilai_stok_rp": accounting.nilai_stok(products, stock),
-            "potensi_laba_rp": accounting.potensi_laba(products, stock),
-            "stok_menipis": accounting.stok_menipis(products, stock),
-            "scan_terakhir": scan_terakhir,
-        }
 
     @app.get("/api/export/stok.csv", response_class=PlainTextResponse)
     def api_export_stok():
-        c = con()
-        stock = db.get_stock_map(c)
-        buf = io.StringIO()
-        w = csv.writer(buf)
-        w.writerow(["id", "nama", "qty", "harga_modal", "harga_jual",
-                    "margin_pct", "nilai_stok_rp"])
-        for p in db.all_products(c):
-            qty = stock.get(p["id"], 0)
-            w.writerow([p["id"], p["nama"], qty, p["harga_modal"],
-                        p["harga_jual"] or "",
-                        accounting.margin_pct(p["harga_modal"], p["harga_jual"]) or "",
-                        qty * p["harga_modal"]])
+        # Seluruh CSV dirakit di StringIO SEBELUM response dibuat, jadi koneksi
+        # boleh ditutup di sini. Kalau kelak diubah jadi StreamingResponse yang
+        # menghasilkan baris sambil dikirim, koneksinya sudah tertutup saat
+        # generator jalan — pindahkan penutupannya ke akhir generator.
+        with closing(con()) as c:
+            stock = db.get_stock_map(c)
+            buf = io.StringIO()
+            w = csv.writer(buf)
+            w.writerow(["id", "nama", "qty", "harga_modal", "harga_jual",
+                        "margin_pct", "nilai_stok_rp"])
+            for p in db.all_products(c):
+                qty = stock.get(p["id"], 0)
+                w.writerow([p["id"], p["nama"], qty, p["harga_modal"],
+                            p["harga_jual"] or "",
+                            accounting.margin_pct(p["harga_modal"],
+                                                  p["harga_jual"]) or "",
+                            qty * p["harga_modal"]])
         return PlainTextResponse(
             buf.getvalue(), media_type="text/csv",
             headers={"Content-Disposition": "attachment; filename=stok.csv"})
@@ -444,53 +471,55 @@ def create_app(db_path=None, embedder=None, photo_detector=None):
 
     @app.get("/api/scans/{scan_id}/unknown")
     def api_scan_unknown(scan_id: int):
-        c = con()
-        out = []
-        for crop in db.list_unknown_crops(c, scan_id=scan_id, hanya_belum=True):
-            out.append({
-                "id": crop["id"],
-                "crop_url": "/crops" + crop["crop_path"].removeprefix(crops_prefix),
-                "created_at": crop["created_at"],
-            })
-        return out
+        with closing(con()) as c:
+            out = []
+            for crop in db.list_unknown_crops(c, scan_id=scan_id, hanya_belum=True):
+                out.append({
+                    "id": crop["id"],
+                    "crop_url": "/crops" + crop["crop_path"].removeprefix(crops_prefix),
+                    "created_at": crop["created_at"],
+                })
+            return out
 
     @app.post("/api/unknown/{crop_id}/assign")
     def api_unknown_assign(crop_id: int, body: UnknownAssign):
-        c = con()
-        crop = db.get_unknown_crop(c, crop_id)
-        if crop is None:
-            raise HTTPException(404, "Crop tidak ditemukan")
-        if db.get_product(c, body.product_id) is None:
-            raise HTTPException(404, "Produk tidak ditemukan")
-        if crop["product_id"] is not None:
-            raise HTTPException(409, "Crop ini sudah di-resolve")
-        db.add_product_embedding(c, body.product_id, crop["embedding"], sumber="scan")
-        db.resolve_unknown_crop(c, crop_id, body.product_id)
-        return {
-            "ok": True,
-            "product_id": body.product_id,
-            "jumlah_galeri": db.count_product_embeddings(c, body.product_id),
-        }
+        with closing(con()) as c:
+            crop = db.get_unknown_crop(c, crop_id)
+            if crop is None:
+                raise HTTPException(404, "Crop tidak ditemukan")
+            if db.get_product(c, body.product_id) is None:
+                raise HTTPException(404, "Produk tidak ditemukan")
+            if crop["product_id"] is not None:
+                raise HTTPException(409, "Crop ini sudah di-resolve")
+            db.add_product_embedding(c, body.product_id, crop["embedding"],
+                                     sumber="scan")
+            db.resolve_unknown_crop(c, crop_id, body.product_id)
+            return {
+                "ok": True,
+                "product_id": body.product_id,
+                "jumlah_galeri": db.count_product_embeddings(c, body.product_id),
+            }
 
     @app.post("/api/unknown/{crop_id}/produk-baru")
     def api_unknown_produk_baru(crop_id: int, body: UnknownProdukBaru):
-        c = con()
-        crop = db.get_unknown_crop(c, crop_id)
-        if crop is None:
-            raise HTTPException(404, "Crop tidak ditemukan")
-        if crop["product_id"] is not None:
-            raise HTTPException(409, "Crop ini sudah di-resolve")
-        try:
-            pid = db.add_product(c, body.nama, body.harga_modal, crop["embedding"],
-                                 harga_jual=body.harga_jual)
-        except sqlite3.IntegrityError as e:
-            raise HTTPException(400, f"Nama produk '{body.nama}' sudah dipakai") from e
-        if body.qty_awal:
-            db.set_stock(c, pid, body.qty_awal)
-        if body.stok_minimum > 0:
-            db.update_product(c, pid, stok_minimum=body.stok_minimum)
-        db.resolve_unknown_crop(c, crop_id, pid)
-        return {"ok": True, "product_id": pid}
+        with closing(con()) as c:
+            crop = db.get_unknown_crop(c, crop_id)
+            if crop is None:
+                raise HTTPException(404, "Crop tidak ditemukan")
+            if crop["product_id"] is not None:
+                raise HTTPException(409, "Crop ini sudah di-resolve")
+            try:
+                pid = db.add_product(c, body.nama, body.harga_modal,
+                                     crop["embedding"], harga_jual=body.harga_jual)
+            except sqlite3.IntegrityError as e:
+                raise HTTPException(
+                    400, f"Nama produk '{body.nama}' sudah dipakai") from e
+            if body.qty_awal:
+                db.set_stock(c, pid, body.qty_awal)
+            if body.stok_minimum > 0:
+                db.update_product(c, pid, stok_minimum=body.stok_minimum)
+            db.resolve_unknown_crop(c, crop_id, pid)
+            return {"ok": True, "product_id": pid}
 
     @app.get("/")
     def root():
