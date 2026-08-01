@@ -8,6 +8,7 @@ import os
 import shutil
 import sqlite3
 import tempfile
+from collections import Counter
 from pathlib import Path
 
 from fastapi import FastAPI, Form, HTTPException, UploadFile
@@ -298,14 +299,18 @@ def create_app(db_path=None, embedder=None, photo_detector=None):
         # di sisi pemanggil. Dan kalau lolos, kedua baris masuk laporan sehingga
         # total_shrinkage_rp menghitung ganda.
         # Daftar id diurutkan supaya pesannya deterministik.
-        dobel = sorted({i for i in ids if ids.count(i) > 1})
+        dobel = sorted(i for i, n in Counter(ids).items() if n > 1)
         if dobel:
             raise HTTPException(
                 400, "product_id dobel dalam satu opname: "
                      + ", ".join(map(str, dobel)))
         # get_report_rows JOIN ke products, jadi id yang tidak ada terbuang dari
         # laporan tanpa pesan apa pun — user tidak tahu itemnya tidak terhitung.
-        asing = sorted({i for i in ids if db.get_product(c, i) is None})
+        # Semua id diambil satu query, bukan get_product per item (hindari N+1).
+        # Sumbernya WAJIB tabel products, bukan get_stock_map: produk yang baru
+        # di-enroll belum punya baris stock_ledger dan tetap sah untuk di-opname.
+        dikenal = {p["id"] for p in db.all_products(c)}
+        asing = sorted(set(ids) - dikenal)
         if asing:
             raise HTTPException(
                 400, "product_id tidak dikenal: " + ", ".join(map(str, asing)))

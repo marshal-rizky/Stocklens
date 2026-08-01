@@ -196,6 +196,23 @@ def test_opname_manual_product_id_tak_dikenal_ditolak(tmp_path):
     assert r.json()["detail"] == "product_id tidak dikenal: 4242, 9999"
 
 
+def test_opname_manual_terima_produk_yang_belum_punya_ledger(tmp_path):
+    """"Dikenal" = ada di tabel products, BUKAN ada di stock_ledger.
+
+    Fixture sengaja membuat Yakult tanpa set_stock, jadi dia tidak punya baris
+    stock_ledger. Kalau cek keberadaan dilakukan lewat get_stock_map, produk
+    yang baru di-enroll dan belum pernah di-opname akan ditolak sebagai "tidak
+    dikenal" — persis produk yang paling butuh opname pertamanya.
+    """
+    client, _ = _app(tmp_path)
+    con = db.connect(str(tmp_path / "t.db"))
+    yakult = next(p["id"] for p in db.all_products(con) if p["nama"] == "Yakult")
+    assert yakult not in db.get_stock_map(con), "prasyarat: Yakult tanpa ledger"
+    r = client.post("/api/opname-manual",
+                    json={"items": [{"product_id": yakult, "qty_fisik": 5}]})
+    assert r.status_code == 200
+
+
 def test_opname_manual_tolak_dulu_baru_id_tak_dikenal(tmp_path):
     """Dobel dicek sebelum id tak dikenal — pesannya harus soal dobel."""
     client, _ = _app(tmp_path)
