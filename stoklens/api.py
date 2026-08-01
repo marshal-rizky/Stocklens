@@ -31,6 +31,14 @@ MAKS_FOTO_PER_SCAN = 20                 # satu rak nyatanya 3–10 foto
 MAKS_BYTE_PER_FOTO = 15 * 1024 * 1024   # JPEG 12 MP HP ≈ 5 MB, jadi lapang
 
 
+def _galat_foto_terlalu_besar(nama_file, ukuran) -> HTTPException:
+    # Dipakai dua kali (jalur f.size dan jalur len(data)); angka batasnya dibaca
+    # dari konstanta supaya pesan ikut kalau batasnya disetel ulang.
+    return HTTPException(
+        400, f"Foto {nama_file} terlalu besar ({ukuran / 1024 / 1024:.1f} MB), "
+             f"maksimal {MAKS_BYTE_PER_FOTO // (1024 * 1024)} MB")
+
+
 def _gambar_valid(path) -> bool:
     """True kalau berkas benar-benar gambar yang bisa dibuka.
 
@@ -222,14 +230,16 @@ def create_app(db_path=None, embedder=None, photo_detector=None):
                      f"dikirim {len(fotos)}")
         isi = []
         for f in fotos:
+            # f.size sudah diisi parser multipart sebelum handler dipanggil, jadi
+            # foto raksasa ditolak tanpa pernah ditarik ke RAM. Tipenya boleh
+            # None (UploadFile yang dirakit manual, bukan dari multipart), maka
+            # len(data) tetap dicek sesudah read — kalau tidak, size=None jadi
+            # lubang yang meloloskan file besar.
+            if f.size is not None and f.size > MAKS_BYTE_PER_FOTO:
+                raise _galat_foto_terlalu_besar(f.filename, f.size)
             data = await f.read()
-            # Dicek di dalam loop, bukan setelah semua terbaca: file raksasa
-            # menghentikan request tanpa sisanya ikut ditarik ke memori.
             if len(data) > MAKS_BYTE_PER_FOTO:
-                raise HTTPException(
-                    400, f"Foto {f.filename} terlalu besar "
-                         f"({len(data) / 1024 / 1024:.1f} MB), maksimal "
-                         f"{MAKS_BYTE_PER_FOTO // (1024 * 1024)} MB")
+                raise _galat_foto_terlalu_besar(f.filename, len(data))
             isi.append((f.filename, data))
 
         def kerja():
