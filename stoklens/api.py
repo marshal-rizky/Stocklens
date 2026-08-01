@@ -23,6 +23,13 @@ from .webui import router as webui_router
 
 _STATIC_DIR = Path(__file__).parent / "webui" / "static"
 
+# Batas untuk /api/scans-foto. Yang dijaga RAM, bukan disk: cv2.imdecode
+# menghasilkan array BGR tak terkompresi (foto 12 MP ≈ 36 MB), dan scan_photos
+# menahan SEMUA foto sekaligus karena dedup-nya lintas foto. Tanpa batas, 60
+# foto ≈ 2 GB dan laptop demo kehabisan memori.
+MAKS_FOTO_PER_SCAN = 20                 # satu rak nyatanya 3–10 foto
+MAKS_BYTE_PER_FOTO = 15 * 1024 * 1024   # JPEG 12 MP HP ≈ 5 MB, jadi lapang
+
 
 def _gambar_valid(path) -> bool:
     """True kalau berkas benar-benar gambar yang bisa dibuka.
@@ -206,7 +213,24 @@ def create_app(db_path=None, embedder=None, photo_detector=None):
                             guided_product_id: int = Form(None),
                             read_expiry: bool = Form(True)):
         from .photo import scan_photos
-        isi = [(f.filename, await f.read()) for f in fotos]
+        # Kedua batas dicek SEBELUM decode — lihat MAKS_* di atas. Jumlah dicek
+        # duluan karena len(fotos) tersedia tanpa membaca satu byte pun: kiriman
+        # 60 foto ditolak tanpa pernah masuk memori.
+        if len(fotos) > MAKS_FOTO_PER_SCAN:
+            raise HTTPException(
+                400, f"Maksimal {MAKS_FOTO_PER_SCAN} foto per scan, "
+                     f"dikirim {len(fotos)}")
+        isi = []
+        for f in fotos:
+            data = await f.read()
+            # Dicek di dalam loop, bukan setelah semua terbaca: file raksasa
+            # menghentikan request tanpa sisanya ikut ditarik ke memori.
+            if len(data) > MAKS_BYTE_PER_FOTO:
+                raise HTTPException(
+                    400, f"Foto {f.filename} terlalu besar "
+                         f"({len(data) / 1024 / 1024:.1f} MB), maksimal "
+                         f"{MAKS_BYTE_PER_FOTO // (1024 * 1024)} MB")
+            isi.append((f.filename, data))
 
         def kerja():
             import cv2
