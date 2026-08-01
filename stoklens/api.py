@@ -289,6 +289,26 @@ def create_app(db_path=None, embedder=None, photo_detector=None):
     @app.post("/api/opname-manual")
     def api_opname_manual(body: OpnameManual):
         c = con()
+        # Validasi SEBELUM add_scan: request yang ditolak tidak boleh
+        # meninggalkan baris scans/scan_items setengah jadi.
+        if not body.items:
+            raise HTTPException(400, "Opname harus berisi minimal satu barang")
+        ids = [i.product_id for i in body.items]
+        # Dobel ditolak, bukan digabung: menebak maksud user menyembunyikan bug
+        # di sisi pemanggil. Dan kalau lolos, kedua baris masuk laporan sehingga
+        # total_shrinkage_rp menghitung ganda.
+        # Daftar id diurutkan supaya pesannya deterministik.
+        dobel = sorted({i for i in ids if ids.count(i) > 1})
+        if dobel:
+            raise HTTPException(
+                400, "product_id dobel dalam satu opname: "
+                     + ", ".join(map(str, dobel)))
+        # get_report_rows JOIN ke products, jadi id yang tidak ada terbuang dari
+        # laporan tanpa pesan apa pun — user tidak tahu itemnya tidak terhitung.
+        asing = sorted({i for i in ids if db.get_product(c, i) is None})
+        if asing:
+            raise HTTPException(
+                400, "product_id tidak dikenal: " + ", ".join(map(str, asing)))
         scan_id = db.add_scan(c, lokasi_rak=body.lokasi_rak, tipe="manual")
         for item in body.items:
             db.add_scan_item(c, scan_id, item.product_id, item.qty_fisik)
