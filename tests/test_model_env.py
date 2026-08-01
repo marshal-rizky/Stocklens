@@ -11,6 +11,9 @@ Nama env-nya sengaja diuji di KEDUA modul: nilainya di-inline di dua tempat
 (mengikuti pola STOKLENS_DB di api.py), jadi salah ketik di salah satunya tidak
 akan ketahuan tanpa test ini.
 """
+import sys
+import types
+
 import pytest
 
 from stoklens import db, photo, scan
@@ -22,7 +25,14 @@ class _Ditangkap(Exception):
 
 @pytest.fixture
 def rekam_bobot(monkeypatch):
-    """Catat path yang diteruskan ke YOLO(), lalu hentikan eksekusi."""
+    """Catat path yang diteruskan ke YOLO(), lalu hentikan eksekusi.
+
+    Modul `ultralytics` PALSU disuntikkan ke sys.modules, bukan memonkeypatch
+    yang asli: `photo.py` dan `scan.py` sengaja meng-import ultralytics secara
+    lazy supaya keduanya tetap bisa di-import tanpa torch, dan CI memang tidak
+    memasang torch untuk membuktikan itu. Menyentuh `ultralytics.YOLO` langsung
+    akan menuntut paketnya terpasang — merusak properti yang justru dijaga.
+    """
     dipakai = []
 
     class FakeYOLO:
@@ -30,7 +40,9 @@ def rekam_bobot(monkeypatch):
             dipakai.append(path)
             raise _Ditangkap
 
-    monkeypatch.setattr("ultralytics.YOLO", FakeYOLO)
+    palsu = types.ModuleType("ultralytics")
+    palsu.YOLO = FakeYOLO
+    monkeypatch.setitem(sys.modules, "ultralytics", palsu)
     return dipakai
 
 
