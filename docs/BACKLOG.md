@@ -113,28 +113,58 @@ rak sendiri.
    > Salah — endpoint itu memanggil `build_report` **sekali** untuk scan terakhir saja.
    > Yang benar-benar N+1 cuma `/api/scans`. Jangan "memperbaiki" `/api/dashboard`.
 
-## Edge case yang sengaja ditunda (dari deep review 2026-07-30)
+## Edge case yang sengaja ditunda (dari deep review 2026-07-30) — ✅ SELESAI 2026-08-01
 
-Temuan minor dari review edge case pengguna. Yang dire dan penting sudah
-dikerjakan — lihat `plans/2026-07-30-edge-case-hardening.md`. Sisanya di bawah
-**terverifikasi nyata** tapi dinilai tidak sepadan dikerjakan sebelum 25 Agustus.
+Temuan minor dari review edge case pengguna. Yang dire dan penting dikerjakan
+30 Juli (`plans/2026-07-30-edge-case-hardening.md`); sisanya (#8–#12) ditunda dan
+**kini sudah selesai** — lihat `plans/2026-08-01-backlog-edge-case.md`.
 
-8. `POST /api/opname-manual` menerima `product_id` yang tidak ada → 200, lalu
-   item itu hilang senyap dari laporan (JOIN membuangnya). User yang mengirim 30
-   item dengan satu id salah tidak diberi tahu apa pun.
-9. `POST /api/opname-manual` dengan `items: []` → membuat scan kosong dan
-   menandainya "sudah diterapkan". Tidak merusak data, cuma bikin daftar laporan
-   penuh baris tak berguna.
-10. `product_id` dobel dalam satu opname manual → produk yang sama muncul dua
-    baris di laporan, dan `terapkan` menulis dua baris ledger (yang terakhir
-    menang). UI checklist tidak memungkinkan ini; API langsung memungkinkan.
-11. **Tidak ada batas jumlah maupun ukuran foto** di `/api/scans-foto` — 60 foto
-    diterima. Foto 12 MP jadi ±36 MB per gambar setelah decode dan semuanya
-    ditahan di RAM sekaligus, jadi memilih seluruh galeri bisa membuat laptop
-    demo OOM. **Kandidat paling layak diambil** dari daftar ini.
-12. Koneksi SQLite tidak pernah ditutup (`0` panggilan `.close()` di `api.py`) —
-    mengandalkan GC. Tidak terbukti menyebabkan kegagalan saat diuji terisolasi,
-    tapi menyisakan file handle menggantung.
+8. ✅ **SELESAI** — `POST /api/opname-manual` menerima `product_id` yang tidak ada
+   → 200, item hilang senyap dari laporan (JOIN membuangnya). Sekarang `400
+   "product_id tidak dikenal: {daftar}"`, semua id bermasalah disebut sekaligus.
+9. ✅ **SELESAI** — `items: []` membuat scan kosong lalu menandainya "sudah
+   diterapkan". Sekarang `400 "Opname harus berisi minimal satu barang"`.
+10. ✅ **SELESAI** — `product_id` dobel membuat produk yang sama muncul dua baris
+    di laporan. Lebih parah dari catatan lama: karena keduanya masuk laporan,
+    `total_shrinkage_rp` **menghitung ganda** — angka rupiah kerugian yang salah.
+    Sekarang ditolak `400`, bukan digabung: menebak maksud user menyembunyikan
+    bug di sisi pemanggil.
+11. ✅ **SELESAI** — batas `MAKS_FOTO_PER_SCAN = 20` dan `MAKS_BYTE_PER_FOTO =
+    15 MB`, dicek sebelum decode. File kegedean ditolak lewat `UploadFile.size`
+    tanpa satu byte pun dibaca.
+12. ✅ **SELESAI** — `contextlib.closing` di 16 titik pemakaian koneksi.
+
+    > **Keputusan yang dibalik saat implementasi:** plan semula memerintahkan
+    > dependency FastAPI (`Depends`) untuk endpoint sinkron. Itu **salah dan
+    > berbahaya**. Endpoint di sini `def` (sinkron); FastAPI menjalankan
+    > dependency sinkron di worker threadpool yang belum tentu thread yang sama
+    > dengan handler-nya, jadi dengan `check_same_thread=True` koneksinya
+    > melempar `ProgrammingError` begitu ada dua request bersamaan. Diverifikasi
+    > dengan app FastAPI minimal terpisah: berurutan → 200; 20 bersamaan → 20/20
+    > `ProgrammingError`. Tidak terlihat lewat `TestClient` karena ia mengirim
+    > satu request pada satu waktu. **Jangan mengubahnya kembali ke `Depends`** —
+    > dijaga `tests/test_api_koneksi.py::test_koneksi_aman_saat_request_bersamaan`.
+
+## Edge case baru (dari review 2026-08-01, belum dikerjakan)
+
+Ditemukan saat mengerjakan #8–#12 di atas, sengaja tidak diselundupkan ke PR itu.
+
+13. **`POST /products` punya vektor OOM yang sama persis dengan #11** —
+    `[(f.filename, await f.read()) for f in fotos]` tanpa batas jumlah maupun
+    ukuran. Perbaikannya sama: pakai konstanta `MAKS_*` yang sudah ada.
+    **Kandidat paling layak diambil** dari daftar ini.
+14. `POST /api/opname-manual` tidak membatasi jumlah `items` — opname 50.000 item
+    diterima, dan string pesan galat bisa memuat ribuan id.
+15. `db.all_products()` ikut membaca dan mendeserialisasi BLOB embedding tiap
+    produk, padahal pengecekan id di opname-manual cuma butuh himpunan `id`.
+    Untuk opname 3 item terhadap katalog 500 produk ini justru lebih berat
+    daripada `get_product` per id yang digantikannya. Perbaikan bersihnya
+    (`SELECT id FROM products`) butuh helper baru di `db.py`.
+16. Batas ukuran foto melindungi RAM **aplikasi**, bukan proses. Starlette
+    men-spool tiap part ke `SpooledTemporaryFile` (ambang 1 MB) saat parsing
+    body, jadi 30 foto × 900 KB = 26 MB sudah residen sebelum guard jalan, dan
+    upload multi-GB tetap mendarat di disk. Batas body sungguhan tempatnya di
+    lapisan ASGI/reverse-proxy — di luar cakupan MVP penyisihan.
 
 ## Keterbatasan yang diterima (known limitations)
 
