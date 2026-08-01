@@ -156,3 +156,104 @@ def test_enrollment_angka_negatif_ditolak(tmp_path):
         r = client.post("/products", data=data,
                         files={"fotos": ("a.jpg", b"x", "image/jpeg")})
         assert r.status_code == 422, field
+
+
+# --- validasi isi /api/opname-manual (backlog #8, #9, #10) -----------------
+# Ketiganya sebelumnya 200. Yang paling merugikan #10: dua baris untuk produk
+# yang sama ikut ke laporan, jadi total_shrinkage_rp menghitung ganda dan user
+# melihat angka rupiah kerugian yang salah. UI checklist tidak bisa menghasilkan
+# dobel; yang ditutup di sini jalur API langsung.
+
+def test_opname_manual_items_kosong_ditolak(tmp_path):
+    client, _ = _app(tmp_path)
+    r = client.post("/api/opname-manual", json={"items": [], "terapkan": True})
+    assert r.status_code == 400
+    assert r.json()["detail"] == "Opname harus berisi minimal satu barang"
+
+
+def test_opname_manual_product_id_dobel_ditolak(tmp_path):
+    """Menggabungkan qty yang dobel akan menyembunyikan bug di sisi pemanggil."""
+    client, indomie = _app(tmp_path)
+    con = db.connect(str(tmp_path / "t.db"))
+    yakult = next(p["id"] for p in db.all_products(con) if p["nama"] == "Yakult")
+    assert indomie < yakult, "prasyarat: Indomie di-enroll lebih dulu"
+    # Yakult sengaja dikirim duluan: Counter menjaga urutan kemunculan, jadi
+    # tanpa sorted() pesannya ikut urutan kirim dan bukan urutan id.
+    r = client.post("/api/opname-manual", json={
+        "items": [{"product_id": yakult, "qty_fisik": 1},
+                  {"product_id": yakult, "qty_fisik": 2},
+                  {"product_id": indomie, "qty_fisik": 3},
+                  {"product_id": indomie, "qty_fisik": 7}],
+        "terapkan": True,
+    })
+    assert r.status_code == 400
+    assert r.json()["detail"] == (
+        f"product_id dobel dalam satu opname: {indomie}, {yakult}")
+
+
+def test_opname_manual_product_id_tak_dikenal_ditolak(tmp_path):
+    """get_report_rows JOIN ke products, jadi id salah terbuang diam-diam."""
+    client, pid = _app(tmp_path)
+    r = client.post("/api/opname-manual", json={
+        "items": [{"product_id": pid, "qty_fisik": 5},
+                  {"product_id": 8888, "qty_fisik": 5},
+                  {"product_id": 4242, "qty_fisik": 5}],
+    })
+    assert r.status_code == 400
+    # Pasangan id dipilih supaya sorted() benar-benar teruji: `list({8888, 4242})`
+    # keluar menurun, jadi tanpa sorted() pesannya jadi "8888, 4242".
+    assert r.json()["detail"] == "product_id tidak dikenal: 4242, 8888"
+
+
+def test_opname_manual_terima_produk_yang_belum_punya_ledger(tmp_path):
+    """"Dikenal" = ada di tabel products, BUKAN ada di stock_ledger.
+
+    Fixture sengaja membuat Yakult tanpa set_stock, jadi dia tidak punya baris
+    stock_ledger. Kalau cek keberadaan dilakukan lewat get_stock_map, produk
+    yang baru di-enroll dan belum pernah di-opname akan ditolak sebagai "tidak
+    dikenal" — persis produk yang paling butuh opname pertamanya.
+    """
+    client, _ = _app(tmp_path)
+    con = db.connect(str(tmp_path / "t.db"))
+    yakult = next(p["id"] for p in db.all_products(con) if p["nama"] == "Yakult")
+    assert yakult not in db.get_stock_map(con), "prasyarat: Yakult tanpa ledger"
+    r = client.post("/api/opname-manual",
+                    json={"items": [{"product_id": yakult, "qty_fisik": 5}]})
+    assert r.status_code == 200
+
+
+def test_opname_manual_tolak_dulu_baru_id_tak_dikenal(tmp_path):
+    """Dobel dicek sebelum id tak dikenal — pesannya harus soal dobel."""
+    client, _ = _app(tmp_path)
+    r = client.post("/api/opname-manual", json={
+        "items": [{"product_id": 9999, "qty_fisik": 1},
+                  {"product_id": 9999, "qty_fisik": 2}],
+    })
+    assert r.status_code == 400
+    assert "dobel" in r.json()["detail"]
+
+
+def test_opname_manual_ditolak_tidak_menyisakan_scan(tmp_path):
+    """Sebelumnya scans + scan_items sudah tertulis sebelum validasi apa pun."""
+    client, pid = _app(tmp_path)
+    tolakan = [
+        {"items": []},
+        {"items": [{"product_id": pid, "qty_fisik": 1},
+                   {"product_id": pid, "qty_fisik": 2}]},
+        {"items": [{"product_id": 9999, "qty_fisik": 1}]},
+    ]
+    for body in tolakan:
+        assert client.post("/api/opname-manual", json=body).status_code == 400
+    con = db.connect(str(tmp_path / "t.db"))
+    assert db.list_scans(con) == []
+
+
+def test_opname_manual_sah_tetap_200(tmp_path):
+    client, pid = _app(tmp_path)
+    r = client.post("/api/opname-manual", json={
+        "items": [{"product_id": pid, "qty_fisik": 37}], "terapkan": True})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["diterapkan"] is True
+    assert body["report"]["items"][0]["selisih"] == -3
+    assert db.get_stock_map(db.connect(str(tmp_path / "t.db")))[pid] == 37
