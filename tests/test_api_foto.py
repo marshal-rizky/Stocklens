@@ -24,6 +24,21 @@ def _jpeg():
     return buf.tobytes()
 
 
+def _rekam_read(monkeypatch):
+    """Catat nama file yang isinya benar-benar ditarik handler lewat read()."""
+    dibaca = []
+    read_asli = UploadFile.read
+
+    async def read_tercatat(self, size=-1):
+        dibaca.append(self.filename)
+        return await read_asli(self, size)
+
+    # Ditambal di kelas basis starlette; UploadFile milik FastAPI mewarisi read
+    # dari sini, jadi satu tambalan menutup keduanya.
+    monkeypatch.setattr(UploadFile, "read", read_tercatat)
+    return dibaca
+
+
 def test_scan_foto_endpoint(tmp_path, monkeypatch):
     # Crop unknown ditulis ke DIR_CROPS_DEFAULT yang RELATIF ke cwd — tanpa
     # chdir, tiap kali pytest jalan repo kotor oleh file JPEG asli.
@@ -146,28 +161,63 @@ def test_nilai_batas_sesuai_spec():
     assert MAKS_BYTE_PER_FOTO == 15 * 1024 * 1024
 
 
+def test_tolak_foto_besar_di_tengah_kiriman(tmp_path, monkeypatch):
+    # Yang ditolak harus foto yang memang kegedean, bukan foto pertama. Dengan
+    # kiriman satu file, `f`, `fotos[0]`, dan `fotos[-1]` menunjuk objek yang
+    # sama dan tidak terbedakan — batas yang cuma berlaku untuk foto pertama
+    # akan lolos. Kasus nyata unit ini multi-foto: yang meng-OOM justru foto
+    # ke-7 yang raksasa.
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr("stoklens.api.MAKS_BYTE_PER_FOTO", 1024 * 1024)
+    client = _client(tmp_path)
+    dibaca = _rekam_read(monkeypatch)
+
+    r = client.post(
+        "/api/scans-foto",
+        files=[("fotos", ("kecil1.png", _jpeg(), "image/png")),
+               ("fotos", ("gendut.png", b"\0" * (5 * 512 * 1024), "image/png")),
+               ("fotos", ("kecil2.png", _jpeg(), "image/png"))],
+        data={"read_expiry": "false"},
+    )
+    assert r.status_code == 400
+    assert r.json()["detail"] == "Foto gendut.png terlalu besar (2.5 MB), maksimal 1 MB"
+    # Yang kegedean menghentikan loop: foto sesudahnya tidak ikut ditarik, dan
+    # yang kegedean sendiri tidak pernah dibaca karena f.size sudah cukup.
+    assert dibaca == ["kecil1.png"]
+
+
 def test_tolak_file_besar_walau_size_tak_diketahui(tmp_path, monkeypatch):
     # UploadFile.size boleh None (tipenya `int | None`). Parser multipart selalu
     # mengisinya, jadi cabang ini tak terjangkau lewat HTTP biasa — di sini
     # None-nya dipaksa supaya fallback len(data) benar-benar teruji: tanpa itu,
-    # size=None jadi lubang yang meloloskan file besar.
+    # size=None jadi lubang yang meloloskan file besar. Multi-file supaya jalur
+    # fallback ikut terbukti menunjuk file yang benar, bukan fotos[0].
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr("stoklens.api.MAKS_BYTE_PER_FOTO", 1024 * 1024)
     init_asli = UploadFile.__init__
 
-    def init_tanpa_size(self, file, *, size=None, **kw):
-        init_asli(self, file, size=None, **kw)
+    # Sengaja tidak menyalin signature starlette: kalau parameternya berubah
+    # nama, test ini harus tetap jalan, bukan gagal dengan TypeError.
+    def init_tanpa_size(self, *a, **kw):
+        kw["size"] = None
+        init_asli(self, *a, **kw)
 
     monkeypatch.setattr(UploadFile, "__init__", init_tanpa_size)
     client = _client(tmp_path)
+    dibaca = _rekam_read(monkeypatch)
 
     r = client.post(
         "/api/scans-foto",
-        files=[("fotos", ("besar.png", b"\0" * (2 * 1024 * 1024), "image/png"))],
+        files=[("fotos", ("kecil1.png", _jpeg(), "image/png")),
+               ("fotos", ("gendut.png", b"\0" * (2 * 1024 * 1024), "image/png")),
+               ("fotos", ("kecil2.png", _jpeg(), "image/png"))],
         data={"read_expiry": "false"},
     )
     assert r.status_code == 400
-    assert r.json()["detail"] == "Foto besar.png terlalu besar (2.0 MB), maksimal 1 MB"
+    assert r.json()["detail"] == "Foto gendut.png terlalu besar (2.0 MB), maksimal 1 MB"
+    # Tanpa f.size, yang kegedean baru ketahuan setelah dibaca — tapi foto
+    # sesudahnya tetap tidak ikut ditarik.
+    assert dibaca == ["kecil1.png", "gendut.png"]
 
 
 def test_batas_menolak_tanpa_membaca_isi_foto(tmp_path, monkeypatch):
@@ -177,16 +227,7 @@ def test_batas_menolak_tanpa_membaca_isi_foto(tmp_path, monkeypatch):
     # tanpa terdeteksi — persis regresi yang bikin batasnya jadi tak berguna.
     monkeypatch.chdir(tmp_path)
     client = _client(tmp_path)
-    dibaca = []
-    read_asli = UploadFile.read
-
-    async def read_tercatat(self, size=-1):
-        dibaca.append(self.filename)
-        return await read_asli(self, size)
-
-    # Ditambal di kelas basis starlette; UploadFile milik FastAPI mewarisi read
-    # dari sini, jadi satu tambalan menutup keduanya.
-    monkeypatch.setattr(UploadFile, "read", read_tercatat)
+    dibaca = _rekam_read(monkeypatch)
 
     r = client.post(
         "/api/scans-foto",

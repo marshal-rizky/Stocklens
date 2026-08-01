@@ -222,8 +222,12 @@ def create_app(db_path=None, embedder=None, photo_detector=None):
                             read_expiry: bool = Form(True)):
         from .photo import scan_photos
         # Kedua batas dicek SEBELUM decode — lihat MAKS_* di atas. Jumlah dicek
-        # duluan karena len(fotos) tersedia tanpa membaca satu byte pun: kiriman
-        # 60 foto ditolak tanpa pernah masuk memori.
+        # duluan karena len(fotos) tersedia tanpa membaca satu byte pun. Catatan:
+        # yang dihemat di sini biaya DECODE, bukan biaya terima — starlette sudah
+        # men-spool seluruh body sebelum handler jalan (part di bawah 1 MB tetap
+        # residen di RAM, selebihnya ke disk), jadi 30 part @900 KB sudah 26 MB
+        # di memori saat baris ini dievaluasi. Batas body sungguhan tempatnya di
+        # reverse-proxy, bukan di sini.
         if len(fotos) > MAKS_FOTO_PER_SCAN:
             raise HTTPException(
                 400, f"Maksimal {MAKS_FOTO_PER_SCAN} foto per scan, "
@@ -231,7 +235,8 @@ def create_app(db_path=None, embedder=None, photo_detector=None):
         isi = []
         for f in fotos:
             # f.size sudah diisi parser multipart sebelum handler dipanggil, jadi
-            # foto raksasa ditolak tanpa pernah ditarik ke RAM. Tipenya boleh
+            # foto raksasa ditolak tanpa pernah ditarik utuh ke RAM oleh handler
+            # (isinya sendiri sudah ter-spool, lihat catatan di atas). Tipenya boleh
             # None (UploadFile yang dirakit manual, bukan dari multipart), maka
             # len(data) tetap dicek sesudah read — kalau tidak, size=None jadi
             # lubang yang meloloskan file besar.
