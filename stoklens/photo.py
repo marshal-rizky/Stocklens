@@ -17,6 +17,7 @@ Risiko pindah ke antar-foto (zona overlap kehitung 2x). Mitigasi:
 
 `detector` dan `embedder` injectable — test memakai fake, CI tidak butuh torch.
 """
+import os
 from collections import defaultdict
 from datetime import date
 
@@ -47,10 +48,18 @@ def aggregate_detections(detections):
     return out
 
 
-def _yolo_detector(model_path="yolo11n.pt"):
-    """Detector default (lazy import — modul ini tetap ringan tanpa torch)."""
+def _yolo_detector(model_path=None):
+    """Detector default (lazy import — modul ini tetap ringan tanpa torch).
+
+    model_path None = ambil dari env `STOKLENS_MODEL`, jatuh ke `yolo11n.pt`.
+    Defaultnya sengaja tetap yolo11n supaya tidak ada yang rusak, TAPI yolo11n
+    adalah model COCO (orang/mobil/anjing) dan pada foto rak warung memberi 0
+    kotak — jadi untuk pemakaian sungguhan env-nya WAJIB diarahkan ke bobot
+    hasil pre-train/fine-tune. Lihat README §"Menukar bobot detektor".
+    Argumen eksplisit selalu menang atas env, sama seperti db_path di api.py.
+    """
     from ultralytics import YOLO
-    model = YOLO(model_path)
+    model = YOLO(model_path or os.environ.get("STOKLENS_MODEL", "yolo11n.pt"))
 
     def detect(image_bgr):
         r = model.predict(image_bgr, verbose=False)[0]

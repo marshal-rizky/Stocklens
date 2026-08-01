@@ -61,6 +61,35 @@ Lokasi file DB bisa diatur lewat env `STOKLENS_DB` (default `stoklens.db` di
 direktori kerja). Untuk mengetes dari HP di WiFi yang sama, tambahkan
 `--host 0.0.0.0` lalu buka `http://<IP-laptop>:8000`.
 
+### Menukar bobot detektor — WAJIB dibaca sebelum uji lapangan
+
+Bobot default `yolo11n.pt` adalah model **COCO** bawaan ultralytics: kelasnya
+orang, mobil, anjing — **bukan produk retail**. Diukur pada foto rak warung
+asli, `yolo11n` memberi **0 kotak**, sedangkan model hasil pre-train SKU-110K
+memberi **33 kotak** pada foto yang sama.
+
+Artinya: **kalau dijalankan apa adanya, scan tidak akan menemukan apa pun.**
+Itu bukan tanda aplikasinya rusak — bobotnya saja yang belum diarahkan.
+
+Arahkan lewat env `STOKLENS_MODEL`:
+
+```bash
+# Linux/macOS
+STOKLENS_MODEL=/path/ke/best.pt uvicorn stoklens.api:create_app --factory
+
+# Windows PowerShell
+$env:STOKLENS_MODEL = "C:\Users\<kamu>\StokLens-training\pretrain_sku110k\weights\best.pt"
+uvicorn stoklens.api:create_app --factory
+```
+
+Untuk Docker, tambahkan ke `environment:` di `docker-compose.yml` dan mount
+folder bobotnya.
+
+Catatan jujur soal akurasinya: SKU-110K dilatih di rak **supermarket**, jadi di
+warung confidence-nya turun jauh — cukup untuk demo dan uji alur, belum cukup
+untuk angka akurasi yang layak dipamerkan. Itu baru beres setelah fine-tune
+dengan foto sendiri (`docs/PANDUAN-FINETUNE.md`).
+
 ## Tes
 
 ```bash
