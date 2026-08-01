@@ -173,14 +173,22 @@ def test_opname_manual_items_kosong_ditolak(tmp_path):
 
 def test_opname_manual_product_id_dobel_ditolak(tmp_path):
     """Menggabungkan qty yang dobel akan menyembunyikan bug di sisi pemanggil."""
-    client, pid = _app(tmp_path)
+    client, indomie = _app(tmp_path)
+    con = db.connect(str(tmp_path / "t.db"))
+    yakult = next(p["id"] for p in db.all_products(con) if p["nama"] == "Yakult")
+    assert indomie < yakult, "prasyarat: Indomie di-enroll lebih dulu"
+    # Yakult sengaja dikirim duluan: Counter menjaga urutan kemunculan, jadi
+    # tanpa sorted() pesannya ikut urutan kirim dan bukan urutan id.
     r = client.post("/api/opname-manual", json={
-        "items": [{"product_id": pid, "qty_fisik": 3},
-                  {"product_id": pid, "qty_fisik": 7}],
+        "items": [{"product_id": yakult, "qty_fisik": 1},
+                  {"product_id": yakult, "qty_fisik": 2},
+                  {"product_id": indomie, "qty_fisik": 3},
+                  {"product_id": indomie, "qty_fisik": 7}],
         "terapkan": True,
     })
     assert r.status_code == 400
-    assert r.json()["detail"] == f"product_id dobel dalam satu opname: {pid}"
+    assert r.json()["detail"] == (
+        f"product_id dobel dalam satu opname: {indomie}, {yakult}")
 
 
 def test_opname_manual_product_id_tak_dikenal_ditolak(tmp_path):
@@ -188,12 +196,13 @@ def test_opname_manual_product_id_tak_dikenal_ditolak(tmp_path):
     client, pid = _app(tmp_path)
     r = client.post("/api/opname-manual", json={
         "items": [{"product_id": pid, "qty_fisik": 5},
-                  {"product_id": 9999, "qty_fisik": 5},
+                  {"product_id": 8888, "qty_fisik": 5},
                   {"product_id": 4242, "qty_fisik": 5}],
     })
     assert r.status_code == 400
-    # Daftar id diurutkan supaya pesannya deterministik.
-    assert r.json()["detail"] == "product_id tidak dikenal: 4242, 9999"
+    # Pasangan id dipilih supaya sorted() benar-benar teruji: `list({8888, 4242})`
+    # keluar menurun, jadi tanpa sorted() pesannya jadi "8888, 4242".
+    assert r.json()["detail"] == "product_id tidak dikenal: 4242, 8888"
 
 
 def test_opname_manual_terima_produk_yang_belum_punya_ledger(tmp_path):
