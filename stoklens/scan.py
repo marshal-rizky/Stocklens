@@ -18,6 +18,7 @@ Parameter yang paling sering perlu di-tuning saat uji lapangan:
 - embed_every     : ambil embedding tiap N frame kemunculan (kecil = akurat
                     tapi lambat)
 """
+import os
 from collections import defaultdict
 from datetime import date
 from pathlib import Path
@@ -33,13 +34,17 @@ from .ocr import read_text
 DEFAULT_TRACKER = str(Path(__file__).with_name("botsort_reid.yaml"))
 
 
-def run_scan(con, embedder, video_path, model_path="yolo11n.pt",
+def run_scan(con, embedder, video_path, model_path=None,
              match_threshold=0.75, embed_every=5, min_track_frames=3,
              guided_product_id=None, lokasi_rak=None, read_expiry=True,
              count_mode="line", tracker=None, simpan_unknown=True,
              maks_unknown=30, dir_crops=None):
     """Jalankan scan penuh; return scan_id.
 
+    model_path: None = ambil dari env `STOKLENS_MODEL`, jatuh ke `yolo11n.pt`.
+                yolo11n adalah model COCO dan memberi 0 kotak di rak warung —
+                untuk pemakaian sungguhan arahkan env-nya ke bobot hasil
+                pre-train/fine-tune. Argumen eksplisit menang atas env.
     guided_product_id: guided mode — semua deteksi dianggap kandidat produk ini
                        saja (deklarasi produk per blok, akurasi varian naik).
     count_mode: "line" (rekaman sweep, anti dobel) | "track" (kamera statis).
@@ -55,7 +60,7 @@ def run_scan(con, embedder, video_path, model_path="yolo11n.pt",
 
     products = db.all_products(con, with_gallery=True)
     allowed = {guided_product_id} if guided_product_id is not None else None
-    model = YOLO(model_path)
+    model = YOLO(model_path or os.environ.get("STOKLENS_MODEL", "yolo11n.pt"))
 
     seen = defaultdict(int)      # track_id -> jumlah frame terlihat
     embs = defaultdict(list)     # track_id -> daftar embedding sampel
