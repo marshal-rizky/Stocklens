@@ -14,6 +14,32 @@ kita cuma **satu kelas: `produk`**. Ini membuat kerjaan jauh lebih cepat.
 jauh lebih banyak — lihat §"Berapa banyak" di bawah, memotret dan melabeli itu dua
 biaya yang sangat berbeda.
 
+## Hasil audit batch pertama (418 foto, 31 Juli) — BACA DULU
+
+Batch pertama sudah diperiksa satu per satu. Hasilnya perlu diketahui semua pemotret
+sebelum turun lagi, karena masalahnya **bukan keterampilan memotret** — semuanya
+akibat tidak adanya kesepakatan sebelum berangkat.
+
+| Hasil | Jumlah |
+|---|---|
+| Bisa dipakai melatih detektor | **91** dari 418 (22%) |
+| Berguna sebagai galeri enrollment | 194 |
+| Tidak terpakai | 133 |
+
+Tiga sebab terbesar, semuanya bisa dicegah:
+
+1. **112 foto isinya bukan rak** — pemandangan jalan, orang di lapak, beras/telur/daging
+   curah. Difoto dari seberang jalan, produknya terlalu kecil. → lihat §Framing.
+2. **193 foto orientasinya rebah**, tercampur dengan yang tegak dalam satu folder.
+   Sudah diperbaiki permanen 1 Agustus (dipanggang ke piksel, revisi lama masih ada di
+   riwayat Drive), tapi jangan terulang. → lihat §Setelan kamera.
+3. **255 foto dipotret rasio 4000×1848** (mode "Full" layar HP), bukan 4:3 — kehilangan
+   bidang vertikal, padahal rak itu bertingkat ke atas. → lihat §Setelan kamera.
+
+Hasil pemilahan per file ada di Drive: **`PEMETAAN 418 foto - kategori dan tindakan`**,
+plus folder **`CONTOH-BENAR`** dan **`CONTOH-SALAH`** berisi contoh nyata dari batch
+kalian sendiri, lengkap dengan alasannya di nama file. Lihat itu dulu sebelum memotret.
+
 ## Foto harus dari WARUNG MADURA, bukan grosir
 
 Ini keputusan yang gampang salah dan mahal kalau terlanjur.
@@ -88,6 +114,45 @@ dua aturan berbeda — jangan dicampur.
 |---|---|
 | Foto barang **ditata di meja** | Hampir tidak berguna — kepadatan & oklusinya tidak pernah muncul di gudang |
 | **Foto stock internet / marketplace** | MERUSAK. Latar putih bersih tidak pernah ada di gudang; model belajar bias itu lalu gagal di rak asli. Juga melanggar ToS/hak cipta → risiko diskualifikasi (rulebook #17) |
+
+#### Framing: satu aturan yang menyelamatkan mayoritas foto
+
+**Rak produk harus mengisi hampir seluruh frame.** Itu saja. Dua cara paling sering
+melanggarnya, keduanya terjadi di batch 31 Juli:
+
+| Salah | Akibat |
+|---|---|
+| **Terlalu jauh** — tampak depan toko dari seberang jalan | Isi frame jadi jalan, kabel, orang, motor. Produknya terlalu kecil untuk dilabeli |
+| **Terlalu dekat** — satu barang memenuhi frame | Tidak ada yang bisa dipelajari soal "banyak barang berjejer". Ini foto enrollment, bukan foto detektor |
+
+Patokan praktis: **berdiri 1–1,5 m dari rak, arahkan ke rak saja.** Kalau di viewfinder
+masih kelihatan lantai, langit-langit, atau orang — maju lagi.
+
+Sanity check sebelum kirim: *"kalau foto ini dipotong jadi kotak-kotak produk, dapat
+berapa? Kurang dari 15 → terlalu jauh atau terlalu dekat."*
+
+#### Setelan kamera — cek sekali, berlaku selamanya
+
+| Setelan | Nilai | Kenapa |
+|---|---|---|
+| **Rasio** | **4:3** | Bukan "Full"/rasio layar, bukan "Square". 4:3 memakai seluruh sensor. Mode Full memotong bidang vertikal — justru bidang yang dibutuhkan untuk rak bertingkat |
+| **Grid/flash** | bebas | tidak berpengaruh |
+| **Kirim** | **upload langsung ke Drive** | Lihat larangan WhatsApp di bawah |
+
+Cek rasio sekali di aplikasi kamera masing-masing sebelum mulai memotret. Ini setelan,
+bukan keterampilan — sekali salah, ratusan foto ikut salah.
+
+#### Jangan kirim lewat WhatsApp/Telegram — bukan cuma soal kompresi
+
+Aturan ini sudah ada di checklist, tapi alasannya kurang lengkap. WhatsApp
+**menghapus seluruh EXIF**, bukan hanya mengompres. Yang ikut hilang:
+
+- **tanggal & lokasi** → log dataset tidak bisa direkonstruksi
+- **model kamera** → tidak bisa melacak foto siapa yang bermasalah
+- **orientasi** → foto potret bisa masuk dalam keadaan rebah
+
+Upload langsung ke folder Drive. Kalau terlanjur lewat WA, fotonya **tidak perlu
+dibuang** — masih terpakai — tapi catat manual tanggal & pemotretnya di sheet log.
 
 **Foto untuk ENROLLMENT (galeri CLIP per barang):**
 
@@ -241,8 +306,8 @@ def main():
         source=r"D:\dataset\raw",   # folder foto mentah (boleh bersarang)
         save_txt=True,              # tulis anotasi format YOLO
         save_conf=False,            # Roboflow tidak butuh kolom confidence
-        conf=0.25,                  # ambang rendah: lebih baik kelebihan kotak
-        imgsz=640,
+        conf=0.05,                  # SANGAT rendah — alasannya di bawah, jangan dinaikkan
+        imgsz=640,                  # jangan dinaikkan: 1280/1920 justru memperburuk
         stream=True,                # jangan tahan semua hasil di RAM
         project=r"D:\dataset\autolabel",
         name="ronde1",
@@ -256,12 +321,38 @@ if __name__ == "__main__":
 Hasilnya ada di `autolabel/ronde1/labels/*.txt` — satu file per foto, format YOLO,
 langsung bisa di-upload ke Roboflow bareng gambarnya sebagai anotasi awal.
 
-### Kenapa `conf=0.25`, bukan angka default yang lebih tinggi
+### Kenapa `conf=0.05` — DIKOREKSI 1 Agustus, sebelumnya tertulis 0,25
 
-**Menghapus kotak jauh lebih cepat daripada menggambar kotak.** Ambang rendah membuat
-model memberi kotak berlebih; labeler tinggal menghapus yang salah. Ambang tinggi
-menghasilkan foto yang bolong, dan mengisi lubang itu berarti kembali menggambar
-manual — persis yang mau kita hindari.
+Alasan dasarnya tetap: **menghapus kotak jauh lebih cepat daripada menggambar kotak.**
+Ambang rendah membuat model memberi kotak berlebih; labeler tinggal menghapus yang
+salah. Ambang tinggi menghasilkan foto bolong, dan mengisi lubang itu berarti kembali
+menggambar manual — persis yang mau dihindari.
+
+Yang salah adalah angkanya. `conf=0.25` diambil dari nalar, tanpa pernah diuji ke foto
+warung. Setelah batch pertama masuk, ambang itu **disapu ke 91 foto rak warung asli**
+memakai model pre-train yang sama:
+
+| imgsz | conf | median kotak | p25 | p75 | foto dapat NOL kotak |
+|---|---|---|---|---|---|
+| 640 | **0,25** ← lama | **7** | 2 | 13 | **15 dari 91** |
+| 640 | 0,15 | 14 | 5 | 26 | 8 |
+| 640 | 0,10 | 22 | 8 | 43 | 2 |
+| 640 | **0,05** ← baru | **46** | 21 | 83 | **0** |
+| 1280 | 0,05 | 80 | 42 | 176 | 1 |
+| 1920 | 0,05 | 354 | 153 | 510 | 0 |
+
+Satu foto rak warung berisi 20–40 produk. Pada setelan lama model cuma memberi **7**
+kotak, dan **15 foto tidak dapat kotak sama sekali** — di foto-foto itu labeler
+menggambar dari nol, jadi janji "20–40 jam → 3–5 jam" tidak berlaku. `conf=0.05`
+menghasilkan median 46: sedikit berlebih, persis yang kita mau.
+
+**Jangan naikkan `imgsz` untuk mengejar lebih banyak kotak.** Terlihat di tabel,
+1920 justru meledak ke median 354 — itu bukan produk, itu derau: model memecah satu
+kemasan jadi banyak kotak kecil. Menghapus 354 kotak lebih lama daripada menggambar 40.
+
+Angka ini khusus untuk model **pre-train SKU-110K di foto warung**. Setelah fine-tune,
+ukur ulang — model yang sudah melihat warung akan percaya diri di ambang yang jauh
+lebih tinggi.
 
 ### Yang WAJIB tetap dikerjakan manusia
 
@@ -298,6 +389,9 @@ TIDAK usah (ultralytics sudah melakukan augmentasi sendiri saat training).
 ## Checklist selesai
 
 - [ ] ≥500 foto berlabel, ≥2 lokasi, semua variasi tabel di atas terwakili
+- [ ] **Rak mengisi hampir seluruh frame** — tidak ada foto tampak-depan-toko dari
+      seberang jalan, tidak ada foto satu barang memenuhi frame
+- [ ] **Kamera diset rasio 4:3** (bukan Full / Square) oleh semua pemotret
 - [ ] **Lokasinya warung Madura / kelontong kecil**, bukan grosir
 - [ ] **Cukup banyak foto sachet gantung (renceng)** — bentuk paling asing bagi model
 - [ ] ≥20 foto rak kosong/hampir kosong

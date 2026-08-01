@@ -65,9 +65,15 @@ rak kaca dan urutan faktor perusak match.
 
 **C. Auto-labeling untuk hemat waktu tim.** ✅ **SIAP DIPAKAI** (2026-07-28) — model
 pre-train SKU-110K sudah jadi (mAP50 0,868), dan cara pakainya sudah ditulis di
-`PANDUAN-DATASET.md` §"Auto-labeling" lengkap dengan skrip, alasan `conf=0.25`, dan
+`PANDUAN-DATASET.md` §"Auto-labeling" lengkap dengan skrip, alasan ambang, dan
 daftar hal yang tetap wajib dikoreksi manusia (renceng, etalase kaca, rak remang).
 Estimasi tetap: 20–40 jam-orang → 3–5 jam. **Menunggu foto, bukan menunggu kode.**
+
+> **Koreksi 2026-08-01:** ambangnya semula `conf=0.25` — angka yang diambil dari
+> nalar, tanpa pernah diuji ke foto warung. Disapu ke 91 foto rak asli: median cuma
+> 7 kotak dan 15 foto dapat NOL kotak, jadi janji hemat waktu itu tidak berlaku.
+> Sekarang `conf=0.05` (median 46 kotak, tidak ada foto kosong). Tabel sapuannya ada
+> di `PANDUAN-DATASET.md`.
 
 *Catatan riset (18 Jul):* dataset produk Indonesia publik praktis TIDAK ADA yang layak
 — Roboflow `rak-minimarket` 53 gambar, `dataset-rak-minimarket` 26 gambar, sisanya
