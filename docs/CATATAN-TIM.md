@@ -164,10 +164,12 @@ Catat SETIAP perubahan + hasilnya (video uji → hitungan vs manual) di sheet uj
 > **Angka uji yang sudah ada: `HASIL-UJI-2026-08-02.md`.** Baca sebelum menyetel
 > apa pun atau sebelum menulis klaim akurasi di proposal/video. Tiga hal yang
 > paling sering salah dikira di situ: (1) guided mode **tidak** menaikkan akurasi
-> — ia cuma mempersempit kandidat; (2) menambah crop hasil scan ke galeri
-> **memang** menaikkan akurasi, terukur 0,769 → 0,844 pada foto baru; (3) angka
-> apa pun yang foto ujinya ikut menyumbang entri galeri adalah self-match dan
-> tidak boleh dipakai.
+> — ia cuma mempersempit kandidat; (2) menambah entri galeri hampir tidak
+> berpengaruh — satu entri dari kondisi pemotretan yang mirip (0,823) mengalahkan
+> dua belas entri dari kondisi berbeda (0,664), karena matching mengambil
+> similarity TERTINGGI; (3) angka apa pun yang foto ujinya ikut menyumbang entri
+> galeri adalah self-match dan tidak boleh dipakai — termasuk lewat foto
+> enrollment, yang sempat membuat satu kesimpulan di dokumen itu keliru.
 
 ## SOP perekaman (versi ringkas — lengkap di design doc §6)
 
