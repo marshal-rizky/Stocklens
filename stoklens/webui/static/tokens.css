@@ -1,10 +1,87 @@
-:root {
-  --primary:#2563EB; --cta:#F97316; --bg:#F8FAFC; --surface:#FFFFFF;
-  --text:#1E293B; --text-2:#64748B; --border:#E2E8F0;
-  --pos:#16A34A; --neg:#DC2626;
-  --on-accent:#FFFFFF; --shadow:rgba(0,0,0,0.2);
-  --r:12px; --sp:8px;
+/* Sistem visual StokLens — "nota warung".
+ *
+ * ARAHNYA: tinta di atas kertas, bukan dasbor SaaS. Produk ini menghasilkan
+ * laporan selisih — sebuah perhitungan, seperti nota. Palet biru-slate bawaan
+ * framework melawan konteks itu dan membuat UI terasa hambar.
+ *
+ * Nama variabel SENGAJA dipertahankan dari versi lama (--primary, --bg, --r, dst)
+ * supaya app.css yang 1100+ baris tidak perlu disunting massal. Yang berubah
+ * nilainya, bukan kontraknya. Variabel baru ditambahkan, tidak mengganti.
+ *
+ * KENAPA ACCENT-NYA AMBER, BUKAN MERAH: merah dan hijau sudah punya arti di
+ * aplikasi ini — rugi dan laba. Kalau warna merek juga merah, angka rugi
+ * kehilangan penekanannya. Amber kunyit hangat, khas, dan menyisakan merah/hijau
+ * tetap bermakna.
+ */
+
+@font-face {
+  font-family: "Fraunces";
+  src: url("/static/fonts/fraunces-latin.woff2") format("woff2");
+  font-weight: 600 700;
+  font-display: swap;   /* teks tampil pakai fallback dulu, jangan blokir render */
+  font-style: normal;
 }
-@media (prefers-color-scheme: dark) { :root {
-  --bg:#0F172A; --surface:#1E293B; --text:#F1F5F9; --text-2:#94A3B8; --border:#334155;
-}}
+@font-face {
+  font-family: "Archivo";
+  src: url("/static/fonts/archivo-latin.woff2") format("woff2");
+  font-weight: 400 700;
+  font-display: swap;
+  font-style: normal;
+}
+
+:root {
+  /* --- kertas & tinta (terang) --- */
+  --bg: #F4F0E6;          /* kertas hangat, bukan putih dingin */
+  --surface: #FDFBF6;
+  --text: #1F1A15;        /* tinta hangat, bukan hitam biru */
+  --text-2: #6E6357;
+  --border: #E2D9C8;      /* garis mistar buku kas */
+
+  /* --- aksen merek --- */
+  --primary: #A8571A;     /* amber kunyit tua — tautan, status aktif */
+  --cta: #B8541A;         /* tombol utama */
+  --on-accent: #FFF8EE;
+
+  /* --- makna uang: JANGAN dipakai untuk hiasan --- */
+  --pos: #2F6B3A;         /* laba / lebih */
+  --neg: #A32C1E;         /* rugi / shrinkage */
+
+  --shadow: rgba(72, 52, 30, 0.16);   /* bayangan hangat, bukan abu netral */
+
+  /* --- bentuk --- */
+  --r: 10px;              /* kertas tidak sebulat kartu material */
+  --r-kecil: 7px;
+  --sp: 8px;
+
+  /* --- tipografi --- */
+  --font-judul: "Fraunces", Georgia, "Times New Roman", serif;
+  --font-teks: "Archivo", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+
+  /* --- motion: personality Corporate (lihat komentar di app.css) --- */
+  --e-standar: cubic-bezier(0.2, 0, 0, 1);      /* di layar */
+  --e-masuk: cubic-bezier(0.05, 0.7, 0.1, 1);   /* entrance, sedikit tegas */
+  --e-keluar: cubic-bezier(0.3, 0, 1, 1);       /* exit, mempercepat */
+  --d-kilat: 120ms;       /* umpan balik tekan */
+  --d-cepat: 200ms;       /* ikon, badge */
+  --d-sedang: 320ms;      /* kartu, panel */
+  --d-lambat: 460ms;      /* pergantian konteks, momen selesai */
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14110E;        /* tinta pekat hangat, bukan slate kebiruan */
+    --surface: #1E1A16;
+    --text: #F3EDE2;
+    --text-2: #A2968A;
+    --border: #342C24;
+
+    --primary: #E0913F;   /* amber dinaikkan supaya menyala di gelap */
+    --cta: #C86A25;
+    --on-accent: #1A1410;
+
+    --pos: #6FBE7E;
+    --neg: #E8756A;
+
+    --shadow: rgba(0, 0, 0, 0.5);
+  }
+}

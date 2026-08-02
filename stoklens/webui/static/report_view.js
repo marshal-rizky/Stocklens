@@ -183,7 +183,27 @@ function renderReport(containerEl, report, opts) {
     }
     toast("Hasil opname diterapkan ke buku stok");
     tombol.textContent = "Sudah diterapkan";
+    tandaiSelesai(containerEl);
   });
+}
+
+/* Momen "selesai opname" — satu-satunya animasi teatrikal di aplikasi ini.
+   Menerapkan opname adalah akhir dari pekerjaan yang memakan waktu; pantas
+   ditandai, dan penanda visual juga menjawab pertanyaan "tadi berhasil tidak?"
+   yang tidak terjawab oleh toast yang sudah hilang.
+
+   Ditambahkan lewat JS (bukan CSS :has) karena kelas harus menempel PERSIS saat
+   permintaan berhasil, bukan saat tombol ditekan — kalau server menolak, tidak
+   boleh ada stempel. */
+function tandaiSelesai(containerEl) {
+  const totals = containerEl.querySelector(".kpi-grid");
+  if (!totals || totals.querySelector(".stempel-tanda")) return;
+  const tanda = document.createElement("span");
+  tanda.className = "stempel-tanda";
+  tanda.setAttribute("role", "status");
+  tanda.textContent = "Sudah dibukukan";
+  totals.insertAdjacentElement("afterend", tanda);
+  containerEl.classList.add("stempel-selesai");
 }
 
 /* ---------- Belum dikenali (crop hasil scan yang belum bisa dicocokkan) ---------- */

@@ -9,20 +9,48 @@ html, body {
 
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
-    Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  font-family: var(--font-teks);
   font-size: 16px;
   background: var(--bg);
   color: var(--text);
   padding-bottom: calc(64px + env(safe-area-inset-bottom));
+  /* Tekstur kertas: dua gradient radial sangat tipis, bukan berkas gambar.
+     Tanpa ini latar rata terasa seperti dasbor; dengan ini terasa seperti nota. */
+  background-image:
+    radial-gradient(circle at 18% 12%, rgba(168, 87, 26, 0.045), transparent 42%),
+    radial-gradient(circle at 84% 78%, rgba(120, 90, 50, 0.035), transparent 46%);
+  background-attachment: fixed;
 }
+
+/* Gutter halaman. Sebelumnya tidak ada sama sekali: kartu lebar penuh menyentuh
+   kedua tepi layar, dan judul menempel ke sisi kiri. env(safe-area-inset-*)
+   dipakai supaya aman di HP bernotch dan saat layar diputar. */
+main {
+  padding-left: max(16px, env(safe-area-inset-left));
+  padding-right: max(16px, env(safe-area-inset-right));
+  padding-top: calc(14px + env(safe-area-inset-top));
+}
+
+h1, h2, h3 {
+  font-family: var(--font-judul);
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
+h1 { font-size: 30px; line-height: 1.12; margin: 0 0 2px; }
+h2 { font-size: 19px; line-height: 1.2; }
 
 a { color: inherit; }
 
-a.card {
-  display: block;
-  text-decoration: none;
-}
+/* `display` ditaruh di .card (bukan a.card) supaya kelas tata letak yang
+   dideklarasikan SETELAHNYA — .kpi-hero, .kpi-mini — bisa menang.
+   Versi lama memakai `a.card { display: block }` yang spesifisitasnya 0,1,1
+   sehingga mengalahkan `.kpi-hero { display: flex }` (0,1,0): kartu KPI yang
+   berupa <a> kehilangan flex-column-nya dan label serta angkanya mengalir
+   inline. Terlihat sebagai "Nilai stok Rp18" berdempetan di satu baris. */
+.card { display: block; }
+
+a.card { text-decoration: none; }
 
 .tabular {
   font-variant-numeric: tabular-nums;
@@ -41,7 +69,10 @@ a.card {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r);
-  padding: var(--sp);
+  padding: 14px;
+  /* Bayangan hangat & sangat rendah: kertas menempel di meja, tidak melayang
+     seperti kartu Material. Dua lapis supaya tepinya tetap terbaca di gelap. */
+  box-shadow: 0 1px 0 var(--shadow), 0 1px 2px -1px var(--shadow);
 }
 
 /* ---------- Tombol ---------- */
@@ -57,18 +88,34 @@ a.card {
   background: var(--surface);
   color: var(--text);
   font-size: 16px;
+  font-family: inherit;
+  font-weight: 600;
   cursor: pointer;
-  transition: transform 150ms ease;
+  /* Umpan balik tekan harus terasa instan (120ms), lepasnya boleh sedikit
+     lebih panjang supaya mendarat, bukan mematuk. */
+  transition: transform var(--d-kilat) var(--e-standar),
+              box-shadow var(--d-kilat) var(--e-standar),
+              filter var(--d-kilat) var(--e-standar);
 }
 
 .btn:active {
-  transform: scale(0.97);
+  transform: scale(0.975) translateY(1px);
 }
 
 .btn-cta {
   background: var(--cta);
   border-color: var(--cta);
   color: var(--on-accent);
+  /* Sisi bawah lebih gelap: tombol punya ketebalan, seperti tombol kasir. */
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.22);
+}
+
+.btn-cta:active {
+  box-shadow: 0 0 0 rgba(0, 0, 0, 0.22);
+}
+
+.btn-cta:hover {
+  filter: brightness(1.06);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1163,4 +1210,150 @@ a.card {
   width: 100%;
   justify-content: flex-start;
   text-align: left;
+}
+
+/* ================================================================
+   MOTION
+   ================================================================
+   Personality: Corporate — 200-400ms, easing tegas, tanpa overshoot.
+   Dipilih karena ini alat kerja yang dipakai berdiri di warung sambil
+   memegang barang; motion yang memantul-mantul justru memperlambat.
+
+   Tiga lapis dipakai hanya di momen yang layak:
+     primer  = elemen yang dibaca user (kartu, angka)
+     sekunder= bayangan & garis yang menyusul
+     ambient = tidak ada di UI ini, sengaja — layar kecil, hemat baterai
+
+   SEMUA blok di sini wajib punya pasangan prefers-reduced-motion.
+   ---------------------------------------------------------------- */
+
+/* --- Masuk halaman: kartu naik bertahap ---------------------------
+   Anggaran total DIJAGA di bawah 400ms: elemen terakhir mulai di 105ms dan
+   selesai di 305ms. Versi pertama memakai jeda 45ms x 4 dengan durasi 320ms
+   sehingga elemen terakhir baru utuh di ~455ms — terlihat sebagai layar yang
+   masih setengah kosong saat aplikasi baru dibuka. Untuk alat yang dipakai
+   sambil berdiri di warung, itu terasa lambat.
+
+   Memakai animation-delay murni CSS, bukan JS, supaya tidak ada jank saat parse.
+   Kalau browser tidak mendukung animasi, aturan ini tidak berlaku sama sekali
+   dan elemen tetap terlihat (opacity bawaan 1) — bukan tersembunyi. */
+@keyframes naik-masuk {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+
+#konten-utama > *,
+.mode-list > *,
+.laporan-list > * {
+  animation: naik-masuk var(--d-cepat) var(--e-masuk) both;
+}
+#konten-utama > *:nth-child(1), .mode-list > *:nth-child(1) { animation-delay: 0ms; }
+#konten-utama > *:nth-child(2), .mode-list > *:nth-child(2) { animation-delay: 35ms; }
+#konten-utama > *:nth-child(3), .mode-list > *:nth-child(3) { animation-delay: 70ms; }
+#konten-utama > *:nth-child(n+4), .mode-list > *:nth-child(n+4) { animation-delay: 105ms; }
+
+/* --- Kartu hasil scan / produk: muncul menyusul ------------------- */
+@keyframes item-masuk {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.laporan-item,
+.produk-card,
+.thumb-unknown {
+  animation: item-masuk var(--d-cepat) var(--e-masuk) both;
+}
+
+/* --- Momen "selesai opname": stempel ------------------------------
+   Ini satu-satunya momen teatrikal di seluruh aplikasi, dan disengaja.
+   Menyelesaikan opname adalah akhir dari pekerjaan yang memakan waktu —
+   pantas ditandai. Gerakannya meniru stempel karet: turun cepat, berhenti
+   mendadak, lalu kertasnya bergetar sedikit.
+
+   Dipakai dengan menambahkan kelas .stempel-selesai lewat JS pada kartu
+   ringkasan setelah "Terapkan ke buku stok" berhasil. */
+@keyframes stempel-turun {
+  0%   { opacity: 0; transform: scale(1.35) rotate(-6deg); }
+  55%  { opacity: 1; transform: scale(0.94) rotate(-2deg); }
+  75%  { transform: scale(1.03) rotate(0.5deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0); }
+}
+
+@keyframes kertas-getar {
+  0%, 100% { transform: none; }
+  30%      { transform: translateY(2px); }
+  60%      { transform: translateY(-1px); }
+}
+
+.stempel-selesai {
+  animation: kertas-getar var(--d-sedang) var(--e-standar);
+}
+
+.stempel-selesai .stempel-tanda {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 6px 12px;
+  border: 2px solid var(--pos);
+  border-radius: 999px;
+  color: var(--pos);
+  font-family: var(--font-judul);
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  animation: stempel-turun var(--d-lambat) cubic-bezier(0.2, 0.9, 0.25, 1) both;
+  animation-delay: 60ms;
+}
+
+/* --- Toast: masuk dari bawah, keluar lebih cepat ------------------
+   Entrance 30-50% lebih panjang dari exit; user peduli pada yang muncul. */
+@keyframes toast-masuk {
+  from { opacity: 0; transform: translateY(14px) scale(0.98); }
+  to   { opacity: 1; transform: none; }
+}
+
+#toast:not(:empty) {
+  animation: toast-masuk var(--d-cepat) var(--e-masuk) both;
+}
+
+/* --- Nav bawah: garis aktif menggeser, bukan berkedip ------------- */
+.nav-item {
+  transition: color var(--d-cepat) var(--e-standar);
+}
+
+.nav-item svg {
+  transition: transform var(--d-cepat) var(--e-masuk);
+}
+
+.nav-item.active svg {
+  transform: translateY(-2px) scale(1.06);
+}
+
+/* --- Hormati preferensi sistem -----------------------------------
+   Bukan sekadar mematikan animasi: elemen tetap harus terlihat, jadi
+   `both` fill-mode diganti agar tidak menyisakan opacity 0. */
+@media (prefers-reduced-motion: reduce) {
+  #konten-utama > *,
+  .mode-list > *,
+  .laporan-list > *,
+  .laporan-item,
+  .produk-card,
+  .thumb-unknown,
+  #toast:not(:empty),
+  .stempel-selesai,
+  .stempel-selesai .stempel-tanda {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+  .nav-item,
+  .nav-item svg,
+  .btn {
+    transition: none;
+  }
+  .nav-item.active svg {
+    transform: none;
+  }
 }
