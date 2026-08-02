@@ -290,7 +290,57 @@ foto rak retail. Model itu bisa menggambar kotak duluan di foto kalian; tim ting
 
 Ini yang membuat melabeli 500–700 foto muat di sisa waktu.
 
-### Cara pakai
+> **DIPERBARUI 2 Agustus — sumber kotak awal diganti.** Model pre-train kita ternyata
+> tidak sanggup menggambar kotak untuk barang besar/pipih: di 12 foto demo kotak
+> terbesarnya tidak pernah lewat ~14 % frame, dan pada **tiga foto dekat satu barang
+> ia memberi NOL kotak.** Pemakaian di bawah diganti Grounding DINO. Alasan dan
+> angkanya di PANDUAN-FINETUNE Step 1.6.
+
+### Cara pakai — PAKAI INI
+
+```bash
+pip install "transformers>=4.44"    # sengaja tidak di requirements.txt: cuma
+                                    # dipakai saat melabeli, bukan saat app jalan
+
+python -m scripts.autolabel_grounding --foto D:\dataset\raw \
+    --keluar D:\dataset\autolabel-gdino
+```
+
+Hasilnya `images/` + `labels/*.txt` + `data.yaml`, satu kelas `produk`, siap
+di-upload ke Roboflow sebagai anotasi awal. Rotasi EXIF diterapkan sebelum
+deteksi dan gambar hasil rotasi itu yang disimpan, jadi kotak dan gambar selalu
+cocok. Foto yang tidak dapat kotak sama sekali dilaporkan namanya di akhir —
+itu daftar yang harus digambar manual.
+
+**Ambang default 0,25.** Terukur di foto demo: 0,30 melewatkan barang di foto
+padat; 0,10 meledak jadi kotak bertumpuk di bungkus yang sama plus poster dinding
+dan kusen pintu ikut terkotak — kegagalan yang sama seperti `imgsz=1920` di bawah.
+Ubah lewat `--ambang` setelah ronde Roboflow pertama, ketika sudah ada label
+sungguhan untuk mengukurnya.
+
+Kalau melabeli satu jenis barang saja, frasa spesifik memangkas hampir semua
+kotak tak relevan: `--frasa "a bag of instant noodles."` memberi tepat satu kotak
+di foto uji Indomie. Frasa harus **benda saja** — `"a packaged product on a shelf"`
+memunculkan kotak sampah berlabel `shelf` seluas 68 % frame.
+
+#### Yang harus diperiksa, dan ini bukan formalitas
+
+Dua kelemahan Grounding DINO sudah terukur, keduanya wajib dibereskan di Roboflow:
+
+1. **Foto warung padat kehilangan barang latar.** Barang yang tidak terkotak lalu
+   ikut dilatih akan **mengajari model bahwa barang itu latar** — bahaya yang sama
+   persis dengan aturan "gabung serpihan".
+2. **Kadang muncul satu kotak raksasa yang menelan satu rak.** Hapus.
+
+Pembagian kerjanya timpang, dan itu berguna untuk urutan prioritas: foto dekat
+satu-dua barang nyaris beres (cukup geser tepi), foto warung padat butuh kerja
+sungguhan — terutama **menambah** kotak yang terlewat.
+
+### Cara pakai — cara LAMA (model sendiri), disimpan sebagai rujukan
+
+Blok ini yang dipakai sebelum 2 Agustus. Disimpan karena penalaran `conf=0.05` di
+bawahnya masih benar untuk model kita, dan akan dipakai lagi di ronde kedua
+(setelah fine-tune, memakai model hasil fine-tune).
 
 Ketua menjalankan ini sekali atas semua foto mentah, lalu meng-upload hasilnya ke
 Roboflow sebagai anotasi awal:

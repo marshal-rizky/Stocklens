@@ -173,6 +173,14 @@ Akibatnya bungkus mi yang tergeletak dan memenuhi ~30 % frame **tidak bisa
 diungkapkan** oleh model ini. Yang keluar bukan satu kotak besar, melainkan
 serpihan: kotak di barcode, kotak di ilustrasi pojok.
 
+Gejalanya ternyata **tidak selalu berupa serpihan**. Diukur ulang 2 Agustus pada
+`Indomie-aceh/2-FOTO-UJI.jpg`: di conf 0,25 bungkusnya tidak dapat kotak sama
+sekali (5 kotak yang keluar semuanya di botol tegak), dan di conf 0,05 hanya satu
+kotak seluas **0,96 % frame** dengan conf 0,076 — satu serpih, praktis buta. Pada
+tiga foto lain (keripik, dua foto diapers) YOLO memberi **nol kotak**. Jadi
+akibat prior yang sama muncul dua rupa: barang pecah, atau barang hilang. Yang
+kedua lebih berbahaya karena tidak meninggalkan jejak untuk dikoreksi pelabel.
+
 Catatan kejujuran: memperkecil objek relatif terhadap frame (uji dengan menambah
 bingkai) **tidak** menyelamatkannya — jumlah kotak tetap 5–9. Jadi bukan cuma
 skala. Pose dan tampilan ikut berperan: produk SKU-110K tegak dan menghadap
@@ -193,6 +201,105 @@ permanen dan diperkuat oleh data sendiri.
 
 Nasihat nomor satu Ultralytics untuk fine-tuning adalah kualitas label, dan
 inilah titik paling rawannya di proyek ini.
+
+## Step 1.6 — Ganti model auto-labeling (diukur 2 Agustus)
+
+Step 1.5 menutup dengan beban yang berat sebelah: model kita menggambar kotak
+yang salah, lalu **manusia** yang harus membetulkan tiap kotak. Pertanyaannya —
+apakah harus model kita yang menggambar kotak awal?
+
+Ternyata tidak, dan ini terukur.
+
+### Detektor berbasis teks tidak membawa prior SKU-110K
+
+Grounding DINO (`IDEA-Research/grounding-dino-base`) menautkan **frasa teks** ke
+wilayah gambar. Ia tidak pernah dilatih di rak supermarket, jadi tidak membawa
+keyakinan "produk selalu kecil dan tegak". Diuji pada 12 foto demo, ambang 0,30,
+frasa `"a packaged product."` — pembanding YOLO di conf 0,25:
+
+| Foto | YOLO: kotak | YOLO: kotak terbesar | GDINO: kotak | GDINO: terbesar |
+|---|---|---|---|---|
+| Indomie-aceh / FOTO-UJI | 5 | 11,66 % | 12 | **26,14 %** |
+| Keripik-Pedas / SUMBER-GALERI | 1 | 0,76 % | 1 | **61,74 %** |
+| Keripik-Pedas / FOTO-UJI | **0** | — | 1 | **44,39 %** |
+| Diapers / FOTO-UJI | **0** | — | 2 | **39,63 %** |
+| Diapers / SUMBER-GALERI | **0** | — | 10 | 10,32 % |
+| Mr-Brown / SCAN (botol tegak) | 7 | 10,50 % | 2 | 14,91 % |
+
+Di 12 foto, kotak terbesar YOLO **tidak pernah melewati ~14 %** frame (satu kotak
+97 % muncul, tapi itu kotak sampah selebar frame). Grounding DINO rutin
+menghasilkan 25–62 %. Tiga foto yang YOLO-nya nol adalah justru kasus pemakaian
+nyata: foto dekat satu barang.
+
+### Diverifikasi dengan mata, bukan hanya angka
+
+Angka luas saja bisa menipu — kotak besar bisa saja kotak sampah. Ketiganya
+dilihat langsung (berkas berkotak ada di folder demo):
+
+- **Indomie tergeletak** — satu kotak menutupi seluruh bungkus dari ujung ke
+  ujung, conf 0,663. IoU 0,79 terhadap kotak acuan yang digambar tangan (acuan
+  itu sendiri kasar, jadi angkanya punya galat; yang pasti jauh di atas ambang
+  kebenaran lazim 0,5).
+- **Keripik** — satu kotak di satu bungkus, conf 0,803. Tepi kanan sedikit
+  memotong bungkus, **masih perlu disentuh pelabel**.
+- **Diapers** — dua kotak untuk dua bungkus MamyPoko, termasuk yang di belakang
+  dan sebagian tertutup. Persis jumlah yang benar.
+
+### Frasa itu penting
+
+Grounding DINO memecah teks jadi frasa dan memberi kotak untuk tiap frasa.
+`"a packaged product on a shelf"` memunculkan kotak berlabel `shelf` seluas 68 %
+frame — sampah murni. Pakai frasa **benda saja**:
+
+| Frasa | Kotak | Catatan |
+|---|---|---|
+| `"a packaged product on a shelf"` | 11 | ada kotak sampah `shelf` 68 % |
+| `"a packaged product."` | 12 | conf bungkus mi naik 0,527 → 0,663 |
+| `"a bag of instant noodles."` | **1** | tepat satu kotak, di bungkusnya, conf 0,720 |
+
+Baris terakhir berguna langsung: kalau melabeli satu produk tertentu, frasa
+spesifik memangkas hampir seluruh kotak yang tidak relevan.
+
+### Yang berubah dalam alur kerja
+
+`PANDUAN-DATASET.md` memakai model kita sendiri di conf 0,05 untuk menggambar
+kotak awal. **Ganti sumber kotak awal itu dengan Grounding DINO.** Aturan
+"gabung serpihan" di Step 1.5 tetap berlaku — ia sekarang jadi jaring pengaman,
+bukan pekerjaan utama pelabel.
+
+```bash
+# transformers SENGAJA tidak ada di requirements.txt — ia cuma dipakai saat
+# melabeli, bukan saat aplikasi jalan. Memasukkannya membengkakkan image Docker
+# yang dipakai penilaian.
+pip install "transformers>=4.44"
+
+python -m scripts.banding_grounding --foto <folder> --gambar <folder keluaran>
+```
+
+Bobotnya (±700 MB) diunduh sekali lalu di-cache. Diuji jalan di RTX 4070.
+
+Tiga hal yang harus tetap dipegang:
+
+1. **Kotaknya tetap wajib diperiksa manusia.** Contoh keripik di atas memotong
+   tepi bungkus. Auto-labeling memindahkan pekerjaan dari *menggambar* ke
+   *membetulkan* — jauh lebih cepat, tapi bukan nol.
+2. **Grounding DINO bukan pengganti model produksi.** Ia besar dan lambat; tidak
+   mungkin jalan di perangkat warung. Justru itu alasan fine-tune tetap perlu:
+   model besar melabeli, YOLO11n kecil yang dilatih dari label itu yang dipakai.
+   Pola ini punya nama dan pustaka matang — lihat `autodistill` (Roboflow).
+3. **Ini belum mAP.** Belum ada label manusia, jadi belum ada angka akurasi.
+   Yang di atas adalah perilaku terukur, bukan skor.
+
+### Yang TIDAK menyelesaikan masalah ini
+
+`auto_annotate` bawaan Ultralytics mengambil kotak dari model deteksi lalu SAM
+sekadar membuat mask-nya. Kotaknya tetap dari detektor kita — jadi ia mewarisi
+kebutaan yang sama. Bukan jalan keluar.
+
+Modul model bahasa-visual di autodistill (`autodistill-gpt-4v`, `-gemini`)
+melakukan **klasifikasi**, bukan deteksi — README-nya menyebut itu eksplisit.
+Model bahasa-visual tidak menggambar kotak presisi. Yang menggambar kotak adalah
+model *grounding*.
 
 ## Step 2 — Fine-tune di dataset sendiri (±1–2 jam)
 
