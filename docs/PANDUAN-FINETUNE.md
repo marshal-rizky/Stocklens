@@ -149,20 +149,25 @@ mentah-mentah ke Windows:**
 Baca ini sebelum melabeli apa pun. Isinya menentukan aturan labeling, dan kalau
 dilewati, hasil fine-tune-nya bisa lebih buruk daripada model sekarang.
 
-### Model kita punya langit-langit skala
+### Model kita nyaris tidak pernah memprediksi objek besar
 
-Model pre-train dijalankan ke 91 foto rak sendiri, menghasilkan 1100 kotak:
+Diukur pada dua kumpulan foto rak sendiri:
 
-| Luas kotak (% dari frame) | |
-|---|---|
-| median | 0,55 % |
-| persentil 99 | 5,73 % |
-| **maksimum** | **9,71 %** |
-| kotak > 10 % frame | **0 dari 1100** |
+| | 91 foto (kolam latih), conf 0,25 | 44 foto (test set), conf 0,25 | 44 foto, conf 0,05 |
+|---|---|---|---|
+| kotak terukur | 1100 | 751 | 3393 |
+| median luas | 0,55 % frame | 1,00 % | 0,56 % |
+| maksimum | 9,71 % | 10,71 % | 16,41 % |
+| kotak > 10 % frame | 0 | **2** (0,3 %) | **10** (0,3 %) |
+
+> **Koreksi.** Versi pertama catatan ini menulis "0 dari 1100" lalu menyimpulkan
+> model **tidak pernah** bisa memprediksi kotak besar. Terlalu kuat: pengukuran
+> kedua menemukan kotak sampai 16,4 % frame. Yang benar — kotak besar hanya
+> **0,3 % dari seluruh prediksi**. Itu prior yang sangat kuat, bukan batas keras.
 
 SKU-110K adalah rak supermarket dengan rata-rata ~150 objek per gambar — tiap
-objek di bawah 1 % frame. Model mewarisi keyakinan itu: **produk selalu kecil,
-tegak, dan berjejer rapat.**
+objek di bawah 1 % frame. Model mewarisi keyakinan itu: **produk hampir selalu
+kecil, tegak, dan berjejer rapat.**
 
 Akibatnya bungkus mi yang tergeletak dan memenuhi ~30 % frame **tidak bisa
 diungkapkan** oleh model ini. Yang keluar bukan satu kotak besar, melainkan
@@ -244,6 +249,46 @@ Itu bukan alasan untuk tidak mencoba, tapi wajib ada:
    Drive: `3-UJI-SENDIRI` (nol kebocoran, dipisah deterministik).
 2. Angka pembanding **sebelum** fine-tune di test set yang sama.
 3. Keputusan jujur: **kalau turun, jangan dipakai.** Model lama tetap terpasang.
+
+## Step 2.5 — Baseline "sebelum" (WAJIB, jalankan sebelum fine-tune)
+
+Tanpa angka pembanding, tidak ada cara membuktikan fine-tune memperbaiki apa pun
+— dan peringatan di atas bilang fine-tune dataset kecil bisa **memperburuk**.
+
+**mAP belum bisa dihitung selama belum ada label.** mAP menuntut kotak kebenaran
+hasil labeling manusia. Angka akurasi apa pun tanpa label adalah karangan.
+
+Yang bisa direkam sekarang adalah **perilaku detektor**, dan itu sudah cukup
+untuk menjawab pertanyaan sesudah fine-tune: model jadi menemukan lebih banyak
+atau lebih sedikit? akhirnya bisa memprediksi kotak besar? lebih percaya diri di
+foto warung?
+
+```bash
+STOKLENS_MODEL=<path/best.pt> python -m scripts.baseline_detektor \
+    --triase triase.json --triase-baru triase_baru.json \
+    --foto <folder foto> --keluar baseline_sebelum.json
+```
+
+Test set dipilih deterministik (1 dari tiap 4 foto rak, per domain), **bukan**
+dibaca dari Drive — jadi daftarnya sama persis kapan pun dijalankan.
+
+### Angka baseline model pre-train (2026-08-02, 44 foto uji)
+
+| | conf 0,25 (produksi) | conf 0,05 (auto-label) |
+|---|---|---|
+| total kotak | 751 | 3393 |
+| kotak per foto (median) | 12 | 58 |
+| **foto tanpa kotak sama sekali** | **4 dari 44** — semuanya warung | 0 |
+| confidence median | 0,454 | 0,111 |
+| median kotak, minimarket | 12 | 43 |
+| median kotak, warung | 14 | 72 |
+
+Empat foto warung yang menghasilkan **nol kotak** pada ambang produksi adalah
+target paling jelas untuk fine-tune. Kalau sesudah fine-tune angka itu tidak
+turun, fine-tune-nya belum menyelesaikan masalah yang paling terasa.
+
+Begitu label sudah ada, **ganti skrip ini dengan `model.val()` sungguhan.** Ini
+pengganti sementara, bukan tujuan akhir.
 
 ## Step 3 — Evaluasi & bukti (bahan pitch!)
 
