@@ -55,9 +55,10 @@ Format judul YouTube & aturan "dilarang cut" ada di `docs/ROADMAP.md`. Salah for
 |---|---|---|---|
 | Pre-train SKU-110K | | **selesai** | dikerjakan lebih awal 28 Jul — mAP50 0,868, 37 menit di RTX 4070 |
 | **Salin bukti training ke Drive tim** | | belum | `best.pt`, `results.png`, `results.csv`, confusion matrix ada di `C:\Users\User\StokLens-training\` — di luar repo & di-gitignore, jadi HILANG kalau laptop ketua bermasalah |
-| Fine-tune dataset sendiri → `stoklens-yolo.pt` | | belum | menunggu dataset |
-| Labeling Roboflow + QC | | belum | menunggu foto |
-| Catat baseline vs sesudah (Step 0 & 3 PANDUAN-FINETUNE) | | belum | |
+| Fine-tune dataset sendiri → `stoklens-yolo.pt` | | belum | menunggu dataset berlabel |
+| **Proyek Roboflow + pipa auto-label** | | **selesai** | `marshal-rizky/stoklens-produk-warung` — 25 foto, 131 kotak, batch `gdino-ronde1` menunggu review |
+| Labeling Roboflow + QC | | **bisa mulai** | 25 foto sudah siap dibetulkan; sisanya menunggu foto |
+| Catat baseline vs sesudah (Step 0 & 3 PANDUAN-FINETUNE) | | baseline "sebelum" selesai | belum mAP — belum ada label manusia |
 | **Draft proposal mulai** | | belum | — jangan tunggu model |
 
 ## Minggu 3 (11–17 Agu)
@@ -84,7 +85,8 @@ Format judul YouTube & aturan "dilarang cut" ada di `docs/ROADMAP.md`. Salah for
 
 | Risiko | Pemantau | Kondisi sekarang |
 |---|---|---|
-| Izin toko & labeling molor | | belum mulai — risiko tertinggi |
+| Izin toko & kumpul foto molor | | **risiko tertinggi.** Auto-labeling memangkas waktu *menggambar*, bukan waktu *memotret* — 135 foto rak tertriase vs target 500 |
+| Foto uji bocor ke training | | dijaga di hulu: `scripts/testset.py` + `--daftar-uji`. Kalau bocor, tidak ada yang gagal dan angkanya justru terlihat bagus |
 | 45% bobot ada di deliverable yang belum disentuh | | video & proposal masih 0% |
 | Terbaca *overbuilt* oleh juri | | mitigasi: BACKLOG dikunci, framing alur inti di proposal |
 | Konflik semantik antar-PR | | aturan ada di `CARA-KERJA-TIM.md` §5, belum diuji ulang |
