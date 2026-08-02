@@ -37,11 +37,27 @@ import os
 import shutil
 
 MODEL_GD = "IDEA-Research/grounding-dino-base"
+BUCKET_DETEKTOR = "1-DETEKTOR-foto-rak"
 FRASA = "a packaged product."
 AMBANG = 0.25        # lihat tabel di PANDUAN-FINETUNE Step 1.6
 AMBANG_TEKS = 0.20
 IOU_NMS = 0.5
 EKSTENSI = ("*.jpg", "*.jpeg", "*.png", "*.JPG", "*.JPEG", "*.PNG")
+
+
+def dari_triase(folder, triase, triase_baru=None, bucket=BUCKET_DETEKTOR):
+    """Pilih foto berdasarkan hasil triase, bukan isi folder.
+
+    Folder foto memuat SEMUA yang diunduh dari Drive — termasuk foto enrollment
+    dan yang tidak dipakai. Yang boleh melatih detektor cuma bucket foto rak.
+    Menyalinnya ke folder terpisah dulu berarti menggandakan ratusan MB tanpa
+    guna, jadi pemilihannya dilakukan di sini.
+    """
+    from scripts.testset import muat_triase
+    semua = muat_triase(triase, triase_baru)
+    jalur = [os.path.join(folder, f"{x['id']}__{x['nama']}")
+             for x in semua if x["bucket"] == bucket]
+    return sorted(p for p in jalur if os.path.exists(p))
 
 
 def kumpulkan(target, abaikan=()):
@@ -98,9 +114,17 @@ def main():
     ap.add_argument("--ambang-teks", type=float, default=AMBANG_TEKS)
     ap.add_argument("--abaikan", nargs="*", default=[],
                     help="folder yang dilewati (folder --keluar otomatis dilewati)")
+    ap.add_argument("--triase",
+                    help="pilih foto dari hasil triase (bucket foto rak) alih-alih "
+                         "menyapu seluruh isi --foto")
+    ap.add_argument("--triase-baru")
     a = ap.parse_args()
 
-    berkas = kumpulkan(a.foto, [a.keluar, *a.abaikan])
+    if a.triase:
+        berkas = dari_triase(a.foto, a.triase, a.triase_baru)
+        print(f"dipilih dari triase, bucket {BUCKET_DETEKTOR}")
+    else:
+        berkas = kumpulkan(a.foto, [a.keluar, *a.abaikan])
     if not berkas:
         raise SystemExit(f"tidak ada foto di {a.foto}")
 

@@ -61,9 +61,13 @@ def main():
     a = ap.parse_args()
 
     uji = pilih_uji(muat_triase(a.triase, a.triase_baru))
+    # Ditulis sebagai nama berkas UTUH (`<id>__<nama>`), bukan `<nama>` saja.
+    # Nama asli dari HP bisa bertabrakan — di 171 foto rak ada 2 pasang yang
+    # sama persis. Kalau yang ditulis cuma `<nama>`, satu foto latih ikut
+    # tertarik ke split test hanya karena namanya kembar.
     with open(a.keluar, "w", encoding="utf-8") as fh:
-        for x in sorted(uji, key=lambda x: x["nama"]):
-            fh.write(x["nama"] + "\n")
+        for x in sorted(uji, key=lambda x: (x["nama"], x["id"])):
+            fh.write(f"{x['id']}__{x['nama']}\n")
 
     per = defaultdict(int)
     for x in uji:
