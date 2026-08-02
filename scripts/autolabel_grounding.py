@@ -26,10 +26,10 @@ kotak raksasa yang menelan satu rak. Keduanya harus dibereskan di Roboflow.
 Barang yang tidak terkotak lalu ikut dilatih akan mengajari model bahwa barang
 itu latar — bahaya yang sama dengan aturan "gabung serpihan".
 
-Pakai:
-    pip install "transformers>=4.44"      # sengaja tidak di requirements.txt
-    python -m scripts.autolabel_grounding --foto D:\dataset\raw \
-        --keluar D:\dataset\autolabel-gdino
+Pakai (dari akar repo; satu baris — `\` penyambung baris tidak jalan di cmd.exe):
+    pip install "transformers>=4.44"
+
+    python -m scripts.autolabel_grounding --foto "<folder foto>" --keluar "<folder hasil>"
 """
 import argparse
 import glob
@@ -44,13 +44,22 @@ IOU_NMS = 0.5
 EKSTENSI = ("*.jpg", "*.jpeg", "*.png", "*.JPG", "*.JPEG", "*.PNG")
 
 
-def kumpulkan(target):
+def kumpulkan(target, abaikan=()):
+    """Kumpulkan foto, lewati folder yang diabaikan.
+
+    `abaikan` selalu memuat folder keluaran. Tanpa itu, menaruh --keluar di dalam
+    --foto membuat jalan kedua memakan keluarannya sendiri: gambar hasil rotasi
+    ikut terbaca sebagai foto mentah, lalu dilabeli lagi.
+    """
     if os.path.isfile(target):
         return [target]
+    tolak = [os.path.normcase(os.path.abspath(a)) + os.sep for a in abaikan]
     berkas = []
     for p in EKSTENSI:
         berkas += glob.glob(os.path.join(target, "**", p), recursive=True)
-    return sorted(set(berkas))
+    return sorted({f for f in berkas
+                   if not any(os.path.normcase(os.path.abspath(f)).startswith(t)
+                              for t in tolak)})
 
 
 def nama_unik(path, akar, dipakai):
@@ -87,9 +96,11 @@ def main():
                     help="frasa BENDA saja, huruf kecil, diakhiri titik")
     ap.add_argument("--ambang", type=float, default=AMBANG)
     ap.add_argument("--ambang-teks", type=float, default=AMBANG_TEKS)
+    ap.add_argument("--abaikan", nargs="*", default=[],
+                    help="folder yang dilewati (folder --keluar otomatis dilewati)")
     a = ap.parse_args()
 
-    berkas = kumpulkan(a.foto)
+    berkas = kumpulkan(a.foto, [a.keluar, *a.abaikan])
     if not berkas:
         raise SystemExit(f"tidak ada foto di {a.foto}")
 

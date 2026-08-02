@@ -302,9 +302,13 @@ Ini yang membuat melabeli 500–700 foto muat di sisa waktu.
 pip install "transformers>=4.44"    # sengaja tidak di requirements.txt: cuma
                                     # dipakai saat melabeli, bukan saat app jalan
 
-python -m scripts.autolabel_grounding --foto D:\dataset\raw \
-    --keluar D:\dataset\autolabel-gdino
+python -m scripts.autolabel_grounding --foto "D:\dataset\raw" --keluar "D:\dataset\autolabel-gdino"
 ```
+
+Ditulis satu baris dengan sengaja. Tanda `\` di akhir baris untuk menyambung
+perintah adalah sintaks shell POSIX — di `cmd.exe` ia tidak menyambung apa pun,
+malah ikut terbaca sebagai bagian dari path. Path dikutip karena folder dataset
+sering punya spasi.
 
 Hasilnya `images/` + `labels/*.txt` + `data.yaml`, satu kelas `produk`, siap
 di-upload ke Roboflow sebagai anotasi awal. Rotasi EXIF diterapkan sebelum
@@ -331,6 +335,13 @@ Dua kelemahan Grounding DINO sudah terukur, keduanya wajib dibereskan di Roboflo
    ikut dilatih akan **mengajari model bahwa barang itu latar** — bahaya yang sama
    persis dengan aturan "gabung serpihan".
 2. **Kadang muncul satu kotak raksasa yang menelan satu rak.** Hapus.
+
+**Sebelum menjalankan, singkirkan gambar yang sudah bergaris kotak.** Tangkapan
+layar hasil scan, gambar contoh berlabel, gambar banding — semua itu sering
+menumpuk di folder foto. Kalau ikut terlatih, model belajar mengenali **persegi
+hijau**, bukan produk. Terjadi 2 Agustus waktu skrip ini dijalankan ke folder
+demo: 17 dari 43 berkas ternyata gambar diagnostik, bukan foto mentah. Pakai
+`--abaikan` atau bersihkan foldernya dulu.
 
 Pembagian kerjanya timpang, dan itu berguna untuk urutan prioritas: foto dekat
 satu-dua barang nyaris beres (cukup geser tepi), foto warung padat butuh kerja
