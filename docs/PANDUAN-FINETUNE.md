@@ -144,10 +144,59 @@ mentah-mentah ke Windows:**
 - Kalau dijalankan di Colab gratis dan kena limit: `epochs=10` sudah lumayan
   untuk transfer learning.
 
+## Step 1.5 — Apa yang SEBENARNYA dipelajari model pre-train (diukur 2 Agustus)
+
+Baca ini sebelum melabeli apa pun. Isinya menentukan aturan labeling, dan kalau
+dilewati, hasil fine-tune-nya bisa lebih buruk daripada model sekarang.
+
+### Model kita punya langit-langit skala
+
+Model pre-train dijalankan ke 91 foto rak sendiri, menghasilkan 1100 kotak:
+
+| Luas kotak (% dari frame) | |
+|---|---|
+| median | 0,55 % |
+| persentil 99 | 5,73 % |
+| **maksimum** | **9,71 %** |
+| kotak > 10 % frame | **0 dari 1100** |
+
+SKU-110K adalah rak supermarket dengan rata-rata ~150 objek per gambar — tiap
+objek di bawah 1 % frame. Model mewarisi keyakinan itu: **produk selalu kecil,
+tegak, dan berjejer rapat.**
+
+Akibatnya bungkus mi yang tergeletak dan memenuhi ~30 % frame **tidak bisa
+diungkapkan** oleh model ini. Yang keluar bukan satu kotak besar, melainkan
+serpihan: kotak di barcode, kotak di ilustrasi pojok.
+
+Catatan kejujuran: memperkecil objek relatif terhadap frame (uji dengan menambah
+bingkai) **tidak** menyelamatkannya — jumlah kotak tetap 5–9. Jadi bukan cuma
+skala. Pose dan tampilan ikut berperan: produk SKU-110K tegak dan menghadap
+kamera, sedangkan bungkus tergeletak miring, berkerut, dan memantulkan cahaya
+bukan "produk" dalam model tampilannya. Botol tegak di rak tidak mengalami ini
+sama sekali (terdeteksi rapi, cocok di 0,82).
+
+### ATURAN LABELING YANG PALING MUDAH TERLEWAT
+
+> **Serpihan pada satu produk WAJIB DIGABUNG jadi satu kotak yang menutupi
+> produk utuh. Bukan dihapus, bukan dibiarkan.**
+
+Alasannya: alur auto-labeling di `PANDUAN-DATASET.md` memakai model ini untuk
+menggambar kotak awal. Pada bungkus pipih, yang digambarnya adalah serpihan.
+Kalau pelabel hanya menghapus kotak yang salah dan **membiarkan** serpihan itu,
+kita secara harfiah **melatih model untuk memecah bungkus** — bug-nya jadi
+permanen dan diperkuat oleh data sendiri.
+
+Nasihat nomor satu Ultralytics untuk fine-tuning adalah kualitas label, dan
+inilah titik paling rawannya di proyek ini.
+
 ## Step 2 — Fine-tune di dataset sendiri (±1–2 jam)
 
 Berlaku dua jebakan yang sama seperti Step 1 — `project` di luar repo, dan
-dibungkus `__main__`:
+dibungkus `__main__`.
+
+Parameter di bawah **bukan tebakan**: ini resep yang direkomendasikan pendiri
+Ultralytics (glenn-jocher) untuk kasus fine-tune dataset kecil, di
+[issue #19942](https://github.com/ultralytics/ultralytics/issues/19942).
 
 ```python
 from ultralytics import YOLO
@@ -155,16 +204,46 @@ from ultralytics import YOLO
 
 def main():
     model = YOLO(r"C:\Users\<kamu>\StokLens-training\pretrain_sku110k\weights\best.pt")
-    model.train(data="dataset/data.yaml", epochs=60, imgsz=640, batch=16,
-                patience=15,      # early stop kalau 15 epoch tidak membaik
-                workers=4,
-                project=r"C:\Users\<kamu>\StokLens-training",
-                name="finetune_gudang")
+    model.train(
+        data="dataset/data.yaml",
+        epochs=300, patience=30,   # 300 = titik awal resmi; patience yang menghentikan
+        imgsz=640, batch=8,        # batch kecil untuk dataset kecil
+        freeze=10,                 # BEKUKAN BACKBONE — lihat alasannya di bawah
+        lr0=0.01, cos_lr=True,
+        warmup_epochs=0,           # bobot sudah bagus, tidak perlu pemanasan
+        rect=True,
+        mosaic=0.5, close_mosaic=10,
+        workers=4,
+        project=r"C:\Users\<kamu>\StokLens-training",
+        name="finetune_warung",
+    )
 
 
 if __name__ == "__main__":
     main()
 ```
+
+**`freeze=10` yang paling penting.** Backbone menyimpan "seperti apa rupa produk
+retail" hasil belajar dari 8 ribu gambar SKU-110K. Dengan dataset kita yang cuma
+ratusan foto, melatih seluruh jaringan akan menimpa pengetahuan itu dengan
+sesuatu yang lebih buruk. Yang dilatih ulang cukup kepala deteksinya.
+
+**`warmup_epochs=0`**: pemanasan learning rate berguna saat mulai dari bobot
+acak. Kita tidak — kita mulai dari bobot yang sudah mAP50 0,868.
+
+### Peringatan yang harus dibaca apa adanya
+
+Maintainer Ultralytics (Y-T-G), di utas yang sama:
+
+> *"The smaller the dataset, the faster the model overfits and gets worse."*
+
+**Fine-tune dengan dataset kecil bisa membuat model LEBIH BURUK dari sekarang.**
+Itu bukan alasan untuk tidak mencoba, tapi wajib ada:
+
+1. Test set yang disisihkan dan **tidak pernah** ikut training — sudah ada di
+   Drive: `3-UJI-SENDIRI` (nol kebocoran, dipisah deterministik).
+2. Angka pembanding **sebelum** fine-tune di test set yang sama.
+3. Keputusan jujur: **kalau turun, jangan dipakai.** Model lama tetap terpasang.
 
 ## Step 3 — Evaluasi & bukti (bahan pitch!)
 
@@ -186,9 +265,22 @@ Simpan untuk pitch deck:
 
 1. `best.pt` → rename `stoklens-yolo.pt` → taruh **Drive tim** (JANGAN commit — .gitignore memblokir `*.pt`).
 2. Tiap orang download ke root repo lokal.
-3. Pakai: `run_scan(..., model_path="stoklens-yolo.pt")` dan
-   `scan_photos(..., detector=None)` otomatis lewat `_yolo_detector("stoklens-yolo.pt")`
-   — atau set default `model_path` di `scan.py`/`photo.py` lewat PR.
+3. Arahkan aplikasi ke bobot itu lewat env `STOKLENS_MODEL` — **tidak perlu
+   menyunting kode**:
+
+   ```powershell
+   $env:STOKLENS_MODEL = "C:\path\ke\stoklens-yolo.pt"
+   uvicorn stoklens.api:create_app --factory
+   ```
+
+   Untuk Docker, tambahkan ke `environment:` di `docker-compose.yml` dan mount
+   folder bobotnya. Lihat README §"Menukar bobot detektor".
+
+> ⚠️ Default-nya `yolo11n.pt` — model COCO bawaan ultralytics, kelasnya
+> orang/mobil/anjing. Diukur pada foto rak warung asli: yolo11n memberi **0
+> kotak**, SKU-110K memberi **33 kotak** pada foto yang sama. Kalau lupa
+> mengeset env-nya, scan tidak akan menemukan apa pun — dan itu **bukan** tanda
+> aplikasinya rusak.
 
 ## Jebakan umum
 
@@ -199,6 +291,24 @@ Simpan untuk pitch deck:
 | Deteksi dobel bertumpuk | NMS | `best.predict(..., iou=0.5)` — turunkan iou |
 | Kotak kegedean/longgar | Labeling tidak konsisten | QC ulang label (aturan di PANDUAN-DATASET) |
 | Colab disconnect | Sesi gratis terbatas | Checkpoint ke Drive tiap run; `resume=True` |
+| **Satu produk dapat banyak kotak kecil** | **Model mewarisi prior "objek selalu kecil" dari SKU-110K** | **Gabung serpihan jadi satu kotak saat labeling (Step 1.5). Jangan cuma dihapus** |
+| Sesudah fine-tune malah lebih jelek | Dataset terlalu kecil → overfit | Pakai `freeze=10`; bandingkan di test set; kalau turun, pakai model lama |
+| Foto close-up satu barang tidak terdeteksi | Di luar jangkauan skala model (maks ~10% frame) | Foto rak dari 1–1,5 m, bukan close-up. Lihat PANDUAN-DATASET §Framing |
+
+### Mencari tahu foto mana yang bikin model gagal
+
+Jangan menebak. `results.box.image_metrics` memberi precision/recall/f1 **per
+nama berkas** pada IoU 0.5:
+
+```python
+m = best.val(data="dataset/data.yaml", split="test")
+buruk = sorted(m.box.image_metrics.items(), key=lambda kv: kv[1]["recall"])[:10]
+for nama, v in buruk:
+    print(f"{v['recall']:.2f}  {v['fn']:3d} terlewat  {nama}")
+```
+
+Sepuluh foto terburuk itu yang harus dilihat mata — biasanya polanya langsung
+kelihatan (renceng, etalase kaca, rak remang, atau close-up).
 
 ## (Opsional) Fine-tune CLIP — metric learning
 
