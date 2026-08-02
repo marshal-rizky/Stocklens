@@ -158,7 +158,13 @@ def main():
             print(f"  [{i}/{len(berkas)}] {total} kotak sejauh ini")
 
     with open(os.path.join(a.keluar, "data.yaml"), "w", encoding="utf-8") as fh:
-        fh.write("path: .\ntrain: images\nval: images\nnc: 1\nnames: ['produk']\n")
+        fh.write(
+            "# JANGAN melatih langsung dari berkas ini.\n"
+            "# train dan val menunjuk folder yang SAMA — model akan diuji memakai\n"
+            "# foto yang dilatihkan, jadi nilainya pasti bagus dan pasti bohong.\n"
+            "# Berkas ini cuma penanda untuk impor Roboflow; pembagian 80/10/10\n"
+            "# yang sebenarnya dibuat Roboflow di tahap Generate.\n"
+            "path: .\ntrain: images\nval: images\nnc: 1\nnames: ['produk']\n")
 
     n = len(dipakai)
     print(f"\n{n} foto, {total} kotak (rata-rata {total / max(1, n):.1f} per foto)")
