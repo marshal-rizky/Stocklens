@@ -242,9 +242,42 @@ Memisahkan per pemotret mencegahnya tanpa perlu rename manual.
 
 ## Tahap 3 — Upload & Labeling di Roboflow
 
-1. Ketua bikin project Roboflow (tipe: **Object Detection**), invite via email.
-2. Upload foto per batch lokasi.
-3. **Satu kelas saja: `produk`.**
+Proyeknya **sudah ada** (dibuat 2 Agustus), jadi langkah "bikin project" sudah
+lewat:
+
+> **`marshal-rizky/stoklens-produk-warung`** — object detection, satu kelas
+> `produk`, lisensi MIT (publik). Isi awal: 25 foto, 131 kotak, batch
+> `gdino-ronde1`.
+
+Ketua tinggal mengundang anggota via email. Urutan kerja per gelombang foto:
+
+| # | Siapa | Perintah / tindakan |
+|---|---|---|
+| 1 | ketua | unduh foto dari Drive, **buang tangkapan layar & crop** (lihat peringatan di bawah) |
+| 2 | ketua | `python -m scripts.testset --triase triase.json --keluar daftar-uji.txt` |
+| 3 | ketua | `python -m scripts.autolabel_grounding --foto "<folder>" --keluar "<hasil>"` |
+| 4 | ketua | `python -m scripts.kirim_roboflow --sumber "<hasil>" --proyek stoklens-produk-warung --daftar-uji daftar-uji.txt --jalankan` |
+| 5 | **tim** | Roboflow → Annotate → betulkan & **tambah** kotak |
+| 6 | ketua | QC 10 %, lalu Accept into dataset |
+| 7 | ketua | Generate versi → export → fine-tune lokal |
+
+**Satu kelas saja: `produk`.** Pelabel tidak perlu menamai apa pun — identitas
+barang datang dari pencocokan CLIP saat enroll, bukan dari detektor. Ini
+memangkas bagian paling melelahkan dari labeling.
+
+### Foto uji WAJIB masuk split `test`
+
+Langkah 2 dan `--daftar-uji` di langkah 4 bukan hiasan. `baseline_detektor.py`
+sudah mengunci 44 foto uji dan merekam angka "sebelum" di sana.
+
+Kalau foto-foto itu ikut masuk `train` — misalnya karena Generate membagi
+80/10/10 secara acak — model dilatih pada foto ujinya sendiri dan perbandingan
+sebelum/sesudah jadi tidak sah. **Yang bikin berbahaya: tidak ada yang gagal.**
+Angkanya justru terlihat bagus, dan baru ketahuan salah setelah semuanya
+selesai.
+
+Kalau `--daftar-uji` lupa diberikan, skrip memperingatkan dan menaruh semua foto
+di `train` — hentikan, keluarkan daftarnya, ulangi.
 
 ### Aturan labeling (KONSISTENSI = segalanya)
 1. Kotak **ketat** ke tepi kemasan — jangan longgar, jangan motong.

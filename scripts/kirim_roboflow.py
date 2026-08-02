@@ -23,9 +23,20 @@ proses. Ambil key-nya di Roboflow → Settings → API Keys (pakai Private API K
 
     set ROBOFLOW_API_KEY=xxxxx          (cmd.exe, sesi ini saja)
 
+SPLIT `test` — JANGAN DILEWATI
+-----------------------------
+`baseline_detektor.py` sudah mengunci daftar foto uji dan merekam angka
+"sebelum" di sana. Kalau foto-foto itu ikut masuk `train`, model dilatih pada
+foto ujinya sendiri dan perbandingan sebelum/sesudah jadi tidak sah. Yang bikin
+berbahaya: tidak ada yang gagal — hasilnya justru terlihat bagus.
+
+Berikan `--daftar-uji`, dihasilkan oleh `scripts/testset.py`. Tanpa itu semua
+foto masuk `train` dan skrip memperingatkan.
+
 Pakai (dari akar repo; satu baris):
     pip install roboflow
-    python -m scripts.kirim_roboflow --sumber "<folder hasil autolabel>" --proyek "<nama-proyek>"
+    python -m scripts.testset --triase triase.json --keluar daftar-uji.txt
+    python -m scripts.kirim_roboflow --sumber "<folder hasil autolabel>" --proyek "<nama-proyek>" --daftar-uji daftar-uji.txt
 
 Tanpa `--jalankan` skrip hanya melaporkan apa yang AKAN dikirim dan berhenti.
 Mengunggah ke akun orang adalah tindakan keluar; jangan sampai tidak sengaja.
@@ -64,18 +75,41 @@ def periksa_sumber(sumber):
     return pasang, yatim, kotak
 
 
-def susun(pasang, tujuan):
-    """Roboflow menuntut gambar dan .txt BERDAMPINGAN dalam satu folder split,
+def muat_daftar_uji(jalur):
+    """Nama-nama foto uji, satu per baris. Dihasilkan oleh scripts/testset.py."""
+    if not jalur:
+        return set()
+    with open(jalur, encoding="utf-8") as fh:
+        return {b.strip() for b in fh if b.strip()}
+
+
+def split_untuk(nama_gambar, nama_uji):
+    """Foto uji WAJIB masuk split `test`.
+
+    autolabel_grounding meratakan nama berkas bersarang (`Folder__foto.jpg`),
+    jadi cocokkan pada potongan terakhir — daftar uji memuat nama aslinya.
+    """
+    dasar = os.path.basename(nama_gambar)
+    if dasar in nama_uji or dasar.split("__")[-1] in nama_uji:
+        return "test"
+    return "train"
+
+
+def susun(pasang, tujuan, nama_uji=frozenset()):
+    """Roboflow menuntut gambar dan .txt BERDAMPINGAN dalam folder per split,
     plus data.yaml di akar. Keluaran autolabel memisah images/ dan labels/, jadi
     disusun ulang di folder sementara — folder asal tidak disentuh."""
-    d = os.path.join(tujuan, "train")
-    os.makedirs(d, exist_ok=True)
+    hitung = {"train": 0, "test": 0}
     for g, txt, _ in pasang:
+        s = split_untuk(g, nama_uji)
+        d = os.path.join(tujuan, s)
+        os.makedirs(d, exist_ok=True)
         shutil.copy2(g, os.path.join(d, os.path.basename(g)))
         shutil.copy2(txt, os.path.join(d, os.path.basename(txt)))
+        hitung[s] += 1
     with open(os.path.join(tujuan, "data.yaml"), "w", encoding="utf-8") as fh:
-        fh.write("train: train\nval: train\nnc: 1\nnames: ['produk']\n")
-    return tujuan
+        fh.write("train: train\nval: train\ntest: test\nnc: 1\nnames: ['produk']\n")
+    return hitung
 
 
 def main():
@@ -83,6 +117,9 @@ def main():
     ap.add_argument("--sumber", required=True, help="folder keluaran autolabel_grounding")
     ap.add_argument("--proyek", required=True, help="id proyek Roboflow (dibuat kalau belum ada)")
     ap.add_argument("--batch", default=BATCH)
+    ap.add_argument("--daftar-uji",
+                    help="berkas daftar foto uji dari scripts/testset.py. "
+                         "Foto-foto itu ditaruh di split `test`, bukan `train`.")
     ap.add_argument("--ground-truth", action="store_true",
                     help="kirim sebagai ground truth, BUKAN prediksi. Baca docstring dulu.")
     ap.add_argument("--jalankan", action="store_true",
@@ -90,13 +127,21 @@ def main():
     a = ap.parse_args()
 
     pasang, yatim, kotak = periksa_sumber(a.sumber)
+    nama_uji = muat_daftar_uji(a.daftar_uji)
     prediksi = not a.ground_truth
+    n_uji = sum(1 for g, _, _ in pasang if split_untuk(g, nama_uji) == "test")
 
     print(f"sumber : {a.sumber}")
     print(f"proyek : {a.proyek}")
     print(f"batch  : {a.batch}")
     print(f"kirim sebagai: {'PREDIKSI menunggu review' if prediksi else '*** GROUND TRUTH ***'}")
     print(f"\n{len(pasang)} foto, {kotak} kotak (rata-rata {kotak / max(1, len(pasang)):.1f}/foto)")
+    print(f"split  : {len(pasang) - n_uji} train, {n_uji} test")
+    if not nama_uji:
+        print("\n!! --daftar-uji tidak diberikan: SEMUA foto masuk train.")
+        print("   Kalau foto uji ikut terlatih, perbandingan sebelum/sesudah")
+        print("   tidak sah dan tidak akan ada yang gagal — angkanya cuma bohong.")
+        print("   Keluarkan daftarnya: python -m scripts.testset --triase triase.json")
     tanpa = [p for p in pasang if p[2] == 0]
     if tanpa:
         print(f"{len(tanpa)} foto tanpa kotak — harus digambar manual di Roboflow")
@@ -118,9 +163,9 @@ def main():
 
     tmp = tempfile.mkdtemp(prefix="roboflow-kirim-")
     try:
-        susun(pasang, tmp)
+        hitung = susun(pasang, tmp, nama_uji)
         ws = Roboflow(api_key=key).workspace()
-        print(f"\nmengunggah {len(pasang)} foto...")
+        print(f"\nmengunggah {hitung['train']} train + {hitung['test']} test...")
         ws.upload_dataset(
             tmp, a.proyek,
             project_type="object-detection",

@@ -371,13 +371,32 @@ atau lebih sedikit? akhirnya bisa memprediksi kotak besar? lebih percaya diri di
 foto warung?
 
 ```bash
-STOKLENS_MODEL=<path/best.pt> python -m scripts.baseline_detektor \
-    --triase triase.json --triase-baru triase_baru.json \
-    --foto <folder foto> --keluar baseline_sebelum.json
+set STOKLENS_MODEL=<path/best.pt>
+python -m scripts.baseline_detektor --triase triase.json --triase-baru triase_baru.json --foto "<folder foto>" --keluar baseline_sebelum.json
 ```
 
 Test set dipilih deterministik (1 dari tiap 4 foto rak, per domain), **bukan**
-dibaca dari Drive — jadi daftarnya sama persis kapan pun dijalankan.
+dibaca dari Drive — jadi daftarnya sama persis kapan pun dijalankan. Logikanya
+ada di `scripts/testset.py`, satu sumber kebenaran.
+
+### Foto uji ini WAJIB masuk split `test` di Roboflow
+
+Angka "sebelum" di atas terikat pada 44 foto tertentu. Kalau foto-foto itu ikut
+masuk `train` — misalnya karena Generate membagi 80/10/10 secara acak — model
+dilatih pada foto ujinya sendiri dan seluruh perbandingan di Step 3 jadi tidak
+sah.
+
+**Tidak ada yang akan gagal kalau ini terjadi.** Angkanya justru naik dan
+terlihat meyakinkan. Itu sebabnya penjagaannya harus di hulu, bukan di
+evaluasi:
+
+```bash
+python -m scripts.testset --triase triase.json --keluar daftar-uji.txt
+python -m scripts.kirim_roboflow --sumber "<hasil autolabel>" --proyek stoklens-produk-warung --daftar-uji daftar-uji.txt --jalankan
+```
+
+`kirim_roboflow.py` menaruh foto uji di folder `test/` dan sisanya di `train/`,
+lalu memperingatkan kalau `--daftar-uji` lupa diberikan.
 
 ### Angka baseline model pre-train (2026-08-02, 44 foto uji)
 

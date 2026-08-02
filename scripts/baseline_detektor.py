@@ -20,9 +20,12 @@ Ini pengganti sementara, bukan tujuan akhir.
 
 PEMILIHAN TEST SET
 ------------------
-Deterministik dan direproduksi dari triase, BUKAN dibaca dari Drive: satu dari
-tiap empat foto rak, diurutkan per domain lalu per nama. Dengan begitu daftarnya
-sama persis kapan pun skrip dijalankan, bahkan kalau folder Drive berubah.
+Logikanya ada di `scripts/testset.py`, dipakai bersama `kirim_roboflow.py` —
+foto uji yang sama harus masuk split `test` di Roboflow, kalau tidak ia ikut
+terlatih dan perbandingan sebelum/sesudah jadi tidak sah.
+
+Keluarkan daftarnya dengan:
+    python -m scripts.testset --triase triase.json --keluar daftar-uji.txt
 
 Pakai:
     python -m scripts.baseline_detektor --triase <path triase.json> \
@@ -35,25 +38,13 @@ from collections import defaultdict
 
 import numpy as np
 
-PORSI_UJI = 4          # 1 dari tiap 4 foto rak disisihkan
+# Pemilihan test set tinggal di scripts/testset.py — dipakai bersama dengan
+# kirim_roboflow.py. Kalau logikanya disalin ke sini lalu salah satu berubah,
+# angka "sebelum" dan "sesudah" diukur di foto yang berbeda tanpa ada yang gagal.
+from scripts.testset import domain, muat_triase, pilih_uji
+
 CONF_PRODUKSI = 0.25   # ambang yang dipakai aplikasi
 CONF_LABEL = 0.05      # ambang untuk auto-labeling (lihat PANDUAN-DATASET)
-DOMAIN_LAMA = {"etalase": "warung", "closeup": "warung", "closeup-tablet": "minimarket"}
-
-
-def domain(x):
-    if "kategori" in x:
-        return DOMAIN_LAMA.get(x["kategori"], "warung")
-    return "warung" if "More useless" in x["path"] else "minimarket"
-
-
-def pilih_uji(semua):
-    rak = sorted([x for x in semua if x["bucket"] == "1-DETEKTOR-foto-rak"],
-                 key=lambda x: (domain(x), x["nama"]))
-    per = defaultdict(list)
-    for x in rak:
-        per[domain(x)].append(x)
-    return [x for xs in per.values() for i, x in enumerate(xs) if i % PORSI_UJI == 0]
 
 
 def ukur(model, foto, jalur, conf):
@@ -110,9 +101,7 @@ def main():
     ap.add_argument("--keluar", default="baseline_detektor.json")
     a = ap.parse_args()
 
-    semua = json.load(open(a.triase, encoding="utf-8"))
-    if a.triase_baru:
-        semua += json.load(open(a.triase_baru, encoding="utf-8"))
+    semua = muat_triase(a.triase, a.triase_baru)
     jalur = lambda x: os.path.join(a.foto, f"{x['id']}__{x['nama']}")
     uji = [x for x in pilih_uji(semua) if os.path.exists(jalur(x))]
     print(f"test set: {len(uji)} foto  |  bobot: {a.bobot}\n")
