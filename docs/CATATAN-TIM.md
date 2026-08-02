@@ -161,6 +161,14 @@ python -m scripts.demo_scan scan --video meja.mp4 --count-mode track  # statis
 
 Catat SETIAP perubahan + hasilnya (video uji → hitungan vs manual) di sheet uji lapangan.
 
+> **Angka uji yang sudah ada: `HASIL-UJI-2026-08-02.md`.** Baca sebelum menyetel
+> apa pun atau sebelum menulis klaim akurasi di proposal/video. Tiga hal yang
+> paling sering salah dikira di situ: (1) guided mode **tidak** menaikkan akurasi
+> — ia cuma mempersempit kandidat; (2) menambah crop hasil scan ke galeri
+> **memang** menaikkan akurasi, terukur 0,769 → 0,844 pada foto baru; (3) angka
+> apa pun yang foto ujinya ikut menyumbang entri galeri adalah self-match dan
+> tidak boleh dipakai.
+
 ## SOP perekaman (versi ringkas — lengkap di design doc §6)
 
 Satu arah • 1 rak per 5–8 detik • jarak 50–80 cm tegak lurus • 1 segmen = 1 klip •
