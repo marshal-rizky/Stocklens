@@ -27,9 +27,8 @@ menghasilkan kotak terpisah berlabel "shelf" seluas 68 % frame — sampah. Pakai
 frasa benda saja: "a packaged product." Frasa spesifik ("a bag of instant
 noodles.") mempersempit hasil ke satu barang itu saja.
 
-Pakai:
-    python -m scripts.banding_grounding --foto <folder atau berkas> \
-        [--frasa "a packaged product."] [--gambar <folder keluaran>]
+Pakai (dari akar repo; satu baris — `\` penyambung baris tidak jalan di cmd.exe):
+    python -m scripts.banding_grounding --foto "<folder atau berkas>" --gambar "<folder keluaran>"
 """
 import argparse
 import glob
