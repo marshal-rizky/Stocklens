@@ -34,10 +34,41 @@ def test_semua_halaman_ui_render(tmp_path):
 
 
 def test_static_tokens_css(tmp_path):
+    """tokens.css harus menyediakan seluruh variabel yang dipakai app.css.
+
+    Versi lama test ini mengunci nilai heks tertentu (`--primary:#2563EB`).
+    Itu mengunci KEPUTUSAN DESAIN, bukan kontraknya — palet memang boleh diganti,
+    dan test yang gagal setiap kali warna diubah cuma jadi gangguan. Yang benar-benar
+    merusak UI adalah token yang HILANG: app.css memakai var(--nama) dan kalau
+    tidak terdefinisi, nilainya kosong tanpa peringatan apa pun.
+    """
     client = _client(tmp_path)
     r = client.get("/static/tokens.css")
     assert r.status_code == 200
-    assert "--primary:#2563EB" in r.text
+    wajib = [
+        "--bg", "--surface", "--text", "--text-2", "--border",
+        "--primary", "--cta", "--on-accent", "--pos", "--neg", "--shadow",
+        "--r", "--sp", "--font-judul", "--font-teks",
+    ]
+    hilang = [t for t in wajib if f"{t}:" not in r.text]
+    assert not hilang, f"token hilang dari tokens.css: {hilang}"
+
+
+def test_font_disajikan_lokal(tmp_path):
+    """Font WAJIB dilayani dari repo, bukan CDN.
+
+    Aplikasi harus jalan tanpa internet (dijalankan lewat docker compose saat
+    penilaian). @font-face yang menunjuk fonts.gstatic.com akan gagal diam-diam
+    di sana dan UI jatuh ke font sistem.
+    """
+    client = _client(tmp_path)
+    css = client.get("/static/tokens.css").text
+    assert "gstatic" not in css and "googleapis" not in css, "font masih dari CDN"
+    for berkas in ("fraunces-latin.woff2", "archivo-latin.woff2"):
+        assert berkas in css, f"{berkas} tidak dirujuk tokens.css"
+        r = client.get(f"/static/fonts/{berkas}")
+        assert r.status_code == 200, berkas
+        assert len(r.content) > 10_000, f"{berkas} terlalu kecil, mungkin korup"
 
 
 def test_json_api_masih_jalan(tmp_path):
