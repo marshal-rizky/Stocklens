@@ -86,13 +86,12 @@ def muat_daftar_uji(jalur):
 def split_untuk(nama_gambar, nama_uji):
     """Foto uji WAJIB masuk split `test`.
 
-    autolabel_grounding meratakan nama berkas bersarang (`Folder__foto.jpg`),
-    jadi cocokkan pada potongan terakhir — daftar uji memuat nama aslinya.
+    Cocokkan nama berkas UTUH. Versi pertama juga menerima potongan setelah
+    `__` sebagai kecocokan, dan itu salah: nama asli dari HP bisa kembar. Di 171
+    foto rak ada 2 pasang bernama sama, dan pencocokan longgar itu menyeret satu
+    foto latih ikut ke split test — 45 test, padahal daftarnya 44.
     """
-    dasar = os.path.basename(nama_gambar)
-    if dasar in nama_uji or dasar.split("__")[-1] in nama_uji:
-        return "test"
-    return "train"
+    return "test" if os.path.basename(nama_gambar) in nama_uji else "train"
 
 
 def susun(pasang, tujuan, nama_uji=frozenset()):
@@ -142,6 +141,14 @@ def main():
         print("   Kalau foto uji ikut terlatih, perbandingan sebelum/sesudah")
         print("   tidak sah dan tidak akan ada yang gagal — angkanya cuma bohong.")
         print("   Keluarkan daftarnya: python -m scripts.testset --triase triase.json")
+    elif n_uji != len(nama_uji):
+        # Jumlah harus persis sama. Lebih = nama kembar tertarik ikut; kurang =
+        # foto uji tidak ketemu dan diam-diam masuk train. Dua-duanya merusak
+        # perbandingan tanpa menimbulkan galat, jadi harus berisik di sini.
+        print(f"\n!! TIDAK COCOK: daftar uji {len(nama_uji)} nama, tapi {n_uji} foto"
+              " tertandai test.")
+        print("   Hentikan dan periksa — jangan diunggah. Penyebab lazim: nama")
+        print("   berkas di --sumber tidak sama dengan yang ditulis testset.py.")
     tanpa = [p for p in pasang if p[2] == 0]
     if tanpa:
         print(f"{len(tanpa)} foto tanpa kotak — harus digambar manual di Roboflow")

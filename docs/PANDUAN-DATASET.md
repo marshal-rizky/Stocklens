@@ -288,6 +288,66 @@ di `train` — hentikan, keluarkan daftarnya, ulangi.
 6. Ragu? Screenshot → tanya grup → keputusan dicatat di sheet supaya semua labeler
    ikut aturan yang sama.
 
+### Dua hal yang BUKAN kriteria: keterbacaan dan ketajaman
+
+Dua pertanyaan ini menghentikan pelabel dalam sepuluh menit pertama, dan aturan
+di atas tidak menjawabnya secara langsung. Dijawab di sini.
+
+**"Barangnya terdeteksi tapi tidak jelas merek apa — dikotak atau tidak?"**
+
+Dikotak. Dataset ini **satu kelas: `produk`**. Model tidak perlu tahu itu Choki
+Choki atau bukan — identitas barang datang dari pencocokan CLIP saat enroll,
+bukan dari detektor. Yang ditanyakan detektor cuma *ada barang di sini atau
+tidak, dan di mana batasnya*.
+
+Patokannya bukan "kelihatan merek apa", melainkan:
+
+> **Bisakah saya menggambar kotak yang tepat di sekeliling barang ini?**
+
+Ya → kotak, walaupun buram, gelap, atau tidak terbaca. Batasnya menebak-nebak →
+lewati.
+
+**"Bagaimana dengan barang yang buram karena kedalaman fokus?"**
+
+Jangan jadikan ketajaman sebagai kriteria. Pakai **posisi barisnya**.
+
+| Situasi | Tindakan |
+|---|---|
+| Baris terdepan, agak lembut fokusnya | **kotak** |
+| Baris terdepan, buram karena goyang | **kotak** |
+| Jelas di belakang baris depan, walau tajam | **lewati** |
+| Buram *karena* di belakang | **lewati** — alasannya posisi, bukan buramnya |
+
+Blur adalah **petunjuk visual** bahwa sesuatu ada di belakang, bukan aturannya
+sendiri. Alasannya konsistensi: "seberapa buram" itu kontinum tanpa titik potong
+alami — dua pelabel menjawabnya berbeda, dan besok kamu sendiri menjawab beda
+dari hari ini. "Apakah ini di baris terdepan?" bisa dijawab sama oleh siapa pun.
+
+**Kenapa dua-duanya penting, bukan sekadar kerapian.** Kalau serpihan tipis di
+tepi rak dilabeli sebagai `produk`, kita mengajari model bahwa *secarik strip
+kemasan berwarna = satu barang utuh*. Saat opname ia menyala di tiap serpihan,
+dan laporan stok jadi **lebih banyak dari kenyataan**. Melewatkannya juga tidak
+sepenuhnya benar — kita mengajari "ini latar" — tapi kesalahannya jauh lebih
+murah: barang yang nyaris tak terlihat memang tidak terhitung, dan pemilik
+warung pun tidak melihatnya. **Menghitung lebih berbahaya daripada menghitung
+kurang.**
+
+Efek samping mengotak barang baris depan yang agak lembut justru bagus: foto
+warung memang tidak setajam katalog — cahaya bohlam, tangan goyang, ruang
+sempit. Model yang hanya pernah melihat produk tajam akan gagal di kondisi
+nyata. Catatan kejujuran: itu penalaran, belum diukur. Sensitivitas model
+terhadap blur baru bisa diuji setelah ada label; kalau nanti angkanya bilang
+sebaliknya, angkanya yang menang.
+
+**Versi pendek untuk ditempel ke grup:**
+
+> - Buram / gelap / tidak jelas mereknya → **tetap dikotak**. Model tidak perlu
+>   tahu mereknya.
+> - Terpotong tepi foto atau tertutup barang lain, terlihat **kurang dari
+>   setengah** → **lewati**.
+> - Ragu batasnya di mana → **lewati**. Kotak asal-asalan lebih merusak daripada
+>   tidak ada kotak.
+
 ### Sachet gantung (renceng) — putuskan SEKARANG, jangan di tengah jalan
 
 Ini bentuk paling khas warung Madura dan paling tidak dikenal model (SKU-110K
