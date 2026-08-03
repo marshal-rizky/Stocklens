@@ -56,11 +56,11 @@ def run_scan(con, embedder, video_path, model_path=None,
     """
     # Lazy import: modul ini harus bisa di-import tanpa torch stack
     # (CI & test monkeypatch run_scan tanpa install ultralytics).
-    from ultralytics import YOLO
+    from stoklens.bobot import muat_yolo
 
     products = db.all_products(con, with_gallery=True)
     allowed = {guided_product_id} if guided_product_id is not None else None
-    model = YOLO(model_path or os.environ.get("STOKLENS_MODEL", "yolo11n.pt"))
+    model = muat_yolo(model_path)
 
     seen = defaultdict(int)      # track_id -> jumlah frame terlihat
     embs = defaultdict(list)     # track_id -> daftar embedding sampel

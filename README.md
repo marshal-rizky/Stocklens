@@ -82,8 +82,13 @@ $env:STOKLENS_MODEL = "C:\Users\<kamu>\StokLens-training\pretrain_sku110k\weight
 uvicorn stoklens.api:create_app --factory
 ```
 
-Untuk Docker, tambahkan ke `environment:` di `docker-compose.yml` dan mount
-folder bobotnya.
+Untuk Docker, `docker-compose.yml` sudah menyediakan dua baris berkomentar —
+lepas komentarnya, taruh `best.pt` di folder `bobot/`, lalu `docker compose up`.
+
+**Kalau lupa, aplikasinya tidak diam.** Log memberi peringatan saat model dimuat,
+dan setiap halaman UI menampilkan spanduk merah "Bobot detektor belum dipasang".
+Itu disengaja: nol hasil tanpa penjelasan terbaca seperti aplikasi rusak, dan
+orang yang menjalankan sekali tanpa membaca README tidak punya cara menebaknya.
 
 Catatan jujur soal akurasinya: SKU-110K dilatih di rak **supermarket**, jadi di
 warung confidence-nya turun jauh — cukup untuk demo dan uji alur, belum cukup
