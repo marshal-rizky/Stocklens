@@ -4,8 +4,16 @@ from pathlib import Path
 from fastapi import APIRouter, Request
 from fastapi.templating import Jinja2Templates
 
+from stoklens import bobot
+
 _DIR = Path(__file__).parent
 templates = Jinja2Templates(directory=str(_DIR / "templates"))
+
+# Didaftarkan sebagai global Jinja, bukan diselipkan ke tiap TemplateResponse:
+# ada sebelas rute, dan spanduknya harus tampil di semuanya. Sebagai fungsi,
+# bukan nilai, supaya env yang berubah setelah proses hidup ikut terbaca.
+templates.env.globals["pakai_bobot_bawaan"] = bobot.pakai_bobot_bawaan
+templates.env.globals["pesan_bobot_bawaan"] = bobot.PESAN_SINGKAT
 
 router = APIRouter(prefix="/ui")
 

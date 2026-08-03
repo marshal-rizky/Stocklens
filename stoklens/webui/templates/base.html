@@ -14,6 +14,16 @@
   <link rel="stylesheet" href="/static/app.css">
 </head>
 <body>
+  {# Tanpa spanduk ini, menjalankan apa adanya terlihat seperti aplikasi rusak:
+     scan memberi 0 hasil tanpa satu pun petunjuk kenapa. Lihat stoklens/bobot.py. #}
+  {% if pakai_bobot_bawaan() %}
+  <div class="spanduk-bobot" role="status">
+    <strong>Bobot detektor belum dipasang.</strong>
+    {{ pesan_bobot_bawaan }}
+    Setel <code>STOKLENS_MODEL</code> ke bobot hasil pre-train — lihat README.
+  </div>
+  {% endif %}
+
   <main>
     {% block content %}{% endblock %}
   </main>

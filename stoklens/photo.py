@@ -58,8 +58,8 @@ def _yolo_detector(model_path=None):
     hasil pre-train/fine-tune. Lihat README §"Menukar bobot detektor".
     Argumen eksplisit selalu menang atas env, sama seperti db_path di api.py.
     """
-    from ultralytics import YOLO
-    model = YOLO(model_path or os.environ.get("STOKLENS_MODEL", "yolo11n.pt"))
+    from stoklens.bobot import muat_yolo
+    model = muat_yolo(model_path)
 
     def detect(image_bgr):
         r = model.predict(image_bgr, verbose=False)[0]

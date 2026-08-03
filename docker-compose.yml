@@ -21,8 +21,14 @@ services:
       # EASYOCR_MODULE_PATH diarahkan ke sini lewat Dockerfile.
       # `yolo11n.pt` (±5,5 MB) sengaja tidak dicakup, lihat catatan di Dockerfile.
       - model-cache:/root/.cache
+      # Bobot detektor hasil pre-train/fine-tune. Lepas komentar dua baris ini
+      # dan STOKLENS_MODEL di bawah, lalu taruh `best.pt` di folder `bobot/`.
+      # TANPA itu aplikasi memakai yolo11n.pt (COCO) dan scan memberi 0 hasil —
+      # UI menampilkan spanduk merah yang menjelaskannya, jadi tidak diam-diam.
+      # - ./bobot:/app/bobot:ro
     environment:
       STOKLENS_DB: /app/data/stoklens.db
+      # STOKLENS_MODEL: /app/bobot/best.pt
       # Tanpa ini waktu lokal di dalam container = UTC, sehingga tanggal opname
       # antara 00:00-07:00 WIB tampil bertanggal hari sebelumnya. Aplikasi
       # menulis stempel waktu lokal (db._sekarang), jadi zona waktunya harus
