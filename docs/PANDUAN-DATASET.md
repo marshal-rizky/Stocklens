@@ -348,6 +348,39 @@ sebaliknya, angkanya yang menang.
 > - Ragu batasnya di mana → **lewati**. Kotak asal-asalan lebih merusak daripada
 >   tidak ada kotak.
 
+### Kotak biasa atau Smart Polygon? Boleh dua-duanya
+
+Roboflow punya **Smart Polygon** (Smart Select) yang membentuk garis mengikuti
+lekuk barang. Aman dipakai — dokumentasi Roboflow menyebutnya eksplisit:
+
+> *Object Detection supports Bounding Box, Polygon, and Mask (**converted to
+> bounding boxes**).*
+
+Mencampur kotak biasa dan poligon dalam satu proyek juga tidak masalah;
+keduanya berakhir sebagai kotak.
+
+**Tapi seluruh kerapian poligonnya dibuang.** Yang tersimpan hanya kotak
+terkecil yang melingkupinya. Sisi ke-12 yang mengikuti lekuk bungkus tidak
+pernah sampai ke model — detektor cuma bisa membaca empat angka.
+
+| Bentuk barang | Pakai | Alasan |
+|---|---|---|
+| Kotak, tepinya jelas (dus, bungkus mi, sachet) | **kotak biasa** | hasilnya identik, jauh lebih cepat |
+| Tidak beraturan / tepi sulit ditebak (kerupuk gantung, renceng melengkung, botol miring) | **Smart Polygon** | menempel ke barangnya, kotaknya jadi lebih pas |
+
+Aturan "kotak harus **pas**" di atas itulah yang membuat Smart Polygon layak
+untuk bentuk sulit: menebak tepi dengan mata sering meleset, dan ia tidak.
+
+**Satu risiko yang tidak terlihat.** Kalau Smart Polygon salah menangkap — ikut
+menyerap bayangan atau barang sebelahnya — kotak hasil konversinya jadi lebih
+besar dari yang kamu maksud, dan **kamu tidak melihatnya**, karena yang tampil
+di layar poligonnya, bukan kotaknya. Dengan kotak manual, yang digambar persis
+yang tersimpan. Sesekali cek hasil Smart Polygon di tampilan bounding box.
+
+**Soal waktu.** Ribuan anotasi menunggu dan tenggatnya dekat. Memakai poligon
+untuk barang yang jelas-jelas kotak membakar waktu tanpa menambah apa pun ke
+model. Pilih per barang, bukan pilih satu alat untuk semuanya.
+
 ### Sachet gantung (renceng) — putuskan SEKARANG, jangan di tengah jalan
 
 Ini bentuk paling khas warung Madura dan paling tidak dikenal model (SKU-110K
