@@ -153,9 +153,21 @@ python -m scripts.demo_scan scan --video meja.mp4 --count-mode track  # statis
 
 | Parameter | Default | Naikkan kalau | Turunkan kalau |
 |---|---|---|---|
-| `match_threshold` | 0.75 | banyak salah-label antar varian | banyak masuk "unknown" |
+| `match_threshold` | **0.85** | banyak salah-label antar varian | banyak masuk "unknown" |
 | `min_track_frames` | 3 | masih ada hitungan hantu | barang gerak cepat tidak terhitung |
 | `embed_every` | 5 | scan lambat | matching kurang stabil |
+
+`match_threshold` naik dari 0,75 ke **0,85** pada 3 Agustus, dari pengukuran —
+bukan nalar. Di 0,75 sebanyak **1 dari 3 barang yang belum di-enroll disangka
+produk lain**; di 0,85 tidak ada satu pun yang lolos. Bayarannya recall turun
+0,933 → 0,673, dan itu disengaja: barang asing yang lolos muncul di laporan
+dengan **nama yang salah** tanpa meninggalkan tanda, sedangkan barang terdaftar
+yang ditolak cuma jadi "belum dikenali" yang bisa dilihat sendiri oleh pengguna.
+Rinciannya `docs/HASIL-UJI-AMBANG-CLIP.md`.
+
+Kalau di uji lapangan ternyata terlalu banyak masuk "belum dikenali", turunkan
+ke 0,80 (recall 0,875, masih menolak 84,6 % barang asing) — jangan kembali ke
+0,75.
 | `hysteresis` (crossing) | 0.05 | jitter garis masih bikin event | barang di dekat garis tidak terhitung |
 | `track_buffer` (yaml) | 60 | ID masih pecah saat ketutupan lama | ID "nyangkut" ke barang lain |
 

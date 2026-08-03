@@ -28,14 +28,14 @@ from . import crops, db
 from .counter import TrackResult, aggregate
 from .crossing import count_by_crossing
 from .expiry import parse_expiry
-from .matcher import match, majority_label
+from .matcher import AMBANG_BAWAAN, match, majority_label
 from .ocr import read_text
 
 DEFAULT_TRACKER = str(Path(__file__).with_name("botsort_reid.yaml"))
 
 
 def run_scan(con, embedder, video_path, model_path=None,
-             match_threshold=0.75, embed_every=5, min_track_frames=3,
+             match_threshold=AMBANG_BAWAAN, embed_every=5, min_track_frames=3,
              guided_product_id=None, lokasi_rak=None, read_expiry=True,
              count_mode="line", tracker=None, simpan_unknown=True,
              maks_unknown=30, dir_crops=None):

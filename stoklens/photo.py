@@ -25,7 +25,7 @@ import cv2
 
 from . import crops, db
 from .expiry import parse_expiry
-from .matcher import match
+from .matcher import AMBANG_BAWAAN, match
 
 
 def aggregate_detections(detections):
@@ -70,7 +70,7 @@ def _yolo_detector(model_path=None):
     return detect
 
 
-def scan_photos(con, embedder, images, detector=None, match_threshold=0.75,
+def scan_photos(con, embedder, images, detector=None, match_threshold=AMBANG_BAWAAN,
                 guided_product_id=None, lokasi_rak=None, read_expiry=True,
                 simpan_unknown=True, maks_unknown=30, dir_crops=None):
     """Opname dari kumpulan foto; return scan_id (scans.tipe = 'foto').
