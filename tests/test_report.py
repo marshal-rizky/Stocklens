@@ -55,3 +55,24 @@ def test_tidak_terdeteksi_default_kosong():
                          "qty_terdeteksi": 1, "qty_expired": 0}])
     assert rep["tidak_terdeteksi"] == []
     assert rep["total_tidak_terdeteksi_rp"] == 0
+
+
+def test_ambang_bawaan_satu_sumber():
+    """Ambang tidak boleh berbeda antara matcher, foto, dan video.
+
+    Sebelumnya angkanya ditulis tiga kali. Kalau salah satu diubah dan yang lain
+    tidak, opname foto dan opname video memakai keketatan berbeda tanpa ada yang
+    gagal — dan hasilnya cuma terlihat sebagai "kadang beda". Nilainya sendiri
+    diukur, lihat docs/HASIL-UJI-AMBANG-CLIP.md.
+    """
+    import inspect
+
+    from stoklens import photo, scan
+    from stoklens.matcher import AMBANG_BAWAAN, match
+
+    assert AMBANG_BAWAAN == 0.85
+    for fn, arg in ((match, "threshold"),
+                    (photo.scan_photos, "match_threshold"),
+                    (scan.run_scan, "match_threshold")):
+        bawaan = inspect.signature(fn).parameters[arg].default
+        assert bawaan == AMBANG_BAWAAN, f"{fn.__name__}({arg}) = {bawaan}"

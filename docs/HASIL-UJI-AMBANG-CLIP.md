@@ -63,9 +63,24 @@ Rugi/untung tergantung berapa banyak barang di rak yang belum di-enroll:
 Warung mendaftarkan puluhan produk, sedangkan raknya memuat ratusan barang.
 Jadi **barang asing jauh lebih banyak**, dan ambangnya semestinya naik.
 
-**Rekomendasi: naikkan ke 0,80 sekarang.** 0,85 lebih aman lagi tapi memotong
-recall ke 0,673 — terlalu mahal sebelum ada uji lapangan yang mengukur rasio
-sebenarnya.
+**Keputusan: naik ke 0,85** (3 Agustus, `matcher.AMBANG_BAWAAN`).
+
+Rekomendasi awalku 0,80 sebagai jalan tengah; yang dipilih 0,85, dan itu
+konsisten dengan baris 3:1 di tabel atas — rak warung memang didominasi barang
+yang belum di-enroll.
+
+Bayarannya nyata dan disengaja: recall 0,933 → **0,673**, jadi sekitar sepertiga
+barang terdaftar akan masuk "belum dikenali". Alasan pertukaran itu diterima:
+
+| Jenis kesalahan | Tampak sebagai | Bisa dikoreksi pengguna? |
+|---|---|---|
+| Barang asing lolos | nama produk **salah** di laporan | tidak — terbaca meyakinkan, tanpa tanda |
+| Barang terdaftar ditolak | "belum dikenali" | ya — pengguna melihat sendiri barangnya ada |
+
+**Salah menyebut lebih mahal daripada tidak menyebut.**
+
+Kalau uji lapangan menunjukkan terlalu banyak masuk "belum dikenali", turunkan
+ke 0,80 — jangan kembali ke 0,75.
 
 ## Ambang bukan alat yang tepat untuk dua kebingungan ini
 

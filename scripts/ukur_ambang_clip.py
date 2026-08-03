@@ -44,7 +44,7 @@ FOLDER_BUKAN_PRODUK = {"Data di Buah total", "Salinan Data Di Warung"}
 MIN_FOTO = 3            # galeri >=2 + uji >=1
 BUCKET = "2-ENROLLMENT-per-produk"
 AMBANG_SAPU = [0.50, 0.55, 0.60, 0.65, 0.70, 0.72, 0.75, 0.78, 0.80, 0.85, 0.90]
-AMBANG_PRODUKSI = 0.75
+AMBANG_PRODUKSI = 0.85
 
 
 def produk_dari_path(x):

@@ -10,7 +10,30 @@ def cosine(a, b) -> float:
     return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b) + 1e-9))
 
 
-def match(embedding, products, threshold=0.75, allowed_ids=None):
+# Diukur 3 Agustus 2026 di 12 produk / 104 foto enrollment — lihat
+# docs/HASIL-UJI-AMBANG-CLIP.md dan scripts/ukur_ambang_clip.py.
+#
+# Ambang mengerjakan dua hal yang tarik-menarik. Yang menentukan adalah tugas
+# yang sebelumnya tidak pernah diuji: menolak barang yang BELUM di-enroll. Rak
+# warung memuat ratusan barang sementara yang didaftarkan cuma puluhan, jadi
+# barang asing jauh lebih banyak daripada yang terdaftar.
+#
+#   ambang   kenali terdaftar   tolak asing
+#   0,75     recall 0,933       68,3 %   <- lama; 1 dari 3 barang asing lolos
+#   0,80     recall 0,875       84,6 %
+#   0,85     recall 0,673       100 %    <- dipakai sekarang
+#
+# Barang asing yang lolos muncul di laporan sebagai barang dengan NAMA SALAH —
+# terbaca meyakinkan dan tidak meninggalkan tanda. Barang terdaftar yang ditolak
+# cuma jadi "belum dikenali", dan pengguna bisa melihat sendiri bahwa itu ada.
+# Salah menyebut lebih mahal daripada tidak menyebut.
+#
+# Angka di atas BATAS ATAS: foto enrollment close-up, produksi meng-embed crop
+# dari rak yang lebih berantakan. Ukur ulang setelah uji lapangan.
+AMBANG_BAWAAN = 0.85
+
+
+def match(embedding, products, threshold=AMBANG_BAWAAN, allowed_ids=None):
     """Return (product_id, score); product_id None kalau di bawah threshold.
 
     Similarity satu produk = tertinggi di antara entri galerinya (`p["embeddings"]`).
