@@ -20,6 +20,7 @@ venv/
 *.mov
 *.mkv
 dataset/
+datasets/
 runs/
 
 # Crop hasil scan (unknown_crops) & data lokal lain — jangan pernah commit

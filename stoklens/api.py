@@ -2,9 +2,11 @@
 
 Endpoint /api/* = kontrak untuk UI mobile (Google Stitch) — lihat docs/CATATAN-TIM.md.
 """
+import base64
 import csv
 import io
 import os
+import secrets
 import shutil
 import sqlite3
 import tempfile
@@ -12,7 +14,7 @@ from collections import Counter
 from contextlib import closing
 from pathlib import Path
 
-from fastapi import FastAPI, Form, HTTPException, UploadFile
+from fastapi import FastAPI, Form, HTTPException, Response, UploadFile
 from fastapi.responses import PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -98,6 +100,34 @@ class OpnameManual(BaseModel):
     terapkan: bool = False
 
 
+def _pasang_guard(app):
+    """Kunci seluruh app pakai HTTP Basic kalau STOKLENS_PASSWORD di-set.
+
+    Dipakai saat app diekspos ke internet (tunnel ke PC, atau deploy). Tanpa ini
+    siapa pun yang menemukan URL-nya bisa membaca buku stok, mengubah harga,
+    menerapkan opname, dan mengunggah file. URL tunnel acak bukan pengaman —
+    ia tidak rahasia, cuma belum ditebak.
+
+    Basic auth, bukan halaman login: browser HP menanganinya sendiri, jadi nol
+    perubahan di JS dan `fetch()` ikut terautentikasi otomatis.
+
+    Tanpa env var guard tidak dipasang sama sekali — `docker compose` lokal, dev,
+    dan seluruh test tetap polos seperti sebelumnya.
+    """
+    sandi = os.environ.get("STOKLENS_PASSWORD")
+    if not sandi:
+        return
+    harapan = "Basic " + base64.b64encode(f"stoklens:{sandi}".encode()).decode()
+
+    @app.middleware("http")
+    async def guard(request, call_next):
+        # compare_digest, bukan ==: mencegah penebakan sandi lewat selisih waktu.
+        if not secrets.compare_digest(request.headers.get("authorization", ""), harapan):
+            return Response(status_code=401,
+                            headers={"WWW-Authenticate": 'Basic realm="StokLens"'})
+        return await call_next(request)
+
+
 def create_app(db_path=None, embedder=None, photo_detector=None):
     """photo_detector: fn(image_bgr)->boxes untuk mode foto; None = YOLO asli.
 
@@ -143,6 +173,7 @@ def create_app(db_path=None, embedder=None, photo_detector=None):
             embedder = ClipEmbedder()
         return embedder
 
+    _pasang_guard(app)
     app.include_router(webui_router)
     app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
     # StaticFiles butuh direktori sudah ada saat mount — sengaja dibuat di sini

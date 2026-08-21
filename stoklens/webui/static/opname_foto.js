@@ -68,7 +68,7 @@ async function kirimScanFoto() {
     '<span class="spinner" aria-hidden="true"></span><span>Menganalisis foto… (±30 dtk)</span>';
 
   const fd = new FormData();
-  fotoFiles.forEach((f) => fd.append("fotos", f));
+  (await kecilkanSemua(fotoFiles)).forEach((f) => fd.append("fotos", f));
   const lokasi = document.getElementById("input-lokasi-rak").value.trim();
   if (lokasi) fd.append("lokasi_rak", lokasi);
   const guided = document.getElementById("select-guided").value;
