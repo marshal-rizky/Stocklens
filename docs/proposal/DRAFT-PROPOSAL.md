@@ -198,7 +198,7 @@ flowchart TB
     P2 --> P3{"untuk tiap kotak"}
     P3 --> P4["Potong gambar → CLIP → vektor"]
     P4 --> P5["Cocokkan ke galeri<br/>ambil similarity tertinggi"]
-    P5 --> P6{"skor ≥ ambang 0,75?"}
+    P5 --> P6{"skor ≥ ambang 0,85?"}
     P6 -- ya --> P7["Tandai sebagai produk X"]
     P6 -- tidak --> P8["Tandai 'belum dikenali'<br/>simpan potongan + vektor"]
     P7 --> P9["Agregasi per produk<br/>+ rincian per foto"]
@@ -283,14 +283,21 @@ flowchart TB
     D1["Izin 2–3 warung Madura<br/>imbalan: hasil opname gratis"]
     D2["Foto rak resolusi penuh<br/>variasi jarak, sudut, cahaya, kepadatan"]
     D3["Unggah ke penyimpanan bersama<br/>subfolder per pemotret"]
-    D4["Auto-label dengan model pre-train<br/>ambang rendah, sengaja berlebih"]
+    D4["Auto-label dengan detektor berbasis teks<br/>ambang rendah, sengaja berlebih"]
     D5["Koreksi manusia di Roboflow<br/>satu kelas: produk"]
     D6["QC ketua: sampling 10%"]
-    D7["Export YOLO 80/10/10"]
+    D7["Normalisasi label:<br/>poligon → kotak"]
+    D8["Split per LOKASI:<br/>satu warung ditahan penuh"]
 
-    D1 --> D2 --> D3 --> D4 --> D5 --> D6 --> D7
+    D1 --> D2 --> D3 --> D4 --> D5 --> D6 --> D7 --> D8
     D6 -. "kotak longgar / barang kelewat" .-> D5
 ```
+
+**Keputusan: split per lokasi, bukan split acak.** Ini dua langkah terakhir di
+atas, dan keduanya lahir dari kegagalan yang diuraikan di §5.2. Split acak
+bawaan akan menaruh foto yang nyaris kembar — 3–5 jepretan rak yang sama dalam
+hitungan detik — di data latih *dan* data uji sekaligus. Angka yang keluar akan
+terlihat jauh lebih baik dan tidak berarti apa-apa.
 
 **Keputusan: satu kelas `produk` saja, bukan satu kelas per merek.** Detektor
 hanya perlu menjawab "di mana ada barang"; pengenalan merek dikerjakan CLIP.
@@ -374,6 +381,8 @@ rapat". SKU-110K mengajarkan itu; dataset sendiri mengajarkan kondisi lokal.
 
 **Hasil Tahap 1 yang sudah dicapai** (RTX 4070, 20 epoch, 37 menit):
 
+![Kurva pre-train SKU-110K](gambar/03-kurva-pretrain.png)
+
 | Epoch | mAP50 | mAP50-95 |
 |---|---|---|
 | 1 | 0,756 | 0,408 |
@@ -385,12 +394,43 @@ waktu inferensi 1,7 ms per gambar. Kurva sudah melandai — dari epoch 11 ke 20
 hanya naik 0,018 — sehingga 20 epoch dinilai sebagai titik henti yang tepat,
 bukan angka yang dipilih sembarangan.
 
-🔴 **Tahap 2 menunggu dataset lapangan.** Tabel berikut diisi setelah fine-tune:
+**Hasil Tahap 2 (22 Agustus 2026).** Fine-tune dijalankan pada dataset warung
+sendiri, 60 epoch, 30 menit di RTX 4070.
 
-| Pengukuran | Sebelum (pre-train) | Sesudah (fine-tune) |
-|---|---|---|
-| mAP50 pada test set warung | ⟨…⟩ | ⟨…⟩ |
-| mAP50 pada warung yang tidak ikut training | ⟨…⟩ | ⟨…⟩ |
+![Kurva fine-tune tahap 2](gambar/02-kurva-finetune.png)
+
+#### Cara pengujian, dan kenapa caranya begitu
+
+Angka di bawah ini diukur pada **85 foto dari satu warung yang seluruhnya
+ditahan dari data latih** — model tidak pernah melihat satu pun foto dari lokasi
+itu. Pilihan ini disengaja dan penting.
+
+Split acak bawaan Roboflow akan memberi angka yang jauh lebih tinggi, tetapi
+tidak sah: SOP pemotretan kami mengambil 3–5 foto per rak dalam hitungan detik,
+sehingga foto yang nyaris kembar akan tersebar ke data latih *dan* data uji.
+Model akan dinilai pada rak yang sudah pernah dilihatnya. Angka yang keluar
+mengukur ingatan, bukan kemampuan menghadapi warung baru — dan warung baru
+persis yang dihadapi produk ini setiap kali dipasang di toko berikutnya.
+
+![Perbandingan sebelum dan sesudah fine-tune](gambar/01-sebelum-sesudah.png)
+
+| Pengukuran | YOLO11n COCO (sebelum) | Fine-tune 1 tahap | **Fine-tune 2 tahap** |
+|---|---|---|---|
+| mAP50 | 0,304 | 0,787 | **0,827** |
+| mAP50-95 | 0,209 | 0,523 | **0,569** |
+| Precision | 0,617 | 0,779 | **0,795** |
+| Recall | 0,279 | 0,752 | **0,787** |
+
+Yang paling berarti untuk produk adalah **recall**: 0,279 → 0,787. Model generik
+hanya menemukan 28% barang di rak; setelah fine-tune menjadi 79%. Barang yang
+tidak terdeteksi tidak akan pernah terhitung, sehingga recall-lah yang membatasi
+akurasi opname — bukan mAP.
+
+**Tahap 1 terbukti menyumbang, bukan sekadar cerita kepatuhan.** Fine-tune yang
+berangkat dari checkpoint SKU-110K mengungguli fine-tune langsung dari COCO
+sebesar +0,040 mAP50 dan +0,034 recall, dengan dataset, jumlah epoch, dan
+seluruh hyperparameter yang identik. Selisih itu satu-satunya yang berbeda:
+titik awal bobot.
 
 ### 4.7 Skema data
 
@@ -475,16 +515,79 @@ kembali. Ditemukan pada putaran review ketiga. Ini menjadi alasan mengapa
 peninjauan dilakukan berlapis dan hasilnya ditulis ke dokumen rencana, bukan
 dibiarkan hilang di percakapan.
 
+**Kerusakan label yang tidak menimbulkan satu pun pesan galat.** Roboflow
+menyediakan *Smart Polygon* untuk mengikuti lekuk barang, dan pelabel kami
+memakainya untuk bentuk sulit — kerupuk gantung, renceng melengkung — sambil
+tetap memakai kotak biasa untuk dus. Wajar, dan dokumentasi internal kami
+sendiri sempat menyatakan pencampuran itu tidak bermasalah.
+
+Ternyata bermasalah, di tempat yang tidak terlihat. Ekspor format YOLO menulis
+koordinat poligon apa adanya, lalu pustaka pelatihan memeriksa bentuk label
+**per berkas, bukan per baris**: satu baris poligon membuat seluruh baris di
+berkas itu dibaca sebagai poligon. Baris kotak `cls cx cy w h` ditafsirkan
+sebagai dua titik — titik pusat dan ukuran diperlakukan sebagai dua sudut —
+sehingga kotaknya tidak lagi berhubungan dengan barang aslinya.
+
+```mermaid
+flowchart TB
+    A["Pelabel memakai Smart Polygon<br/>untuk barang berlekuk"] --> B["Satu foto berisi<br/>poligon DAN kotak"]
+    B --> C["Ekspor YOLO menulis<br/>koordinat poligon apa adanya"]
+    C --> D{"Pustaka melatih:<br/>ada baris > 6 kolom<br/>di berkas ini?"}
+    D -->|"ya"| E["SELURUH baris dibaca<br/>sebagai poligon"]
+    E --> F["Baris kotak jadi<br/>kotak sampah"]
+    F --> G["Tidak ada galat.<br/>Training selesai normal,<br/>kurva terbentuk"]
+    G --> H["Model diam-diam lebih buruk"]
+    D -->|"tidak"| I["Dibaca benar"]
+```
+
+Diukur pada gabungan ekspor kami: dari **11.779 anotasi**, 3.751 berbentuk
+poligon dan **2.339 kotak — 19,9% dari seluruh anotasi — berada di 116 berkas
+campuran** dan akan rusak. Berkas yang isinya seragam, semua kotak atau semua
+poligon, justru aman; yang mematikan adalah pencampuran di dalam satu foto.
+
+Temuan ini menghasilkan langkah normalisasi wajib sebelum pelatihan, dan
+koreksi pada panduan internal yang sebelumnya keliru. Kami mencantumkannya di
+sini karena kegagalan jenis ini — yang tidak memunculkan galat, tidak
+menggagalkan pengujian, dan hanya menyisakan model yang lebih buruk tanpa sebab
+yang jelas — adalah kegagalan yang paling mahal dalam proyek pembelajaran mesin,
+dan satu-satunya pertahanannya adalah memeriksa data, bukan menunggu peringatan.
+
 ### 5.3 Parameter yang dapat disetel, dan cara menyetelnya
 
-| Parameter | Nilai awal | Gejala bila terlalu rendah | Gejala bila terlalu tinggi |
+| Parameter | Nilai berlaku | Gejala bila terlalu rendah | Gejala bila terlalu tinggi |
 |---|---|---|---|
-| Ambang pencocokan | 0,75 | Salah label antar varian mirip | Banyak item "belum dikenali" |
+| Ambang pencocokan | **0,85** (diukur) | Barang asing disangka produk terdaftar | Banyak item "belum dikenali" |
 | Umur minimum track | 3 frame | Noise ikut terhitung | Barang yang sekilas terlihat terlewat |
 | Interval pengambilan embedding | tiap 5 frame | Lambat | Suara terlalu sedikit untuk memilih label |
 
-🔴 Nilai akhir ditetapkan berdasarkan uji lapangan; angka hasil penyetelan diisi
-setelah pengujian.
+#### Ambang pencocokan: dari tebakan menjadi pengukuran
+
+Nilai 0,75 yang dipakai di awal tidak pernah divalidasi — dasarnya hanya tiga
+kasus tunggal, dan itu anekdot. Kami mengukurnya ulang pada **12 produk dan 104
+foto** dengan dua uji terpisah: *leave-one-out* untuk kemampuan mengenali, dan
+*leave-one-product-out* untuk kemampuan menolak.
+
+![Trade-off ambang pencocokan CLIP](gambar/04-ambang-clip.png)
+
+Pengukuran itu memperlihatkan hal yang tidak terlihat sebelumnya: **pada 0,75,
+satu dari tiga barang yang belum didaftarkan disangka produk lain** — 33 dari
+104. Di laporan opname, kesalahan itu muncul sebagai barang dengan nama yang
+salah. Ini jenis kesalahan paling merusak, karena hasilnya terbaca meyakinkan
+dan tidak meninggalkan tanda apa pun bahwa ada yang keliru.
+
+Ambang mana yang terbaik bergantung pada komposisi rak:
+
+| Rasio barang asing : terdaftar | Ambang terbaik |
+|---|---|
+| 1 : 1 | 0,80 |
+| **3 : 1 (rak warung nyata)** | **0,85** |
+
+Warung mendaftarkan puluhan produk sementara raknya memuat ratusan barang,
+sehingga barang yang belum terdaftar jauh lebih banyak. **Keputusan: naik ke
+0,85.** Konsekuensinya diterima secara sadar — pengenalan produk terdaftar turun
+dari 0,933 ke 0,673, ditukar dengan kesalahan penamaan yang turun dari 33 kasus
+menjadi nol. Bagi pemilik warung, "belum dikenali" adalah barang yang tinggal
+diberi nama sekali; "salah nama" adalah angka rupiah yang salah tanpa ia sadari.
 
 ### 5.4 Cara memverifikasi klaim
 
@@ -533,10 +636,16 @@ Tiga hal yang kami anggap paling menentukan:
    kondisi pemakaian nyata.
 3. **Keputusan berbasis analisis, termasuk yang dikoreksi.** Beberapa keputusan
    penting justru merupakan pembatalan rencana awal setelah analisis menunjukkan
-   rencana itu keliru.
+   rencana itu keliru — ambang pencocokan yang dinaikkan setelah diukur, dan
+   panduan pelabelan internal yang dikoreksi setelah ditemukan merusak 20%
+   anotasi tanpa memunculkan galat.
 
-🔴 Angka uji lapangan dan hasil fine-tune tahap kedua akan melengkapi proposal
-ini sebelum pengumpulan.
+Fine-tune dua tahap sudah selesai dan terukur pada warung yang seluruhnya
+ditahan dari data latih: **mAP50 0,304 → 0,827** dan **recall 0,279 → 0,787**.
+Recall adalah angka yang membatasi akurasi opname, karena barang yang tidak
+terdeteksi tidak akan pernah terhitung.
+
+🔴 Angka uji lapangan di warung melengkapi proposal ini sebelum pengumpulan.
 
 ---
 
