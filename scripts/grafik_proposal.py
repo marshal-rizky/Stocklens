@@ -1,6 +1,6 @@
 """Buat grafik hasil training untuk proposal, dari file hasil training asli.
 
-Semua angka dibaca dari results.csv milik run yang sesungguhnya — tidak ada
+Semua angka dibaca dari results.csv milik run yang sesungguhnya, bukan angka ketikan. Tidak ada
 angka yang diketik tangan di sini, supaya grafik tidak bisa menyimpang dari
 apa yang benar-benar terjadi. Jalankan ulang setelah training baru dan gambar
 ikut terbarui.
@@ -51,7 +51,7 @@ def _kurva(path):
 def grafik_sebelum_sesudah(keluar):
     """Batang berkelompok: satu-satunya grafik yang benar-benar menjawab
     'apakah fine-tune berhasil'. Recall sengaja ikut karena itu yang paling
-    berarti untuk produk — barang yang tidak terdeteksi tidak akan terhitung."""
+    berarti untuk produk: barang yang tidak terdeteksi tidak akan terhitung."""
     metrik = ["mAP50", "mAP50-95", "Precision", "Recall"]
     data = {
         "YOLO11n COCO (sebelum)": [0.3040, 0.2091, 0.6170, 0.2789],
@@ -77,7 +77,7 @@ def grafik_sebelum_sesudah(keluar):
     ax.yaxis.set_major_locator(MultipleLocator(0.2))
     ax.set_ylabel("Skor", color=TINTA_2, fontsize=9)
     ax.set_title("Detektor produk diuji di warung yang tidak pernah dilatihkan\n"
-                 "85 foto, 1.832 objek — lokasi ditahan penuh dari data latih",
+                 "85 foto, 1.832 objek, lokasi ditahan penuh dari data latih",
                  color=TINTA, fontsize=11, loc="left", pad=12)
     _gaya(ax)
     leg = ax.legend(frameon=False, fontsize=9, loc="upper left",
@@ -113,7 +113,7 @@ def grafik_kurva_finetune(keluar):
 
 
 def grafik_pretrain(keluar):
-    """Kurva tahap 1 di SKU-110K — dasar klaim 'dua tahap', bukan satu."""
+    """Kurva tahap 1 di SKU-110K, dasar klaim 'dua tahap', bukan satu."""
     ep, m = _kurva(RUMAH / "pretrain_sku110k" / "results.csv")
     fig, ax = plt.subplots(figsize=(9, 3.6), facecolor=SURFACE)
     ax.plot(ep, m, color=TOSCA, linewidth=2)
@@ -126,7 +126,7 @@ def grafik_pretrain(keluar):
     ax.set_ylabel("mAP50 (validasi)", color=TINTA_2, fontsize=9)
     ax.set_ylim(0, 1.0)
     ax.set_title("Tahap 1: pre-train di SKU-110K (11 ribu foto rak retail)\n"
-                 "Kurva melandai setelah epoch 11 — 20 epoch dipilih dari data, bukan ditebak",
+                 "Kurva melandai setelah epoch 11; 20 epoch dipilih dari data, bukan ditebak",
                  color=TINTA, fontsize=11, loc="left", pad=12)
     _gaya(ax)
     fig.tight_layout()
@@ -137,7 +137,7 @@ def grafik_pretrain(keluar):
 def grafik_ambang_clip(keluar):
     """Dua tujuan ambang yang tarik-menarik, dalam satu sumbu.
 
-    Keduanya proporsi 0–1, jadi sah dibaca pada satu skala — bukan dua sumbu-y.
+    Keduanya proporsi 0–1, jadi sah dibaca pada satu skala, bukan dua sumbu-y.
     Sumber angka: docs/HASIL-UJI-AMBANG-CLIP.md (12 produk, 104 foto,
     leave-one-out dan leave-one-product-out).
     """
@@ -157,7 +157,7 @@ def grafik_ambang_clip(keluar):
     ax.axvline(0.85, color=TINTA_2, linewidth=1, linestyle=(0, (4, 4)))
     ax.annotate("dipilih: 0,85", (0.85, 0.06), textcoords="offset points",
                 xytext=(-8, 0), ha="right", fontsize=9, color=TINTA)
-    # Label langsung hanya di titik keputusan — bukan di setiap titik.
+    # Label langsung hanya di titik keputusan, bukan di setiap titik.
     ax.annotate("0,673", (0.85, 0.673), textcoords="offset points",
                 xytext=(10, -4), fontsize=9, color=TINTA)
     ax.annotate("1,000", (0.85, 1.000), textcoords="offset points",
@@ -168,7 +168,7 @@ def grafik_ambang_clip(keluar):
     ax.set_ylim(0, 1.08)
     ax.set_xlim(0.68, 0.92)
     ax.set_title("Ambang mengerjakan dua tugas yang menginginkan arah berlawanan\n"
-                 "12 produk, 104 foto — rak warung didominasi barang yang belum didaftarkan",
+                 "12 produk, 104 foto; rak warung didominasi barang yang belum didaftarkan",
                  color=TINTA, fontsize=11, loc="left", pad=12)
     _gaya(ax)
     leg = ax.legend(frameon=False, fontsize=9, loc="upper left",

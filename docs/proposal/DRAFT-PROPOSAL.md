@@ -1,29 +1,27 @@
-# DRAFT PROPOSAL  StokLens
+# DRAFT PROPOSAL: StokLens
 
-> **STATUS: DRAFT LOKAL, BELUM DI-COMMIT.**
+> **STATUS: DRAFT UNTUK DITINJAU. Belum siap dikirim.**
 >
-> Diagram memakai sintaks Mermaid  ter-render otomatis di GitHub, VS Code
-> (ekstensi Markdown Preview Mermaid), Obsidian, dan https://mermaid.live
-> (tempel kode di dalam blok ```mermaid, unduh sebagai PNG/SVG untuk ditempel
-> ke Word/Docs).
+> **Yang masih harus dibereskan sebelum submit:**
 >
-> **Sebelum dikirim, wajib dibereskan:**
-> - Semua penanda `⟨…⟩` diisi (nama tim, nama anggota, angka uji lapangan).
-> - Bagian bertanda 🔴 masih menunggu data lapangan — jangan dikarang.
-> - **Hapus semua jejak institusi** (nama kampus, email kampus, logo, template).
+> - Isi angka uji lapangan di §6 dan §7 (bertanda 🔴). Jangan dikarang.
+> - Periksa ulang tidak ada jejak institusi: nama kampus, email kampus, logo,
+>   template. Termasuk nama folder yang terlihat di tangkapan layar.
 > - Batas **20 halaman** di luar cover, daftar pustaka, dan lampiran.
-> - Cek plagiarisme sebelum submit.
+>   Versi ini 15 halaman badan + 1 halaman lampiran.
+> - Cek plagiarisme.
 
 ---
 
 ## 1. Nama Tim dan Judul Proyek
 
-**Nama tim:** ⟨nama tim⟩
+**Nama tim:** The Goyzalis 2.0
 
-**Judul:** StokLens  Stock Opname Otomatis Berbasis Visi Komputer untuk Warung
+**Judul:** StokLens, Stock Opname Otomatis Berbasis Visi Komputer untuk Warung
 dan Toko Kelontong
 
-**Anggota:** ⟨nama 1⟩ · ⟨nama 2⟩ · ⟨nama 3⟩ ⟨…⟩
+**Anggota:** Marshal Rizky Raditya · Danish Ahmad Satria · Nicolas Nathan
+Abimanyu · Muhammad Bhre Zidane Pribadi · Muhammad Noby Ghazali
 
 **Tema:** Smart Logistics
 
@@ -36,26 +34,26 @@ dan Toko Kelontong
 Warung Madura dan toko kelontong kecil menyimpan ratusan SKU dalam ruang sempit,
 tetapi hampir tidak pernah melakukan stock opname. Alasannya bukan kemalasan,
 melainkan biaya: menghitung manual satu warung memakan waktu berjam-jam dan
-harus dilakukan saat toko tutup. Akibatnya pemilik tidak pernah tahu tiga angka
+harus dilakukan saat toko tutup. Akibatnya pemilik tidak pernah tahu dua angka
 yang menentukan kelangsungan usahanya:
 
 1. **Berapa nilai rupiah barang yang ada di rak sekarang.**
 2. **Berapa banyak barang yang hilang** tanpa tercatat sebagai penjualan
-   (*shrinkage*) — rusak, kedaluwarsa, salah hitung, atau hilang.
+   (*shrinkage*): rusak, kedaluwarsa, salah hitung, atau hilang.
 
 Keduanya adalah yang dijawab StokLens. Pembacaan tanggal kedaluwarsa per barang
 sempat masuk rencana, diuji, lalu dikeluarkan dari lingkup setelah pengukuran
-menunjukkan tidak dapat dikerjakan dari foto rak — diuraikan di §4.3.5.
+menunjukkan tidak dapat dikerjakan dari foto rak. Uraiannya ada di §4.3.5.
 
 Solusi yang ada di pasar tidak menjawab kondisi ini. Aplikasi stock opname
 berbasis barcode mensyaratkan setiap barang punya barcode yang terbaca dan
-di-scan satu per satu  untuk warung dengan sachet renceng dan barang curah,
+di-scan satu per satu. Untuk warung dengan sachet renceng dan barang curah,
 syarat itu tidak terpenuhi. Sistem RFID mensyaratkan pemasangan tag per item,
 biaya yang tidak masuk akal untuk barang seharga Rp 500.
 
 ### 2.2 Posisi terhadap solusi sejenis
 
-Sudah ada pemain yang menggarap arah serupa antara lain WarungVision dan fitur
+Sudah ada pemain yang menggarap arah serupa, antara lain WarungVision dan fitur
 "Smart AI Stock Opname" pada beberapa perangkat lunak kasir. **Kami tidak
 mengklaim sebagai yang pertama.** Yang membedakan StokLens ada lima, dan
 semuanya dapat ditunjukkan, bukan sekadar dinyatakan:
@@ -69,7 +67,7 @@ semuanya dapat ditunjukkan, bukan sekadar dinyatakan:
 | **Berjalan lokal, tanpa API pihak ketiga** | Seluruh inferensi berjalan di perangkat sendiri. Biaya per-scan nol, dan foto dagangan tidak pernah keluar dari toko. Pembeda paling tajam terhadap solusi yang bergantung pada layanan AI berbayar. |
 
 Poin terakhir bukan sekadar keunggulan teknis. Bagi pemilik warung, model bisnis
-berbasis biaya per-panggilan-API berarti biaya yang tumbuh seiring pemakaian 
+berbasis biaya per-panggilan-API berarti biaya yang tumbuh seiring pemakaian, dan itu
 justru menghukum pengguna yang paling rajin melakukan opname.
 
 ---
@@ -81,7 +79,7 @@ justru menghukum pengguna yang paling rajin melakukan opname.
 1. Pemilik warung dapat menyelesaikan opname satu rak **dalam hitungan menit**
    menggunakan kamera ponsel yang sudah dimilikinya, tanpa perangkat tambahan.
 2. Hasilnya berupa **laporan selisih dalam rupiah**, bukan sekadar daftar angka
-   deteksi  sehingga langsung dapat ditindaklanjuti.
+   deteksi, sehingga langsung dapat ditindaklanjuti.
 3. Sistem **dapat dijalankan sepenuhnya offline** pada satu komputer di toko,
    diakses dari ponsel lewat jaringan setempat, tanpa langganan dan tanpa
    mengirim data ke pihak ketiga. Inferensi berjalan di komputer itu; ponsel
@@ -97,7 +95,7 @@ ini tidak terukur, serta memiliki dasar angka untuk keputusan pembelian ulang.
 hanya terjangkau ritel modern.
 
 **Aspek etika dan privasi:** SOP pengambilan foto secara eksplisit melarang
-memotret orang  hanya rak barang. Seluruh data tersimpan lokal.
+memotret orang, hanya rak barang. Seluruh data tersimpan lokal.
 
 ---
 
@@ -116,22 +114,22 @@ karena lingkungan CI memang sengaja tidak memasang tumpukan torch.
 
 ```mermaid
 flowchart TB
-    subgraph UI["Antarmuka — mobile web, tanpa toolchain build"]
+    subgraph UI["Antarmuka: mobile web, tanpa toolchain build"]
         A1["Beranda KPI"]
         A2["Katalog & enrollment"]
         A3["Opname: foto / video / manual"]
         A4["Laporan selisih"]
     end
 
-    subgraph API["Lapisan API — FastAPI"]
-        B1["/products — enrollment"]
+    subgraph API["Lapisan API: FastAPI"]
+        B1["/products: enrollment"]
         B2["/api/scans-foto"]
-        B3["/scans — video"]
+        B3["/scans: video"]
         B4["/report/{id}"]
-        B5["/api/unknown/... — beri nama"]
+        B5["/api/unknown/...: beri nama"]
     end
 
-    subgraph CORE["Logika murni — TANPA torch, teruji di CI"]
+    subgraph CORE["Logika murni: TANPA torch, teruji di CI"]
         C1["matcher.py<br/>cosine + galeri"]
         C2["crossing.py<br/>line-crossing"]
         C3["counter.py<br/>agregasi track"]
@@ -140,7 +138,7 @@ flowchart TB
         C6["accounting.py<br/>nilai stok, margin"]
     end
 
-    subgraph HEAVY["Pembungkus model — impor malas"]
+    subgraph HEAVY["Pembungkus model: impor malas"]
         D1["YOLO11n<br/>deteksi produk"]
         D2["CLIP ViT-B/32<br/>embedding"]
     end
@@ -180,7 +178,7 @@ Panah putus-putus adalah kunci akurasi jangka panjang dan dirinci di §4.5.
 
 ### 4.3 Alur pengembangan tiap fitur
 
-#### 4.3.1 Enrollment  pengenalan tanpa retraining
+#### 4.3.1 Enrollment: pengenalan tanpa retraining
 
 ```mermaid
 flowchart TB
@@ -191,10 +189,10 @@ flowchart TB
 
 **Keputusan: CLIP zero-shot, bukan melatih pengklasifikasi.** Melatih
 pengklasifikasi berarti setiap warung harus melatih ulang model setiap kali
-menambah barang  mustahil dijalankan pemilik warung. Dengan pembandingan
+menambah barang, dan itu mustahil dijalankan pemilik warung. Dengan pembandingan
 embedding, menambah barang cukup menambah satu baris di basis data.
 
-#### 4.3.2 Mode FOTO  jalur utama untuk warung
+#### 4.3.2 Mode FOTO: jalur utama untuk warung
 
 ```mermaid
 flowchart TB
@@ -213,7 +211,7 @@ flowchart TB
 **Keputusan: mode foto jadi mode utama, bukan video.** Dalam satu foto, satu
 deteksi = satu barang, sehingga seluruh kelas masalah "satu barang terhitung dua
 kali karena ID tracking pecah" tidak pernah muncul. Mode foto juga jauh lebih
-murah — enam foto sekitar 18 MB dibanding video sekitar 75 MB — dan foto diam
+murah (enam foto sekitar 18 MB dibanding video sekitar 75 MB), dan foto diam
 tidak membawa blur gerakan seperti frame video, sehingga potongan yang masuk ke
 pencocokan lebih tajam. Untuk warung yang sempit, mundur beberapa langkah untuk
 merekam sweep sering kali tidak mungkin.
@@ -236,10 +234,10 @@ flowchart TB
     V7 --> V8[("scan_items")]
 ```
 
-**Arah sweep tidak perlu dideklarasikan pengguna**  ditentukan otomatis dari
+**Arah sweep tidak perlu dideklarasikan pengguna**, ditentukan otomatis dari
 mayoritas arah penyeberangan seluruh track.
 
-#### 4.3.4 Anti dobel-hitung  tiga lapis independen
+#### 4.3.4 Anti dobel-hitung: tiga lapis independen
 
 Ini masalah paling menentukan pada mode video, dan diselesaikan berlapis karena
 tidak ada satu mekanisme yang cukup:
@@ -247,9 +245,9 @@ tidak ada satu mekanisme yang cukup:
 ```mermaid
 flowchart TB
     L0["Deteksi mentah tiap frame<br/>(satu barang muncul di puluhan frame)"]
-    L1["LAPIS 1 — Tracking<br/>hitung per track ID, bukan per deteksi"]
-    L2["LAPIS 2 — ReID + track_buffer<br/>menyambung ID yang putus<br/>karena blur / terhalang"]
-    L3["LAPIS 3 — Line-crossing + histeresis<br/>hanya hitung saat menyeberang garis"]
+    L1["LAPIS 1: Tracking<br/>hitung per track ID, bukan per deteksi"]
+    L2["LAPIS 2: ReID + track_buffer<br/>menyambung ID yang putus<br/>karena blur / terhalang"]
+    L3["LAPIS 3: Line-crossing + histeresis<br/>hanya hitung saat menyeberang garis"]
     L4["Filter umur track<br/>buang track < 3 frame"]
     L5["Hitungan akhir"]
 
@@ -262,8 +260,8 @@ Alasan tiap lapis, dan apa yang gagal ditangani lapis sebelumnya:
 |---|---|---|
 | Tracking | Satu barang di banyak frame | ID pecah → barang sama dapat dua ID |
 | ReID + buffer | ID pecah karena blur/terhalang sesaat | ID pecah yang terlalu jauh jaraknya |
-| Line-crossing | ID pecah di sisi layar yang sama — hanya satu yang sempat menyeberang | Track sangat pendek dari noise |
-| Filter umur | Noise berumur pendek | — |
+| Line-crossing | ID pecah di sisi layar yang sama, hanya satu yang sempat menyeberang | Track sangat pendek dari noise |
+| Filter umur | Noise berumur pendek | tidak ada |
 
 Histeresis pada line-crossing menyerap goyangan kamera kecil di sekitar garis.
 Penyeberangan balik menghasilkan event bernilai −1 yang saling menghapus dengan
@@ -287,13 +285,13 @@ menghasilkan teks tanggal itu dari potongan foto rak. Kami mengukurnya:
 | Resolusi penuh | 64 | 43 | **0** |
 | Setelah pengecilan ke 1280 px | 53 | 33 | **0** |
 
-Nol dari 64. OCR-nya sendiri bekerja — 43 dari 64 potongan menghasilkan teks
+Nol dari 64. OCR-nya sendiri bekerja: 43 dari 64 potongan menghasilkan teks
 berupa nama merek dan tulisan besar kemasan. Yang tidak pernah muncul justru
 tanggalnya, dan resolusi penuh pun tetap nol.
 
 Sebabnya struktural, bukan soal ketajaman gambar. Tanggal kedaluwarsa pada
 kemasan Indonesia dicetak inkjet atau laser tipis berkontras rendah, dan
-letaknya di belakang, di bawah, atau pada lipatan sambungan — sisi yang
+letaknya di belakang, di bawah, atau pada lipatan sambungan, sedangkan sisi yang
 menghadap rak justru sisi yang tidak membawa tanggal. Informasi itu tidak berada
 di dalam frame, sehingga menaikkan resolusi tidak akan menolong.
 
@@ -303,7 +301,7 @@ sesuatu yang, berdasarkan pengukuran kami sendiri, tidak akan berjalan di tangan
 pemilik warung.
 
 Jalan yang masuk akal bila diteruskan kelak adalah **foto close-up terpisah**
-untuk barang yang perlu diperiksa — bukan mengharapkan satu foto rak melayani
+untuk barang yang perlu diperiksa, bukan mengharapkan satu foto rak melayani
 dua tujuan yang menuntut jarak pengambilan berbeda. Kolom `expired_terdekat` dan
 `qty_expired` tetap ada pada skema (§4.7) karena jalur akuntansinya sudah
 terpasang dan teruji; keduanya kini selalu kosong.
@@ -337,7 +335,7 @@ Pemisahan ini membuat pekerjaan pelabelan jauh lebih cepat **dan** membuat
 penambahan barang baru tidak memerlukan pelabelan ulang apa pun.
 
 **Keputusan: menolak scraping marketplace.** Selain melanggar ketentuan layanan
-dan hak cipta, jenis datanya salah  foto katalog berlatar putih, bukan adegan
+dan hak cipta, jenis datanya salah: foto katalog berlatar putih, bukan adegan
 rak. Model yang dilatih dengan data seperti itu justru belajar bias yang tidak
 pernah ada di gudang.
 
@@ -348,7 +346,7 @@ warung yang tidak ada pada dataset supermarket: **sachet renceng yang
 digantung**, cahaya bohlam hangat, rak improvisasi, dan ruang sempit.
 
 **Keputusan pelabelan renceng: satu sachet = satu kotak.** Alasannya bukan teknis
-melainkan bisnis  warung menjual dan menghitung stoknya per sachet. Jika model
+melainkan bisnis: warung menjual dan menghitung stoknya per sachet. Jika model
 menghitung per renceng, angka selisih pada laporan tidak akan cocok dengan cara
 pemilik warung menghitung, dan seluruh fitur kehilangan maknanya baginya.
 
@@ -361,9 +359,9 @@ agak blur, dan menyerong. Urutan faktor perusak, dari yang paling parah:
 
 1. Perbedaan skala dan ketajaman
 2. Perbedaan cahaya dan suhu warna
-3. Perbedaan sudut 
+3. Perbedaan sudut
 4. Latar belakang rak
-5. Foto stok dari internet  paling buruk, karena desain kemasannya sering
+5. Foto stok dari internet, paling buruk, karena desain kemasannya sering
    sudah versi lama
 
 Solusinya menghilangkan ketidakcocokan itu di akarnya:
@@ -377,7 +375,7 @@ flowchart TB
     U4 -- "barang baru" --> U6["Buat produk baru<br/>dengan vektor potongan itu"]
     U5 --> U7[("product_embeddings")]
     U6 --> U7
-    U7 --> U8["Scan berikutnya mengenali<br/>barang itu — galerinya kini<br/>berisi referensi dalam<br/>kondisi scan yang sama"]
+    U7 --> U8["Scan berikutnya mengenali<br/>barang itu,<br/>galerinya kini<br/>berisi referensi dalam<br/>kondisi scan yang sama"]
 ```
 
 **Keputusan: galeri banyak-vektor, BUKAN merata-ratakan.** Ini keputusan yang
@@ -389,13 +387,13 @@ adalah galeri berisi entri terpisah, dan pencocokan mengambil **similarity
 tertinggi** di antara seluruh entri milik produk tersebut.
 
 **Keputusan: vektor dihitung saat scan, bukan saat pengguna memberi nama.**
-Konsekuensinya endpoint pemberian nama tidak perlu memuat CLIP sama sekali —
+Konsekuensinya endpoint pemberian nama tidak perlu memuat CLIP sama sekali,
 responsnya cepat dan dapat diuji tanpa torch. Biayanya sekitar 2 KB per potongan.
 
 ### 4.6 Alur integrasi model ke lingkungan kode
 
 Model diperlakukan sebagai **dependensi yang dapat ditukar**, bukan bagian dari
-kode. Bobot model tidak pernah masuk ke repositori  dibagikan lewat penyimpanan
+kode. Bobot model tidak pernah masuk ke repositori, melainkan dibagikan lewat penyimpanan
 bersama tim, dan repositori memblokirnya lewat `.gitignore`.
 
 ```mermaid
@@ -404,7 +402,7 @@ flowchart LR
     M2 --> M3["Model paham<br/>'rak padat produk'"]
     M3 -->|"Tahap 2<br/>fine-tune"| M4["Dataset warung sendiri"]
     M4 --> M5["stoklens-yolo.pt"]
-    M5 --> M6["Ditukar lewat parameter<br/>model_path — tanpa<br/>mengubah kode pipeline"]
+    M5 --> M6["Ditukar lewat parameter<br/>model_path,<br/>tanpa<br/>mengubah kode pipeline"]
 ```
 
 **Keputusan: pre-train dua tahap, bukan langsung fine-tune dari COCO.** Dataset
@@ -422,7 +420,7 @@ rapat". SKU-110K mengajarkan itu; dataset sendiri mengajarkan kondisi lokal.
 | **20 (final)** | **0,868** | **0,525** |
 
 Validasi akhir pada 588 gambar berisi 90.968 objek: presisi 0,894, recall 0,816,
-waktu inferensi 1,7 ms per gambar. Kurva sudah melandai  dari epoch 11 ke 20
+waktu inferensi 1,7 ms per gambar. Kurva sudah melandai: dari epoch 11 ke 20
 hanya naik 0,018 sehingga 20 epoch dinilai sebagai titik henti yang tepat,
 bukan angka yang dipilih sembarangan.
 
@@ -434,14 +432,14 @@ sendiri, 60 epoch, 30 menit di RTX 4070.
 #### Cara pengujian, dan kenapa caranya begitu
 
 Angka di bawah ini diukur pada **85 foto dari satu warung yang seluruhnya
-ditahan dari data latih**  model tidak pernah melihat satu pun foto dari lokasi
+ditahan dari data latih**. Model tidak pernah melihat satu pun foto dari lokasi
 itu. Pilihan ini disengaja dan penting.
 
 Split acak bawaan Roboflow akan memberi angka yang jauh lebih tinggi, tetapi
 tidak sah: SOP pemotretan kami mengambil 3–5 foto per rak dalam hitungan detik,
 sehingga foto yang nyaris kembar akan tersebar ke data latih *dan* data uji.
 Model akan dinilai pada rak yang sudah pernah dilihatnya. Angka yang keluar
-mengukur ingatan, bukan kemampuan menghadapi warung baru  dan warung baru
+mengukur ingatan, bukan kemampuan menghadapi warung baru, dan warung baru
 persis yang dihadapi produk ini setiap kali dipasang di toko berikutnya.
 
 ![Perbandingan sebelum dan sesudah fine-tune](gambar/01-sebelum-sesudah.png)
@@ -456,7 +454,7 @@ persis yang dihadapi produk ini setiap kali dipasang di toko berikutnya.
 Yang paling berarti untuk produk adalah **recall**: 0,279 → 0,787. Model generik
 hanya menemukan 28% barang di rak; setelah fine-tune menjadi 79%. Barang yang
 tidak terdeteksi tidak akan pernah terhitung, sehingga recall-lah yang membatasi
-akurasi opname  bukan mAP.
+akurasi opname, bukan mAP.
 
 **Tahap 1 terbukti menyumbang, bukan sekadar cerita kepatuhan.** Fine-tune yang
 berangkat dari checkpoint SKU-110K mengungguli fine-tune langsung dari COCO
@@ -504,7 +502,7 @@ erDiagram
 
 **Keputusan: stok disimpan sebagai buku besar (ledger), bukan satu kolom
 angka.** Angka selisih tidak bermakna tanpa angka pembanding yang tercatat
-beserta asal-usulnya. Ledger membuat setiap perubahan stok dapat ditelusuri 
+beserta asal-usulnya. Ledger membuat setiap perubahan stok dapat ditelusuri:
 berasal dari opname yang mana, atau penyesuaian manual dengan alasan apa.
 
 Penerapan hasil opname ke ledger berjalan dalam **satu transaksi atomik** dengan
@@ -535,7 +533,7 @@ diterima. Dua contoh yang berdampak nyata:
 
 **Konflik semantik antar cabang.** Dua cabang yang masing-masing lulus pengujian
 dapat menghasilkan kegagalan setelah digabung, karena konfliknya bersifat makna,
-bukan tekstual  git melaporkan penggabungan bersih, tetapi pengujian gabungan
+bukan tekstual: git melaporkan penggabungan bersih, tetapi pengujian gabungan
 gagal. Terjadi dua kali sebelum akhirnya dijadikan aturan tertulis: **cabang yang
 menyentuh berkas sama wajib menggabungkan cabang utama dan menjalankan pengujian
 sebelum digabung.** Aturan turunannya: uji penjaga harus menguji **pola**, bukan
@@ -549,7 +547,7 @@ dibiarkan hilang di percakapan.
 
 **Kerusakan label yang tidak menimbulkan satu pun pesan galat.** Roboflow
 menyediakan *Smart Polygon* untuk mengikuti lekuk barang, dan pelabel kami
-memakainya untuk bentuk sulit  kerupuk gantung, renceng melengkung  sambil
+memakainya untuk bentuk sulit seperti kerupuk gantung dan renceng melengkung, sambil
 tetap memakai kotak biasa untuk dus. Wajar, dan dokumentasi internal kami
 sendiri sempat menyatakan pencampuran itu tidak bermasalah.
 
@@ -557,7 +555,7 @@ Ternyata bermasalah, di tempat yang tidak terlihat. Ekspor format YOLO menulis
 koordinat poligon apa adanya, lalu pustaka pelatihan memeriksa bentuk label
 **per berkas, bukan per baris**: satu baris poligon membuat seluruh baris di
 berkas itu dibaca sebagai poligon. Baris kotak `cls cx cy w h` ditafsirkan
-sebagai dua titik  titik pusat dan ukuran diperlakukan sebagai dua sudut 
+sebagai dua titik: titik pusat dan ukuran diperlakukan sebagai dua sudut,
 sehingga kotaknya tidak lagi berhubungan dengan barang aslinya.
 
 ```mermaid
@@ -573,15 +571,15 @@ flowchart TB
 ```
 
 Diukur pada gabungan ekspor kami: dari **11.779 anotasi**, 3.751 berbentuk
-poligon dan **2.339 kotak  19,9% dari seluruh anotasi  berada di 116 berkas
+poligon dan **2.339 kotak (19,9% dari seluruh anotasi) berada di 116 berkas
 campuran** dan akan rusak. Berkas yang isinya seragam, semua kotak atau semua
 poligon, justru aman; yang mematikan adalah pencampuran di dalam satu foto.
 
 Temuan ini menghasilkan langkah normalisasi wajib sebelum pelatihan, dan
 koreksi pada panduan internal yang sebelumnya keliru. Kami mencantumkannya di
-sini karena kegagalan jenis ini  yang tidak memunculkan galat, tidak
+sini karena kegagalan jenis ini, yang tidak memunculkan galat, tidak
 menggagalkan pengujian, dan hanya menyisakan model yang lebih buruk tanpa sebab
-yang jelas  adalah kegagalan yang paling mahal dalam proyek pembelajaran mesin,
+yang jelas, adalah kegagalan yang paling mahal dalam proyek pembelajaran mesin,
 dan satu-satunya pertahanannya adalah memeriksa data, bukan menunggu peringatan.
 
 **Fitur yang dibatalkan setelah diukur.** Pembacaan tanggal kedaluwarsa
@@ -607,7 +605,7 @@ yang menyerang asumsi paling rapuh.
 
 #### Ambang pencocokan: dari tebakan menjadi pengukuran
 
-Nilai 0,75 yang dipakai di awal tidak pernah divalidasi  dasarnya hanya tiga
+Nilai 0,75 yang dipakai di awal tidak pernah divalidasi: dasarnya hanya tiga
 kasus tunggal, dan itu anekdot. Kami mengukurnya ulang pada **12 produk dan 104
 foto** dengan dua uji terpisah: *leave-one-out* untuk kemampuan mengenali, dan
 *leave-one-product-out* untuk kemampuan menolak.
@@ -629,7 +627,7 @@ Ambang mana yang terbaik bergantung pada komposisi rak:
 
 Warung mendaftarkan puluhan produk sementara raknya memuat ratusan barang,
 sehingga barang yang belum terdaftar jauh lebih banyak. **Keputusan: naik ke
-0,85.** Konsekuensinya diterima secara sadar  pengenalan produk terdaftar turun
+0,85.** Konsekuensinya diterima secara sadar: pengenalan produk terdaftar turun
 dari 0,933 ke 0,673, ditukar dengan kesalahan penamaan yang turun dari 33 kasus
 menjadi nol. Bagi pemilik warung, "belum dikenali" adalah barang yang tinggal
 diberi nama sekali; "salah nama" adalah angka rupiah yang salah tanpa ia sadari.
@@ -652,7 +650,7 @@ Seluruh aplikasi berjalan lokal dengan satu perintah:
 docker compose up --build
 ```
 
-🔴 **Hasil uji lapangan**  diisi setelah pengujian di warung:
+🔴 **Hasil uji lapangan**, diisi setelah pengujian di warung:
 
 | Pengukuran | Hasil |
 |---|---|
@@ -667,21 +665,21 @@ docker compose up --build
 
 StokLens menjawab persoalan yang nyata dan terukur: pemilik warung tidak
 mengetahui nilai stok dan angka kehilangannya karena menghitung manual terlalu
-mahal. Pendekatan yang dipilih  deteksi produk pada foto rak, pengenalan
+mahal. Pendekatan yang dipilih (deteksi produk pada foto rak, pengenalan
 berbasis pembandingan embedding tanpa retraining, dan pelaporan selisih dalam
-rupiah — memungkinkan opname dilakukan dengan perangkat yang sudah dimiliki
+rupiah) memungkinkan opname dilakukan dengan perangkat yang sudah dimiliki
 pemilik warung.
 
 Tiga hal yang kami anggap paling menentukan:
 
 1. **Berjalan lokal sepenuhnya.** Biaya per-scan nol dan data tidak pernah keluar
-   dari toko  pembeda terhadap solusi yang bergantung pada layanan AI berbayar.
+   dari toko, pembeda terhadap solusi yang bergantung pada layanan AI berbayar.
 2. **Memperbaiki diri dari pemakaian.** Setiap barang yang gagal dikenali lalu
    diberi nama pengguna memperkaya galeri dalam kondisi yang identik dengan
    kondisi pemakaian nyata.
 3. **Keputusan berbasis analisis, termasuk yang dikoreksi.** Beberapa keputusan
    penting justru merupakan pembatalan rencana awal setelah analisis menunjukkan
-   rencana itu keliru  ambang pencocokan yang dinaikkan setelah diukur, dan
+   rencana itu keliru: ambang pencocokan yang dinaikkan setelah diukur, dan
    panduan pelabelan internal yang dikoreksi setelah ditemukan merusak 20%
    anotasi tanpa memunculkan galat.
 
@@ -694,7 +692,7 @@ terdeteksi tidak akan pernah terhitung.
 
 ---
 
-## Lampiran A  Ringkasan Keputusan Teknis
+## Lampiran A: Ringkasan Keputusan Teknis
 
 | # | Keputusan | Alasan singkat |
 |---|---|---|

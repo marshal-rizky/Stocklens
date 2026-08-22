@@ -31,3 +31,8 @@ data/
 Thumbs.db
 .idea/
 .vscode/
+
+# Perantara render proposal (dibuat ulang oleh scripts/proposal_pdf.py)
+docs/proposal/diagram/
+docs/proposal/_proposal.html
+docs/proposal/DRAFT-PROPOSAL.html
