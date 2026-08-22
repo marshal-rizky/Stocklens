@@ -114,45 +114,31 @@ karena lingkungan CI memang sengaja tidak memasang tumpukan torch.
 
 ```mermaid
 flowchart TB
-    subgraph UI["Antarmuka: mobile web, tanpa toolchain build"]
-        A1["Beranda KPI"]
-        A2["Katalog & enrollment"]
-        A3["Opname: foto / video / manual"]
-        A4["Laporan selisih"]
+    subgraph UI["Antarmuka mobile web, tanpa toolchain build"]
+        direction LR
+        A1["Beranda KPI"] ~~~ A2["Katalog & enrollment"] ~~~ A3["Opname: foto / video / manual"] ~~~ A4["Laporan selisih"]
     end
-
-    subgraph API["Lapisan API: FastAPI"]
-        B1["/products: enrollment"]
-        B2["/api/scans-foto"]
-        B3["/scans: video"]
-        B4["/report/{id}"]
-        B5["/api/unknown/...: beri nama"]
+    subgraph API["Lapisan API, FastAPI"]
+        direction LR
+        B1["/products"] ~~~ B2["/api/scans-foto"] ~~~ B3["/scans"] ~~~ B4["/report/{id}"] ~~~ B5["/api/unknown/..."]
     end
-
-    subgraph CORE["Logika murni: TANPA torch, teruji di CI"]
-        C1["matcher.py<br/>cosine + galeri"]
-        C2["crossing.py<br/>line-crossing"]
-        C3["counter.py<br/>agregasi track"]
-        C4["expiry.py<br/>parser tanggal"]
-        C5["report.py<br/>selisih & rupiah"]
-        C6["accounting.py<br/>nilai stok, margin"]
+    subgraph CORE["Logika murni, TANPA torch, teruji di CI"]
+        direction LR
+        C1["matcher.py"] ~~~ C2["crossing.py"] ~~~ C3["counter.py"] ~~~ C4["expiry.py"] ~~~ C5["report.py"] ~~~ C6["accounting.py"]
     end
-
-    subgraph HEAVY["Pembungkus model: impor malas"]
-        D1["YOLO11n<br/>deteksi produk"]
-        D2["CLIP ViT-B/32<br/>embedding"]
+    subgraph HEAVY["Pembungkus model, impor malas"]
+        direction LR
+        D1["YOLO11n, deteksi produk"] ~~~ D2["CLIP ViT-B/32, embedding"]
     end
-
     subgraph DATA["Penyimpanan"]
-        E1[("SQLite<br/>satu berkas")]
-        E2["data/crops/<br/>potongan gambar"]
+        direction LR
+        E1[("SQLite, satu berkas")] ~~~ E2["data/crops/"]
     end
-
     UI --> API
     API --> CORE
     API --> HEAVY
-    CORE --> DATA
     HEAVY --> CORE
+    CORE --> DATA
 ```
 
 **Keputusan: SQLite satu berkas, bukan basis data terpisah.** Target pengguna
@@ -182,9 +168,11 @@ Panah putus-putus adalah kunci akurasi jangka panjang dan dirinci di §4.5.
 
 ```mermaid
 flowchart TB
-    F1["Pengguna memotret barang<br/>3–5 sudut"] --> F2["CLIP ViT-B/32<br/>ubah tiap foto jadi vektor"]
-    F2 --> F3["Rata-ratakan vektor,<br/>normalisasi ulang"]
-    F3 --> F4[("products.embedding<br/>+ nama, harga, stok awal")]
+    F1["Pengguna memotret barang dari 3-5 sudut"]
+    F2["CLIP ViT-B/32 mengubah tiap foto jadi vektor"]
+    F3["Vektor dirata-ratakan lalu dinormalisasi ulang"]
+    F4[("products.embedding + nama, harga, stok awal")]
+    F1 --> F2 --> F3 --> F4
 ```
 
 **Keputusan: CLIP zero-shot, bukan melatih pengklasifikasi.** Melatih
@@ -196,16 +184,19 @@ embedding, menambah barang cukup menambah satu baris di basis data.
 
 ```mermaid
 flowchart TB
-    P1["Foto rak<br/>1 foto = 1 sub-segmen"] --> P2["YOLO11n<br/>deteksi kotak produk"]
-    P2 --> P3{"untuk tiap kotak"}
-    P3 --> P4["Potong gambar → CLIP → vektor"]
-    P4 --> P5["Cocokkan ke galeri<br/>ambil similarity tertinggi"]
-    P5 --> P6{"skor ≥ ambang 0,85?"}
-    P6 -- ya --> P7["Tandai sebagai produk X"]
-    P6 -- tidak --> P8["Tandai 'belum dikenali'<br/>simpan potongan + vektor"]
-    P7 --> P9["Agregasi per produk<br/>+ rincian per foto"]
+    P1["Foto rak, satu foto untuk satu sub-segmen"]
+    P2["YOLO11n mendeteksi kotak produk"]
+    P3["Tiap kotak dipotong, lalu CLIP mengubahnya jadi vektor"]
+    P4["Dicocokkan ke galeri, diambil similarity tertinggi"]
+    P5{"skor mencapai ambang 0,85?"}
+    P6["Ditandai sebagai produk yang bersangkutan"]
+    P7["Ditandai belum dikenali, potongan dan vektornya disimpan"]
+    P8["Diagregasi per produk, dengan rincian per foto"]
+    P9[("scan_items")]
+    P1 --> P2 --> P3 --> P4 --> P5
+    P5 -- ya --> P6 --> P8
+    P5 -- tidak --> P7 --> P8
     P8 --> P9
-    P9 --> P10[("scan_items")]
 ```
 
 **Keputusan: mode foto jadi mode utama, bukan video.** Dalam satu foto, satu
@@ -225,13 +216,15 @@ melihat dan mengoreksi sendiri.
 
 ```mermaid
 flowchart TB
-    V1["Video sweep satu arah"] --> V2["YOLO11n + BoT-SORT + ReID<br/>track_buffer 60"]
-    V2 --> V3["Per track: rekam riwayat posisi-x,<br/>ambil embedding tiap 5 frame,<br/>simpan potongan terbesar"]
-    V3 --> V4["Line-crossing:<br/>track dihitung hanya bila<br/>menyeberang garis tengah<br/>searah sweep"]
-    V4 --> V5["Cocokkan tiap sampel embedding,<br/>ambil label suara terbanyak"]
-    V5 --> V6["Buang track berumur < 3 frame"]
-    V6 --> V7["Agregasi per produk"]
-    V7 --> V8[("scan_items")]
+    V1["Video sweep satu arah"]
+    V2["YOLO11n + BoT-SORT + ReID, track_buffer 60"]
+    V3["Per track: riwayat posisi-x, embedding tiap 5 frame, potongan terbesar"]
+    V4["Line-crossing: dihitung hanya bila menyeberang garis tengah searah sweep"]
+    V5["Tiap sampel embedding dicocokkan, diambil label suara terbanyak"]
+    V6["Track berumur di bawah 3 frame dibuang"]
+    V7["Diagregasi per produk"]
+    V8[("scan_items")]
+    V1 --> V2 --> V3 --> V4 --> V5 --> V6 --> V7 --> V8
 ```
 
 **Arah sweep tidak perlu dideklarasikan pengguna**, ditentukan otomatis dari
@@ -244,13 +237,12 @@ tidak ada satu mekanisme yang cukup:
 
 ```mermaid
 flowchart TB
-    L0["Deteksi mentah tiap frame<br/>(satu barang muncul di puluhan frame)"]
-    L1["LAPIS 1: Tracking<br/>hitung per track ID, bukan per deteksi"]
-    L2["LAPIS 2: ReID + track_buffer<br/>menyambung ID yang putus<br/>karena blur / terhalang"]
-    L3["LAPIS 3: Line-crossing + histeresis<br/>hanya hitung saat menyeberang garis"]
-    L4["Filter umur track<br/>buang track < 3 frame"]
+    L0["Deteksi mentah tiap frame, satu barang muncul di puluhan frame"]
+    L1["LAPIS 1 Tracking: hitung per track ID, bukan per deteksi"]
+    L2["LAPIS 2 ReID + track_buffer: menyambung ID yang putus karena blur atau terhalang"]
+    L3["LAPIS 3 Line-crossing + histeresis: hitung hanya saat menyeberang garis"]
+    L4["Filter umur: track di bawah 3 frame dibuang"]
     L5["Hitungan akhir"]
-
     L0 --> L1 --> L2 --> L3 --> L4 --> L5
 ```
 
@@ -270,85 +262,69 @@ sempat mundur.
 
 #### 4.3.5 Pembacaan tanggal kedaluwarsa: diuji, lalu dikeluarkan dari lingkup
 
-Rencana awal menyertakan pembacaan tanggal kedaluwarsa langsung dari foto rak.
-Komponennya dibangun: parser tanggal untuk format kemasan Indonesia (`EXP`,
-`ED`, `BB`, `BAIK SEBELUM`, `BEST BEFORE`, dengan pola tanggal-bulan-tahun,
-nama-bulan-tahun seperti `AGU 26`, maupun bulan-tahun; nama bulan Indonesia dan
-Inggris dipetakan bersamaan karena keduanya lazim pada kemasan yang sama).
-Parser itu selesai dan lulus 11 pengujian otomatis.
-
-**Yang tidak pernah divalidasi adalah pasangannya**: apakah OCR sanggup
-menghasilkan teks tanggal itu dari potongan foto rak. Kami mengukurnya:
+Parser tanggal untuk format kemasan Indonesia (`EXP`, `ED`, `BAIK SEBELUM`,
+nama bulan Indonesia dan Inggris) selesai dan lulus 11 pengujian. **Yang tidak
+pernah divalidasi adalah pasangannya**: apakah OCR sanggup menghasilkan teks
+tanggal itu dari potongan foto rak. Kami mengukurnya:
 
 | Kondisi | Potongan diuji | Menghasilkan teks | **Tanggal kedaluwarsa terbaca** |
 |---|---|---|---|
 | Resolusi penuh | 64 | 43 | **0** |
 | Setelah pengecilan ke 1280 px | 53 | 33 | **0** |
 
-Nol dari 64. OCR-nya sendiri bekerja: 43 dari 64 potongan menghasilkan teks
-berupa nama merek dan tulisan besar kemasan. Yang tidak pernah muncul justru
-tanggalnya, dan resolusi penuh pun tetap nol.
+OCR-nya sendiri bekerja: 43 dari 64 potongan menghasilkan teks berupa nama
+merek dan tulisan besar kemasan. Yang tidak pernah muncul justru tanggalnya.
 
-Sebabnya struktural, bukan soal ketajaman gambar. Tanggal kedaluwarsa pada
-kemasan Indonesia dicetak inkjet atau laser tipis berkontras rendah, dan
-letaknya di belakang, di bawah, atau pada lipatan sambungan, sedangkan sisi yang
-menghadap rak justru sisi yang tidak membawa tanggal. Informasi itu tidak berada
-di dalam frame, sehingga menaikkan resolusi tidak akan menolong.
+Sebabnya struktural, bukan ketajaman gambar. Tanggal kedaluwarsa dicetak inkjet
+atau laser tipis berkontras rendah di belakang, di bawah, atau pada lipatan
+sambungan, sedangkan sisi yang menghadap rak justru sisi yang tidak membawanya.
+Informasi itu tidak ada di dalam frame, sehingga menaikkan resolusi tidak
+menolong.
 
-**Keputusan: dikeluarkan dari lingkup MVP.** Fitur ini tidak ditampilkan sebagai
-kemampuan produk dan tidak didemonstrasikan. Menyertakannya berarti menjanjikan
-sesuatu yang, berdasarkan pengukuran kami sendiri, tidak akan berjalan di tangan
-pemilik warung.
-
-Jalan yang masuk akal bila diteruskan kelak adalah **foto close-up terpisah**
-untuk barang yang perlu diperiksa, bukan mengharapkan satu foto rak melayani
-dua tujuan yang menuntut jarak pengambilan berbeda. Kolom `expired_terdekat` dan
-`qty_expired` tetap ada pada skema (§4.7) karena jalur akuntansinya sudah
-terpasang dan teruji; keduanya kini selalu kosong.
+**Keputusan: dikeluarkan dari lingkup MVP** dan tidak didemonstrasikan.
+Menyertakannya berarti menjanjikan sesuatu yang, menurut pengukuran kami
+sendiri, tidak akan berjalan di tangan pemilik warung. Jalan yang masuk akal
+bila diteruskan kelak adalah foto close-up terpisah, bukan mengharapkan satu
+foto rak melayani dua jarak pengambilan sekaligus.
 
 ### 4.4 Alur perolehan dataset
 
 ```mermaid
 flowchart TB
-    D1["Izin 2–3 warung Madura<br/>imbalan: hasil opname gratis"]
-    D2["Foto rak resolusi penuh<br/>variasi jarak, sudut, cahaya, kepadatan"]
-    D3["Unggah ke penyimpanan bersama<br/>subfolder per pemotret"]
-    D4["Auto-label dengan detektor berbasis teks<br/>ambang rendah, sengaja berlebih"]
-    D5["Koreksi manusia di Roboflow<br/>satu kelas: produk"]
-    D6["QC ketua: sampling 10%"]
-    D7["Normalisasi label:<br/>poligon → kotak"]
-    D8["Split per LOKASI:<br/>satu warung ditahan penuh"]
-
+    D1["Izin 2-3 warung Madura, imbalan hasil opname gratis"]
+    D2["Foto rak resolusi penuh, variasi jarak, sudut, cahaya, kepadatan"]
+    D3["Unggah ke penyimpanan bersama, subfolder per pemotret"]
+    D4["Auto-label dengan detektor berbasis teks, ambang rendah dan sengaja berlebih"]
+    D5["Koreksi manusia di Roboflow, satu kelas: produk"]
+    D6["QC ketua, sampling 10%"]
+    D7["Normalisasi label: poligon diubah jadi kotak"]
+    D8["Split per LOKASI: satu warung ditahan penuh"]
     D1 --> D2 --> D3 --> D4 --> D5 --> D6 --> D7 --> D8
-    D6 -. "kotak longgar / barang kelewat" .-> D5
+    D6 -. "kotak longgar atau barang kelewat" .-> D5
 ```
 
-**Keputusan: split per lokasi, bukan split acak.** Ini dua langkah terakhir di
-atas, dan keduanya lahir dari kegagalan yang diuraikan di §5.2. Split acak
-bawaan akan menaruh foto yang nyaris kembar 3–5 jepretan rak yang sama dalam
-hitungan detik di data latih *dan* data uji sekaligus. Angka yang keluar akan
-terlihat jauh lebih baik dan tidak berarti apa-apa.
+**Split per lokasi, bukan split acak.** Split acak bawaan menaruh foto yang
+nyaris kembar, 3–5 jepretan rak yang sama dalam hitungan detik, di data latih
+*dan* data uji sekaligus. Angkanya terlihat jauh lebih baik dan tidak berarti
+apa-apa.
 
-**Keputusan: satu kelas `produk` saja, bukan satu kelas per merek.** Detektor
-hanya perlu menjawab "di mana ada barang"; pengenalan merek dikerjakan CLIP.
-Pemisahan ini membuat pekerjaan pelabelan jauh lebih cepat **dan** membuat
-penambahan barang baru tidak memerlukan pelabelan ulang apa pun.
+**Satu kelas `produk` saja, bukan satu kelas per merek.** Detektor hanya perlu
+menjawab "di mana ada barang"; pengenalan merek dikerjakan CLIP. Pelabelan jadi
+jauh lebih cepat, dan barang baru tidak memerlukan pelabelan ulang apa pun.
 
-**Keputusan: menolak scraping marketplace.** Selain melanggar ketentuan layanan
-dan hak cipta, jenis datanya salah: foto katalog berlatar putih, bukan adegan
-rak. Model yang dilatih dengan data seperti itu justru belajar bias yang tidak
-pernah ada di gudang.
+**Menolak scraping marketplace.** Selain melanggar ketentuan layanan dan hak
+cipta, jenis datanya salah: foto katalog berlatar putih, bukan adegan rak.
 
-**Keputusan: foto diambil di warung Madura, bukan grosir.** Model dasar sudah
-dilatih pada rak supermarket; jika data sendiri juga diambil di lingkungan rapi
-seperti grosir, satu jurang domain ditutup sementara jurang kedua dibuka. Ciri
-warung yang tidak ada pada dataset supermarket: **sachet renceng yang
-digantung**, cahaya bohlam hangat, rak improvisasi, dan ruang sempit.
+**Foto diambil di warung Madura, bukan grosir.** Model dasar sudah dilatih pada
+rak supermarket; mengambil data di grosir yang sama rapinya menutup satu jurang
+domain sambil membuka jurang kedua. Ciri warung yang tidak ada di dataset
+supermarket: sachet renceng yang digantung, cahaya bohlam hangat, rak
+improvisasi, ruang sempit.
 
-**Keputusan pelabelan renceng: satu sachet = satu kotak.** Alasannya bukan teknis
-melainkan bisnis: warung menjual dan menghitung stoknya per sachet. Jika model
-menghitung per renceng, angka selisih pada laporan tidak akan cocok dengan cara
-pemilik warung menghitung, dan seluruh fitur kehilangan maknanya baginya.
+**Satu sachet = satu kotak, bukan satu renceng.** Alasannya bisnis, bukan
+teknis: warung menjual dan menghitung per sachet. Kalau model menghitung per
+renceng, angka selisihnya tidak cocok dengan cara pemilik warung menghitung, dan
+laporannya kehilangan makna baginya.
 
 ### 4.5 Perbaikan akurasi lewat pemakaian
 
@@ -368,14 +344,18 @@ Solusinya menghilangkan ketidakcocokan itu di akarnya:
 
 ```mermaid
 flowchart TB
-    U1["Scan menghasilkan item<br/>'belum dikenali'"] --> U2["Potongan gambarnya<br/>ditampilkan di laporan"]
-    U2 --> U3["Pengguna menekan<br/>'Ini barang apa?'"]
-    U3 --> U4{"Pilih"}
-    U4 -- "produk yang sudah ada" --> U5["Vektor potongan ditambahkan<br/>ke galeri produk itu"]
-    U4 -- "barang baru" --> U6["Buat produk baru<br/>dengan vektor potongan itu"]
-    U5 --> U7[("product_embeddings")]
-    U6 --> U7
-    U7 --> U8["Scan berikutnya mengenali<br/>barang itu,<br/>galerinya kini<br/>berisi referensi dalam<br/>kondisi scan yang sama"]
+    U1["Scan menghasilkan item belum dikenali"]
+    U2["Potongan gambarnya ditampilkan di laporan"]
+    U3["Pengguna menekan tombol Ini barang apa?"]
+    U4{"Pilih"}
+    U5["Vektor potongan ditambahkan ke galeri produk itu"]
+    U6["Produk baru dibuat dengan vektor potongan itu"]
+    U7[("product_embeddings")]
+    U8["Scan berikutnya mengenalinya, galeri kini punya referensi dalam kondisi scan yang sama"]
+    U1 --> U2 --> U3 --> U4
+    U4 -- "produk yang sudah ada" --> U5 --> U7
+    U4 -- "barang baru" --> U6 --> U7
+    U7 --> U8
 ```
 
 **Keputusan: galeri banyak-vektor, BUKAN merata-ratakan.** Ini keputusan yang
@@ -529,71 +509,50 @@ diputuskan.
 ### 5.2 Kegagalan yang terdokumentasi
 
 Dokumentasi tim menyimpan **alasan penolakan**, bukan hanya keputusan yang
-diterima. Dua contoh yang berdampak nyata:
+diterima. Tiga yang berdampak nyata:
 
 **Konflik semantik antar cabang.** Dua cabang yang masing-masing lulus pengujian
-dapat menghasilkan kegagalan setelah digabung, karena konfliknya bersifat makna,
-bukan tekstual: git melaporkan penggabungan bersih, tetapi pengujian gabungan
-gagal. Terjadi dua kali sebelum akhirnya dijadikan aturan tertulis: **cabang yang
-menyentuh berkas sama wajib menggabungkan cabang utama dan menjalankan pengujian
-sebelum digabung.** Aturan turunannya: uji penjaga harus menguji **pola**, bukan
-keberadaan kata.
+bisa gagal setelah digabung, karena konfliknya bersifat makna: git melaporkan
+penggabungan bersih, pengujian gabungan tetap gagal. Terjadi dua kali, lalu jadi
+aturan tertulis: cabang yang menyentuh berkas sama wajib menggabungkan cabang
+utama dan menjalankan pengujian sebelum digabung.
 
-**Regresi yang lahir dari perbaikan.** Pada satu unit, perbaikan atas kondisi
-balapan justru menimbulkan cacat baru berupa tombol yang tidak pernah aktif
-kembali. Ditemukan pada putaran review ketiga. Ini menjadi alasan mengapa
-peninjauan dilakukan berlapis dan hasilnya ditulis ke dokumen rencana, bukan
-dibiarkan hilang di percakapan.
-
-**Kerusakan label yang tidak menimbulkan satu pun pesan galat.** Roboflow
-menyediakan *Smart Polygon* untuk mengikuti lekuk barang, dan pelabel kami
-memakainya untuk bentuk sulit seperti kerupuk gantung dan renceng melengkung, sambil
-tetap memakai kotak biasa untuk dus. Wajar, dan dokumentasi internal kami
-sendiri sempat menyatakan pencampuran itu tidak bermasalah.
-
-Ternyata bermasalah, di tempat yang tidak terlihat. Ekspor format YOLO menulis
-koordinat poligon apa adanya, lalu pustaka pelatihan memeriksa bentuk label
-**per berkas, bukan per baris**: satu baris poligon membuat seluruh baris di
-berkas itu dibaca sebagai poligon. Baris kotak `cls cx cy w h` ditafsirkan
-sebagai dua titik: titik pusat dan ukuran diperlakukan sebagai dua sudut,
-sehingga kotaknya tidak lagi berhubungan dengan barang aslinya.
+**Kerusakan label yang tidak menimbulkan satu pun pesan galat.** Pelabel kami
+memakai *Smart Polygon* untuk barang berlekuk sambil tetap memakai kotak biasa
+untuk dus, dan dokumentasi internal kami sendiri menyatakan pencampuran itu
+tidak bermasalah. Ternyata bermasalah, di tempat yang tidak terlihat:
 
 ```mermaid
 flowchart TB
-    A["Pelabel memakai Smart Polygon<br/>untuk barang berlekuk"] --> B["Satu foto berisi<br/>poligon DAN kotak"]
-    B --> C["Ekspor YOLO menulis<br/>koordinat poligon apa adanya"]
-    C --> D{"Pustaka melatih:<br/>ada baris > 6 kolom<br/>di berkas ini?"}
-    D -->|"ya"| E["SELURUH baris dibaca<br/>sebagai poligon"]
-    E --> F["Baris kotak jadi<br/>kotak sampah"]
-    F --> G["Tidak ada galat.<br/>Training selesai normal,<br/>kurva terbentuk"]
-    G --> H["Model diam-diam lebih buruk"]
-    D -->|"tidak"| I["Dibaca benar"]
+    A["Pelabel memakai Smart Polygon untuk barang berlekuk"]
+    B["Satu foto berisi poligon DAN kotak"]
+    C["Ekspor YOLO menulis koordinat poligon apa adanya"]
+    D{"Ada baris lebih dari 6 kolom di berkas ini?"}
+    E["SELURUH baris dibaca sebagai poligon"]
+    F["Baris kotak berubah jadi kotak sampah"]
+    G["Tidak ada galat, training selesai normal, kurva terbentuk"]
+    H["Model diam-diam lebih buruk"]
+    I["Dibaca benar"]
+    A --> B --> C --> D
+    D -- ya --> E --> F --> G --> H
+    D -- tidak --> I
 ```
 
-Diukur pada gabungan ekspor kami: dari **11.779 anotasi**, 3.751 berbentuk
-poligon dan **2.339 kotak (19,9% dari seluruh anotasi) berada di 116 berkas
-campuran** dan akan rusak. Berkas yang isinya seragam, semua kotak atau semua
-poligon, justru aman; yang mematikan adalah pencampuran di dalam satu foto.
+Terukur: dari **11.779 anotasi**, **2.339 kotak (19,9%) berada di 116 berkas
+campuran** dan akan rusak. Berkas yang seragam justru aman; yang mematikan
+adalah pencampuran di dalam satu foto. Temuan ini menghasilkan langkah
+normalisasi wajib sebelum pelatihan dan koreksi pada panduan internal.
 
-Temuan ini menghasilkan langkah normalisasi wajib sebelum pelatihan, dan
-koreksi pada panduan internal yang sebelumnya keliru. Kami mencantumkannya di
-sini karena kegagalan jenis ini, yang tidak memunculkan galat, tidak
-menggagalkan pengujian, dan hanya menyisakan model yang lebih buruk tanpa sebab
-yang jelas, adalah kegagalan yang paling mahal dalam proyek pembelajaran mesin,
-dan satu-satunya pertahanannya adalah memeriksa data, bukan menunggu peringatan.
+**Fitur yang dibatalkan setelah diukur.** Parser tanggal kedaluwarsa dibangun
+dan lulus 11 pengujian. Yang tidak pernah diperiksa justru asumsi dasarnya:
+bahwa tanggal itu terlihat pada foto rak. Ketika diukur, hasilnya **nol dari 64
+potongan** (§4.3.5), dan fitur itu dikeluarkan dari lingkup.
 
-**Fitur yang dibatalkan setelah diukur.** Pembacaan tanggal kedaluwarsa
-direncanakan sejak awal, parsernya dibangun dan lulus 11 pengujian, dan
-komponennya sudah terpasang di alur. Yang tidak pernah diperiksa justru asumsi
-dasarnya: bahwa tanggal itu terlihat pada foto rak. Ketika akhirnya diukur,
-hasilnya **nol dari 64 potongan**, pada resolusi penuh sekalipun (§4.3.5).
-
-Fitur itu dikeluarkan dari lingkup, bukan dipertahankan sebagai janji. Kami
-mencatatnya karena urutan kejadiannya sendiri adalah pelajaran: pekerjaan
-mengalir ke komponen yang paling mudah dibangun dan diuji, yaitu parser teks,
-sementara asumsi yang menopang seluruh fitur dibiarkan tak tersentuh sampai
-akhir. Pengujian yang paling berguna bukan yang paling mudah ditulis, melainkan
-yang menyerang asumsi paling rapuh.
+Pola ketiganya sama, dan itulah alasan bagian ini ada: pekerjaan mengalir ke
+bagian yang paling mudah dibangun dan diuji, sementara asumsi yang menopangnya
+dibiarkan tak tersentuh. Kegagalan yang tidak memunculkan galat adalah yang
+paling mahal, dan pertahanannya cuma satu, memeriksa sendiri, bukan menunggu
+peringatan.
 
 ### 5.3 Parameter yang dapat disetel, dan cara menyetelnya
 

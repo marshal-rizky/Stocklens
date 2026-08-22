@@ -37,7 +37,7 @@ th { background: #f2f5f9; }
 /* max-height WAJIB. Tanpa ini diagram flowchart TB yang tinggi memakan
    hampir satu halaman penuh masing-masing, dan proposal 20 halaman membengkak
    jadi 40. Lebar tetap dibatasi halaman; tinggi yang menentukan jumlah halaman. */
-img { max-width: 100%; max-height: 78mm; width: auto; height: auto;
+img { max-width: 100%; max-height: 135mm; width: auto; height: auto;
       display: block; margin: 10px auto; object-fit: contain; }
 /* Gambar dan tabel jangan terbelah dua halaman. */
 img, table, pre { break-inside: avoid; page-break-inside: avoid; }
@@ -52,19 +52,29 @@ hr { border: none; border-top: 1px solid #d8d8d4; margin: 20px 0; }
 """
 
 
+# wrappingWidth WAJIB dinaikkan. Bawaannya sekitar 200px, jadi label panjang
+# dipatah otomatis jadi beberapa baris — node ikut tinggi dan sempit, dan
+# diagramnya membengkak ke bawah sampai harus diperkecil habis-habisan agar
+# muat di halaman. Dengan label bertahan satu baris, node jadi lebar dan pendek,
+# dan tumpukan flowchart TB jadi padat serta terbaca.
+MMD_CONFIG = '{"flowchart": {"wrappingWidth": 820, "useMaxWidth": false}}'
+
+
 def render_mermaid(teks: str, keluar: pathlib.Path) -> str:
     """Ganti tiap blok ```mermaid dengan <img> ke PNG hasil render."""
     keluar.mkdir(parents=True, exist_ok=True)
     blok = re.findall(r"```mermaid\n(.*?)```", teks, re.S)
     print(f"merender {len(blok)} diagram mermaid...")
     tmp = pathlib.Path(tempfile.mkdtemp())
+    cfg = tmp / "mmd.json"
+    cfg.write_text(MMD_CONFIG, encoding="utf-8")
     for i, isi in enumerate(blok, 1):
         mmd = tmp / f"d{i}.mmd"
         mmd.write_text(isi, encoding="utf-8")
         png = keluar / f"diagram-{i:02d}.png"
         r = subprocess.run(
             ["npx", "-y", "@mermaid-js/mermaid-cli@11", "-i", str(mmd),
-             "-o", str(png), "-b", "white", "-s", "2"],
+             "-o", str(png), "-b", "white", "-s", "2", "-c", str(cfg)],
             capture_output=True, text=True, shell=True)
         if not png.exists():
             raise SystemExit(f"diagram {i} gagal dirender:\n{r.stderr[-600:]}")
