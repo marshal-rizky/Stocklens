@@ -1,5 +1,12 @@
 # Hasil uji ambang pencocokan CLIP (3 Agustus 2026)
 
+> **Sudah direvisi.** Dokumen ini adalah catatan pengukuran 3 Agustus dan
+> dibiarkan apa adanya sebagai riwayat. Kesimpulannya waktu itu, ambang 0,85,
+> **tidak lagi berlaku**. Pengukuran kedua pada 22 Agustus memakai foto rak
+> asli menurunkan ambang ke **0,80**; lihat bagian "Pengukuran kedua" di akhir
+> berkas ini. Ringkasnya, peringatan "batas ATAS yang optimistis" di bawah
+> ternyata benar dan menjatuhkan angkanya sendiri.
+
 Ambang `0,75` di `matcher.match()` sebelumnya tidak pernah divalidasi — angka
 yang ada cuma kasus tunggal (0,769 / 0,823 / 0,664), dan itu anekdot.
 
@@ -123,3 +130,65 @@ python -m scripts.ukur_ambang_clip --triase "<triase.json>" --triase-baru "<tria
 
 Memakai `matcher.match()` asli dari repo, bukan tiruan — termasuk aturan
 max-similarity (bukan rata-rata galeri).
+
+---
+
+# Pengukuran kedua (22 Agustus 2026) — ambang turun ke 0,80
+
+Bagian "Batas pengukuran ini" di atas menulis bahwa angka 3 Agustus adalah
+batas atas yang optimistis, dan angka sesungguhnya baru bisa diukur setelah
+ada model hasil fine-tune. Model itu sekarang ada (`stoklens-yolo.pt`, dua
+tahap, mAP50 0,827), jadi pengukurannya dijalankan.
+
+## Cara
+
+Satu foto rak lemari pendingin berisi **19 botol**. Tiga produk didaftarkan
+lebih dulu lewat alur enrollment normal (foto close-up multi-sudut), lalu foto
+raknya di-scan lewat `/api/scans-foto`. Setiap crop hasil detektor di-embed
+ulang dan dibandingkan ke galeri ketiga produk itu memakai `matcher.match()`
+asli.
+
+Ini pengukuran pertama yang **crop-nya berasal dari detektor**, bukan dari foto
+enrollment. Itulah bedanya dengan 3 Agustus.
+
+## Hasil
+
+| Potongan | Skor tertinggi | Putusan pada 0,85 | Kenyataan |
+|---|---|---|---|
+| Mizone | 0,888 | dikenali | benar |
+| Teh pucuk | 0,833 | ditolak | salah tolak |
+| Mizone kedua | 0,741 | ditolak | salah tolak |
+| 16 botol asing | 0,613 tertinggi | ditolak | benar |
+
+Recall produk terdaftar pada 0,85: **1 dari 3**. Pada 0,80: **2 dari 3**, tanpa
+satu pun salah label.
+
+## Bacaan
+
+Crop dari rak lebarnya 63–110 px, miring, dan memantulkan cahaya kaca kulkas.
+Skornya turun **0,05–0,11** dibanding foto enrollment. Itu persis pergeseran
+yang diperingatkan bagian "Batas pengukuran ini", dan besarnya cukup untuk
+melewati batas 0,85 dari sisi yang salah.
+
+Yang menentukan keputusan bukan dua salah tolak itu, melainkan **jarak 0,613 ke
+0,741**. Pemisahan antara produk terdaftar dan barang asing masih lebar, jadi
+yang salah adalah letak ambangnya, bukan kemampuan CLIP membedakan. Ambang
+0,80 berada di tengah jarak itu.
+
+## Keterbatasan pengukuran ini, dan mereka nyata
+
+- **Satu foto, tiga produk terdaftar.** Ini bukan sampel yang cukup untuk
+  mengklaim recall. Ini cukup untuk membuktikan bahwa 0,85 menolak positif
+  yang benar pada crop rak, dan itu saja yang diklaim.
+- **16 botol asing** terlalu sedikit untuk menaksir laju salah label pada 0,80.
+  Angka 84,6 % dari 3 Agustus tetap taksiran terbaik yang ada, dan taksiran itu
+  berasal dari foto enrollment.
+- Rak warung sungguhan memuat ratusan barang asing. Semakin banyak barang
+  asing, semakin besar peluang salah satu menembus ambang.
+
+## Yang harus diukur berikutnya
+
+Ulangi pada rak warung penuh dengan ≥20 produk terdaftar. Bila ada barang asing
+yang menembus **0,70**, ambang tetap sudah tidak cukup, dan gantinya adalah
+ambang adaptif per produk (tiap produk punya ambangnya sendiri berdasarkan
+sebaran kemiripan galerinya).

@@ -70,7 +70,7 @@ def test_ambang_bawaan_satu_sumber():
     from stoklens import photo, scan
     from stoklens.matcher import AMBANG_BAWAAN, match
 
-    assert AMBANG_BAWAAN == 0.85
+    assert AMBANG_BAWAAN == 0.80
     for fn, arg in ((match, "threshold"),
                     (photo.scan_photos, "match_threshold"),
                     (scan.run_scan, "match_threshold")):
