@@ -72,8 +72,69 @@ opname, export CSV, ledger, opname manual) **tidak dihapus**, tapi:
   bermakna tanpa angka tercatat sebagai pembanding — itu bagian dari output
   core inference, bukan analitik tambahan."*
 
-**Ditunda pasca-penyisihan:** TWA/Play Store • on-device inference • stitching
-antar-foto • multi-user auth • integrasi POS.
+**Ditunda pasca-penyisihan:** installer satu klik (lihat di bawah) • TWA/Play
+Store • on-device inference • stitching antar-foto • multi-user auth •
+integrasi POS.
+
+### Installer satu klik — sudah diukur, tinggal dikerjakan
+
+**Jangan dikerjakan sebelum 25 Agustus.** Tidak menambah nilai di rubrik
+penyisihan: MVP dinilai dari alurnya jalan, bukan dari cara memasangnya.
+Mengerjakannya sekarang justru memenuhi definisi *overbuilt* yang dinilai
+negatif di `AUDIT-RULEBOOK-2026-07-28.md`.
+
+Nilainya ada di dua tempat: **jawaban untuk juri** yang bertanya "apakah pemilik
+warung bisa memasang sendiri", dan **pekerjaan hackathon 10 jam** kalau lolos ke
+final (26 September) — ruang lingkupnya muat dan hasilnya terlihat di panggung.
+
+**Masalahnya.** Hari ini pemasangan butuh delapan langkah: pasang Docker, ambil
+kode, unduh bobot dari Drive, set env `STOKLENS_MODEL`, `docker compose up`
+(image 2,2 GB), tunggu CLIP mengunduh 600 MB, cari IP lokal komputer, buka dari
+HP di WiFi yang sama. Langkah 3, 4, dan 7 menggugurkan hampir semua pemilik
+warung.
+
+**Kunci teknisnya: ekspor kedua model ke ONNX, lalu torch tidak diperlukan
+sama sekali.** Diukur 22 Agustus 2026 di mesin ini:
+
+| Model | Sekarang (torch) | ONNX fp32 | ONNX int8 |
+|---|---|---|---|
+| YOLO | 6 MB, 41 ms | **10,6 MB, 15 ms** | — |
+| CLIP | 605 MB, 82 ms | **352 MB, 15 ms** | 89 MB, 12 ms |
+
+**Pakai fp32, JANGAN int8.** Embedding ONNX fp32 identik dengan torch sampai
+lima desimal (cosine 1,00000). int8 melenceng: cosine 0,95084, dan skor
+kemiripan antar-foto bergeser sampai 0,0390 — sebanding dengan jarak ambang
+0,80 ke 0,85, padahal `HASIL-UJI-AMBANG-CLIP.md` menunjukkan jarak sekecil itu
+mengubah 17 barang asing lolos atau tertolak. Lebih buruk lagi, galeri
+enrollment yang tersimpan dihitung dengan torch; membandingkannya dengan vektor
+kueri int8 adalah kesalahan "campur dua kondisi berbeda" yang sudah
+didokumentasikan. Kalau tetap mau int8: hitung ulang seluruh galeri **dan** ukur
+ulang ambangnya. Itu proyek tersendiri.
+
+**Ukuran hasilnya** (ONNX fp32, tanpa torch): CLIP 352 MB + onnxruntime ±50 MB +
+opencv-headless ±50 MB + numpy 36 MB + FastAPI/uvicorn/jinja2 ±20 MB + Python
+embeddable 15 MB + YOLO 11 MB = **±535 MB terpasang**, installer terkompresi
+±250–300 MB. Bandingkan Docker Desktop plus image 2,2 GB.
+
+**Bentuknya: Python embeddable + Inno Setup**, bukan PyInstaller — PyInstaller
+menyakitkan untuk paket berisi binary native, sedangkan Inno Setup menghasilkan
+installer Windows normal dengan Start Menu, autostart, dan uninstaller.
+
+Yang dikerjakan installer, menghapus enam dari delapan langkah:
+
+1. Menyalin runtime dan bobot (hapus langkah unduh Drive + set env)
+2. Menambah aturan firewall port 8000 lewat `netsh`
+3. Mendaftarkan autostart supaya server hidup tiap komputer dinyalakan
+4. Menampilkan **QR code berisi `http://<IP-lokal>:8000`** (hapus langkah cari
+   IP + ketik manual di HP)
+
+Pemilik warung tinggal memindai QR itu. Itu satu-satunya hal soal jaringan yang
+perlu ia pahami.
+
+**Posisi untuk juri:** pemilik warung tidak memasang, sama seperti ia tidak
+memasang mesin EDC-nya. Pemasangan dikerjakan sekali oleh teknisi atau reseller,
+pola yang sudah lazim untuk perangkat kasir di Indonesia. Yang ia lakukan cuma
+memfoto rak dari HP.
 
 ## Bobot penilaian (dari rulebook)
 
