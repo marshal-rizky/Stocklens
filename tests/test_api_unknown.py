@@ -216,3 +216,50 @@ def test_produk_baru_400_duplicate_nama(tmp_path, monkeypatch):
         "nama": "Indomie", "harga_modal": 1000,
     })
     assert r.status_code == 400
+
+
+def test_assign_memindahkan_hitungan_opname(tmp_path, monkeypatch):
+    """Endpoint tidak cuma menambah galeri; hitungan scan ikut dibetulkan.
+
+    Gejala yang ditutup: produk yang baru dinamai tetap nol di buku stok karena
+    hitungannya tertinggal di baris "belum dikenali".
+    """
+    dbp, sid, pid = _seeded(tmp_path)
+    client = _client(dbp, tmp_path, monkeypatch)
+    con = db.connect(dbp)
+    db.add_scan_item(con, sid, None, 2, 0.5)
+    cid = db.add_unknown_crop(con, sid, _crop_path(sid, "x.jpg"),
+                              np.array([1, 0, 0, 0], dtype=np.float32))
+    con.close()
+
+    body = client.post(f"/api/unknown/{cid}/assign", json={"product_id": pid}).json()
+    assert body["dipindah"] == 1
+    assert body["ikut_terbawa"] == []
+
+    con = db.connect(dbp)
+    db.terapkan_opname(con, sid)
+    assert db.get_stock_map(con)[pid] == 1
+    con.close()
+
+
+def test_produk_baru_memindahkan_hitungan_opname(tmp_path, monkeypatch):
+    """Stok awal dan hitungan opname adalah dua angka berbeda, keduanya harus ada."""
+    dbp, sid, pid = _seeded(tmp_path)
+    client = _client(dbp, tmp_path, monkeypatch)
+    con = db.connect(dbp)
+    db.add_scan_item(con, sid, None, 3, 0.5)
+    cid = db.add_unknown_crop(con, sid, _crop_path(sid, "x.jpg"),
+                              np.array([5, 6, 7, 8], dtype=np.float32))
+    con.close()
+
+    body = client.post(f"/api/unknown/{cid}/produk-baru", json={
+        "nama": "Teh Botol", "harga_modal": 4000, "qty_awal": 12,
+    }).json()
+    assert body["dipindah"] == 1
+    baru = body["product_id"]
+
+    con = db.connect(dbp)
+    assert db.get_stock_map(con)[baru] == 12       # stok awal yang diketik user
+    db.terapkan_opname(con, sid)
+    assert db.get_stock_map(con)[baru] == 1        # hasil hitungan rak
+    con.close()
