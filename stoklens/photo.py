@@ -5,7 +5,8 @@ KENAPA MODE INI ADA
 - Dalam 1 foto, 1 deteksi = 1 barang — kelas masalah "ID pecah / dobel hitung"
   milik video tidak eksis di sini.
 - Jauh lebih murah: 6 foto ±18 MB vs video ±75 MB; deteksi 6 gambar vs 60 frame.
-- OCR expired lebih akurat: foto diam tajam, frame video blur gerakan.
+- Foto diam tidak membawa blur gerakan seperti frame video, jadi crop yang
+  masuk ke pencocokan CLIP lebih tajam.
 
 ANTI-DOBEL ANTAR FOTO
 ---------------------

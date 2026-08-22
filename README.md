@@ -1,8 +1,12 @@
 # StokLens
 
 Stock opname gudang pakai video HP: enrollment barang via foto (few-shot, tanpa retraining),
-scan rak via YOLO + tracking + CLIP matching, baca tanggal expired via OCR, laporan selisih
-stok + nilai rupiah di dashboard.
+scan rak via YOLO + tracking + CLIP matching, laporan selisih stok + nilai rupiah
+di dashboard.
+
+Pembacaan tanggal kedaluwarsa pernah direncanakan dan kodenya masih ada, tapi
+**mati secara bawaan**: diukur pada foto warung asli, OCR menemukan tanggal pada
+0 dari 64 potongan. Alasannya di docstring `stoklens/ocr.py`.
 
 Prototype untuk AI Innovation Challenge COMPFEST 18.
 
@@ -147,7 +151,7 @@ uvicorn stoklens.api:create_app --factory
 2. Kecepatan lambat konsisten (±1 rak per 5–8 detik).
 3. Jarak 50–80 cm, kamera tegak lurus rak.
 4. Satu segmen rak = satu klip video.
-5. Berhenti ±1 detik di tumpukan padat (untuk OCR expired).
+5. Berhenti ±1 detik di tumpukan padat (frame tajam, deteksi lebih andal).
 6. Cahaya cukup, hindari backlight.
 7. 1080p, 30fps, tanpa zoom digital.
 

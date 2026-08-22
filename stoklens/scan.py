@@ -1,4 +1,7 @@
-"""Orkestrasi scan: video -> YOLO track -> embedding match -> OCR -> DB.
+"""Orkestrasi scan: video -> YOLO track -> embedding match -> DB.
+
+OCR kedaluwarsa ada di jalur ini tapi MATI secara bawaan (`read_expiry=False`) —
+alasan terukurnya di docstring `stoklens/ocr.py`.
 
 CATATAN UNTUK TIM — cara kerja hitungan (anti dobel):
 1. Hitungan BUKAN per deteksi, tapi per track ID unik (satu barang yang

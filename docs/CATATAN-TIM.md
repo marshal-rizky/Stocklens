@@ -9,8 +9,8 @@ StokLens = stock opname gudang pakai video HP, untuk **AI Innovation Challenge C
 (kategori Smart Logistics, tema "AI for the Backbone of the Economy", partner WIZ.AI).
 
 Alur produk: daftarkan barang lewat foto (sekali per barang) → rekam video sweep rak →
-AI menghitung stok per barang + baca tanggal expired → laporan selisih vs catatan +
-nilai rupiah di dashboard.
+AI menghitung stok per barang → laporan selisih vs catatan + nilai rupiah di
+dashboard.
 
 Dokumen terkait **di repo ini** (baca sesuai kebutuhan):
 - `ROADMAP.md` — rencana 28 hari sampai deadline 25 Agustus. **Baca kedua, setelah file ini.**
@@ -56,7 +56,7 @@ Kalau `pytest` merah di kondisi repo bersih → lapor di grup, jangan didiamkan.
 | `stoklens/report.py` | Selisih fisik vs tercatat → rupiah (shrinkage, rugi expired, nilai stok) | `test_report.py` |
 | `stoklens/frames.py` | Iterasi frame video dengan sampling | `test_frames.py` |
 | `stoklens/embedder.py` | Wrapper CLIP (open_clip ViT-B-32) → embedding 512-dim ternormalisasi | `test_embedder_slow.py` |
-| `stoklens/ocr.py` | Wrapper EasyOCR (lazy singleton) | — (diuji via lapangan) |
+| `stoklens/ocr.py` | Wrapper EasyOCR (lazy singleton). **Mati secara bawaan** — diukur 0 dari 64 potongan, lihat docstring-nya | — |
 | `stoklens/enroll.py` | Foto barang → rata-rata embedding → DB | `test_enroll_slow.py` |
 | `stoklens/scan.py` | Orkestrasi: video → YOLO+BoT-SORT → match → OCR → DB | — (glue; logika intinya sudah diuji di modul lain) |
 | `stoklens/api.py` | FastAPI: JSON API (/api/*, /products, /scans, /report) + mount UI | `test_api.py`, `test_api_ui.py` |
