@@ -153,7 +153,7 @@ python -m scripts.demo_scan scan --video meja.mp4 --count-mode track  # statis
 
 | Parameter | Default | Naikkan kalau | Turunkan kalau |
 |---|---|---|---|
-| `match_threshold` | **0.85** | banyak salah-label antar varian | banyak masuk "unknown" |
+| `match_threshold` | **0.80** | banyak salah-label antar varian | banyak masuk "unknown" |
 | `min_track_frames` | 3 | masih ada hitungan hantu | barang gerak cepat tidak terhitung |
 | `embed_every` | 5 | scan lambat | matching kurang stabil |
 
@@ -165,9 +165,28 @@ dengan **nama yang salah** tanpa meninggalkan tanda, sedangkan barang terdaftar
 yang ditolak cuma jadi "belum dikenali" yang bisa dilihat sendiri oleh pengguna.
 Rinciannya `docs/HASIL-UJI-AMBANG-CLIP.md`.
 
-Kalau di uji lapangan ternyata terlalu banyak masuk "belum dikenali", turunkan
-ke 0,80 (recall 0,875, masih menolak 84,6 % barang asing) — jangan kembali ke
-0,75.
+Catatan itu menutup dengan dugaan: kalau di uji lapangan terlalu banyak masuk
+"belum dikenali", turunkan ke 0,80 dan jangan kembali ke 0,75. **Dugaan itu
+terbukti pada 22 Agustus, dan ambangnya sudah diturunkan ke 0,80.**
+
+Diuji pada satu foto rak asli berisi 19 botol, 3 di antaranya sudah didaftarkan
+lewat foto close-up:
+
+```
+Mizone       0,888   lolos 0,85
+Teh pucuk    0,833   DITOLAK 0,85, padahal benar
+Mizone #2    0,741   DITOLAK 0,85, padahal benar
+16 botol asing lainnya, skor tertinggi   0,613
+```
+
+Potongan hasil deteksi di rak lebarnya cuma 63–110 px, miring, kena pantulan
+kaca kulkas, jadi skornya turun 0,05–0,11 dibanding foto pendaftaran. Angka
+0,85 dikalibrasi pada foto pendaftaran, dan itu distribusi yang salah.
+
+Yang bikin 0,80 aman di sini adalah jarak 0,613 → 0,741: pemisahan terdaftar
+vs asing masih lebar, cuma ambangnya yang salah tempat. Ukur ulang lagi di rak
+warung sungguhan yang isinya ratusan barang. Kalau ada barang asing menembus
+0,70, ambang tetap tidak cukup dan perlu ambang adaptif per produk.
 | `hysteresis` (crossing) | 0.05 | jitter garis masih bikin event | barang di dekat garis tidak terhitung |
 | `track_buffer` (yaml) | 60 | ID masih pecah saat ketutupan lama | ID "nyangkut" ke barang lain |
 

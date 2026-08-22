@@ -19,18 +19,37 @@ def cosine(a, b) -> float:
 # barang asing jauh lebih banyak daripada yang terdaftar.
 #
 #   ambang   kenali terdaftar   tolak asing
-#   0,75     recall 0,933       68,3 %   <- lama; 1 dari 3 barang asing lolos
-#   0,80     recall 0,875       84,6 %
-#   0,85     recall 0,673       100 %    <- dipakai sekarang
+#   0,75     recall 0,933       68,3 %   <- 1 dari 3 barang asing lolos
+#   0,80     recall 0,875       84,6 %   <- dipakai sekarang
+#   0,85     recall 0,673       100 %    <- lama
 #
 # Barang asing yang lolos muncul di laporan sebagai barang dengan NAMA SALAH —
 # terbaca meyakinkan dan tidak meninggalkan tanda. Barang terdaftar yang ditolak
 # cuma jadi "belum dikenali", dan pengguna bisa melihat sendiri bahwa itu ada.
-# Salah menyebut lebih mahal daripada tidak menyebut.
+# Salah menyebut lebih mahal daripada tidak menyebut, jadi 0,85 dipilih lebih
+# dulu. Yang membatalkan pilihan itu adalah ukuran pertama pada foto rak asli,
+# bukan foto enrollment.
 #
-# Angka di atas BATAS ATAS: foto enrollment close-up, produksi meng-embed crop
-# dari rak yang lebih berantakan. Ukur ulang setelah uji lapangan.
-AMBANG_BAWAAN = 0.85
+# Diukur ulang 22 Agustus 2026, satu foto rak berisi 19 botol, 3 di antaranya
+# sudah didaftarkan lewat foto close-up:
+#
+#   Mizone     0,888   dikenali
+#   Teh pucuk  0,833   DITOLAK 0,85, padahal benar
+#   Mizone #2  0,741   DITOLAK 0,85, padahal benar
+#   kandidat salah tertinggi di antara 16 botol asing sisanya:  0,613
+#
+# Jarak antara 0,613 dan 0,741 itu yang menentukan. Pemisahan produk terdaftar
+# dan barang asing masih sehat; yang salah cuma letak ambangnya. Potongan dari
+# rak lebarnya 63 sampai 110 piksel, miring, kena pantulan kaca, jadi skornya
+# turun sekitar 0,05 sampai 0,11 dibanding foto enrollment yang close-up.
+# Ambang 0,85 dikalibrasi pada foto enrollment, dan itu memang batas atas yang
+# sudah diperingatkan di catatan sebelumnya.
+#
+# 0,80 masih di atas 0,613 dengan selisih lebar, dan pada foto uji ini nol salah
+# label. Ukur ulang lagi setelah uji lapangan penuh: kalau rak sungguhan
+# memunculkan barang asing di atas 0,70, ambang tetap ini perlu diganti ambang
+# adaptif per produk.
+AMBANG_BAWAAN = 0.80
 
 
 def match(embedding, products, threshold=AMBANG_BAWAAN, allowed_ids=None):
