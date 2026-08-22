@@ -64,7 +64,7 @@ semuanya dapat ditunjukkan, bukan sekadar dinyatakan:
 |---|---|
 | **Enrollment few-shot, nol retraining di lapangan** | Barang baru didaftarkan dengan 3–5 foto. Tidak ada proses training yang harus dijalankan pemilik warung. |
 | **Menghitung *facing* di rak** | Sistem menghitung barang yang benar-benar terlihat di rak, bukan membaca angka dari dokumen laporan lewat OCR. |
-| **Anti dobel-hitung berlapis** | Tiga mekanisme independen; dirinci di §4.3. |
+| **Anti dobel-hitung berlapis** | Pada mode video: tiga mekanisme independen (§4.3.4). Pada mode foto, yang menjadi mode utama, satu deteksi = satu barang sehingga masalahnya tidak muncul di dalam satu foto; risiko antar-foto ditekan lewat SOP dan rincian hitungan per foto yang dapat diperiksa pengguna. |
 | **Memperbaiki diri sendiri dari pemakaian** | Barang yang gagal dikenali dapat diberi nama oleh pengguna, dan potongan gambarnya langsung memperkaya galeri pengenalan. |
 | **Berjalan lokal, tanpa API pihak ketiga** | Seluruh inferensi berjalan di perangkat sendiri. Biaya per-scan nol, dan foto dagangan tidak pernah keluar dari toko. Pembeda paling tajam terhadap solusi yang bergantung pada layanan AI berbayar. |
 
@@ -82,8 +82,11 @@ justru menghukum pengguna yang paling rajin melakukan opname.
    menggunakan kamera ponsel yang sudah dimilikinya, tanpa perangkat tambahan.
 2. Hasilnya berupa **laporan selisih dalam rupiah**, bukan sekadar daftar angka
    deteksi  sehingga langsung dapat ditindaklanjuti.
-3. Sistem **dapat dijalankan sepenuhnya offline** di satu laptop atau ponsel,
-   tanpa langganan dan tanpa mengirim data ke pihak ketiga.
+3. Sistem **dapat dijalankan sepenuhnya offline** pada satu komputer di toko,
+   diakses dari ponsel lewat jaringan setempat, tanpa langganan dan tanpa
+   mengirim data ke pihak ketiga. Inferensi berjalan di komputer itu; ponsel
+   berperan sebagai kamera dan antarmuka. Menjalankan model langsung di ponsel
+   berada di luar lingkup penyisihan.
 
 ### 3.2 Manfaat
 
