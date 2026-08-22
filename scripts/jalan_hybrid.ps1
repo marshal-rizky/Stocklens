@@ -31,7 +31,8 @@ Write-Host "1/2  uvicorn di 127.0.0.1:$port" -ForegroundColor Cyan
 # jadi app tidak ikut terbuka ke seluruh WiFi/jaringan lokal.
 $app = Start-Process -PassThru -NoNewWindow python `
     -ArgumentList "-m", "uvicorn", "stoklens.api:create_app", "--factory",
-                  "--host", "127.0.0.1", "--port", "$port"
+                  "--host", "127.0.0.1", "--port", "$port",
+                  "--timeout-keep-alive", "120"
 
 try {
     # Tunggu app benar-benar melayani. 401 = sudah hidup dan guard aktif.

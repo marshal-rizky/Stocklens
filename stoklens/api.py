@@ -20,7 +20,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
-from . import accounting, crops, db
+from . import accounting, crops, db, penamaan
 from .report import build_report
 from .webui import router as webui_router
 
@@ -524,11 +524,13 @@ def create_app(db_path=None, embedder=None, photo_detector=None):
                 raise HTTPException(409, "Crop ini sudah di-resolve")
             db.add_product_embedding(c, body.product_id, crop["embedding"],
                                      sumber="scan")
-            db.resolve_unknown_crop(c, crop_id, body.product_id)
+            hasil = penamaan.selesaikan_penamaan(c, crop_id, body.product_id)
             return {
                 "ok": True,
                 "product_id": body.product_id,
                 "jumlah_galeri": db.count_product_embeddings(c, body.product_id),
+                "dipindah": hasil["dipindah"],
+                "ikut_terbawa": hasil["ikut_terbawa"],
             }
 
     @app.post("/api/unknown/{crop_id}/produk-baru")
@@ -549,8 +551,13 @@ def create_app(db_path=None, embedder=None, photo_detector=None):
                 db.set_stock(c, pid, body.qty_awal)
             if body.stok_minimum > 0:
                 db.update_product(c, pid, stok_minimum=body.stok_minimum)
-            db.resolve_unknown_crop(c, crop_id, pid)
-            return {"ok": True, "product_id": pid}
+            hasil = penamaan.selesaikan_penamaan(c, crop_id, pid)
+            return {
+                "ok": True,
+                "product_id": pid,
+                "dipindah": hasil["dipindah"],
+                "ikut_terbawa": hasil["ikut_terbawa"],
+            }
 
     @app.get("/")
     def root():

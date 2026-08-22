@@ -112,14 +112,38 @@ function kecilkanSemua(files) {
  * @returns {Promise<any>}
  */
 async function api(path, opts) {
-  const { silent, ...fetchOpts } = opts || {};
+  const { silent, ulangSekali, ...fetchOpts } = opts || {};
   let res;
   try {
     res = await fetch(path, fetchOpts);
   } catch (e) {
-    /* kegagalan level jaringan (offline, server mati) */
-    if (!silent) toast(PESAN_OFFLINE, false);
-    throw e;
+    /* kegagalan level jaringan (offline, server mati)
+     *
+     * `ulangSekali` untuk permintaan yang gagalnya biasanya sesaat: koneksi
+     * keep-alive yang menganggur ditutup server tepat saat browser memakainya
+     * lagi. Gejalanya persis "tidak bisa terhubung ke server" yang hilang
+     * begitu tombolnya ditekan ulang, dan pengguna tidak punya cara tahu bahwa
+     * menekan ulang memang jawabannya.
+     *
+     * Hanya boleh dipasang pada permintaan yang aman diulang. Ketiga POST kecil
+     * di alur laporan memenuhinya karena server sudah menolak pengulangan yang
+     * benar-benar dobel: terapkan opname dijaga compare-and-set, assign dan
+     * produk-baru menolak crop yang sudah di-resolve, dan nama produk unik di
+     * basis data. Unggah foto opname sengaja TIDAK memakainya: badannya besar,
+     * dan mengulang berarti menjalankan seluruh inferensi dua kali.
+     */
+    if (ulangSekali) {
+      await new Promise((r) => setTimeout(r, 200));
+      try {
+        res = await fetch(path, fetchOpts);
+      } catch (e2) {
+        if (!silent) toast(PESAN_OFFLINE, false);
+        throw e2;
+      }
+    } else {
+      if (!silent) toast(PESAN_OFFLINE, false);
+      throw e;
+    }
   }
   if (!res.ok) {
     let detail; // detail dari body server, undefined kalau tidak ada

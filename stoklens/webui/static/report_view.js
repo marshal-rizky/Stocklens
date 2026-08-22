@@ -165,7 +165,8 @@ function renderReport(containerEl, report, opts) {
     if (!confirm("Terapkan hasil opname ini ke buku stok?")) return;
     tombol.disabled = true;
     try {
-      await api("/api/opname/" + opts.scanId + "/terapkan", { method: "POST", silent: true });
+      await api("/api/opname/" + opts.scanId + "/terapkan",
+                { method: "POST", silent: true, ulangSekali: true });
     } catch (e) {
       /* 409 "sudah diterapkan" dibedakan dari error lain: 409 = tombol tetap
          disabled, error lain (termasuk offline) = boleh coba lagi */
@@ -221,16 +222,35 @@ function kartuCropTakDikenali(crop) {
 }
 
 /**
- * Hapus satu kartu crop dari grid setelah berhasil di-assign/jadi produk baru.
+ * Hapus kartu crop dari grid setelah berhasil di-assign/jadi produk baru.
+ *
+ * Server ikut menyapu crop lain di scan yang sama yang ternyata barang serupa
+ * (lihat penamaan.selesaikan_penamaan). Kartunya dihapus sekaligus di sini,
+ * karena membiarkannya di layar akan menyuruh pengguna menamai barang yang
+ * sudah bernama.
+ *
+ * Toast menyebut jumlah yang berpindah ke hitungan opname, bukan cuma "masuk
+ * galeri". Perpindahan itulah yang menentukan angka di laporan selisih, dan
+ * sebelumnya tidak terjadi sama sekali.
+ *
  * Kalau grid jadi kosong, seluruh section "Belum dikenali" ikut disembunyikan.
  * @param {HTMLElement} section
  * @param {number} cropId
  * @param {string} nama
+ * @param {{dipindah?: number, ikut_terbawa?: number[]}} [hasil]
  */
-function hapusCropDariGrid(section, cropId, nama) {
-  const kartu = section.querySelector('.thumb-unknown[data-crop-id="' + cropId + '"]');
-  if (kartu) kartu.remove();
-  toast("Ditambahkan ke galeri " + nama);
+function hapusCropDariGrid(section, cropId, nama, hasil) {
+  const buang = [cropId].concat((hasil && hasil.ikut_terbawa) || []);
+  buang.forEach((id) => {
+    const kartu = section.querySelector('.thumb-unknown[data-crop-id="' + id + '"]');
+    if (kartu) kartu.remove();
+  });
+  const dipindah = (hasil && hasil.dipindah) || 0;
+  toast(
+    dipindah > 0
+      ? nama + ": " + dipindah + " barang masuk hitungan opname"
+      : "Ditambahkan ke galeri " + nama
+  );
   if (!section.querySelector(".thumb-unknown")) section.remove();
 }
 
@@ -274,7 +294,11 @@ async function muatBelumDikenali(containerEl, scanId) {
       /* Cegah dobel-tap buka sheet dua kali (dua GET /api/products) sebelum kartu
          sempat hilang dari grid. Dikembalikan aktif lagi di tutupSheet(). */
       btn.disabled = true;
-      bukaSheetTakDikenali(cropId, (nama) => hapusCropDariGrid(section, cropId, nama), btn);
+      bukaSheetTakDikenali(
+        cropId,
+        (nama, hasil) => hapusCropDariGrid(section, cropId, nama, hasil),
+        btn
+      );
     });
   });
 }
@@ -369,11 +393,13 @@ async function pilihProdukExisting(productId) {
   );
   tombolProduk.forEach((b) => (b.disabled = true));
 
+  let hasil;
   try {
-    await api("/api/unknown/" + cropId + "/assign", {
+    hasil = await api("/api/unknown/" + cropId + "/assign", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ product_id: productId }),
+      ulangSekali: true,
     });
   } catch (e) {
     /* toast error sudah tampil dari api(); sheet tetap terbuka supaya bisa coba
@@ -384,7 +410,7 @@ async function pilihProdukExisting(productId) {
   }
   if (generasi !== sheetGenerasi) return; /* sheet sudah dipakai untuk crop lain */
   tutupSheet();
-  if (selesai) selesai(produk ? produk.nama : "");
+  if (selesai) selesai(produk ? produk.nama : "", hasil);
 }
 
 async function kirimProdukBaru(ev) {
@@ -419,11 +445,13 @@ async function kirimProdukBaru(ev) {
 
   const tombol = document.getElementById("sheet-submit-baru");
   tombol.disabled = true;
+  let hasil;
   try {
-    await api("/api/unknown/" + cropId + "/produk-baru", {
+    hasil = await api("/api/unknown/" + cropId + "/produk-baru", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
+      ulangSekali: true,
     });
   } catch (e) {
     /* toast error sudah tampil dari api(); sheet tetap terbuka supaya bisa coba lagi.
@@ -439,7 +467,7 @@ async function kirimProdukBaru(ev) {
   if (generasi !== sheetGenerasi) return; /* sheet sudah dipakai untuk crop lain */
   tombol.disabled = false;
   tutupSheet();
-  if (selesai) selesai(nama);
+  if (selesai) selesai(nama, hasil);
 }
 
 /**
@@ -494,7 +522,8 @@ function pastikanSheetEl() {
 /**
  * Buka sheet untuk memberi nama satu crop tak dikenali.
  * @param {number} cropId
- * @param {(nama: string) => void} onSelesai - dipanggil setelah assign/produk-baru sukses
+ * @param {(nama: string, hasil: object) => void} onSelesai - dipanggil setelah
+ *   assign/produk-baru sukses, dengan badan respons server apa adanya
  * @param {HTMLElement} [pemicuEl] - elemen yang men-trigger buka (buat kembalikan fokus)
  */
 async function bukaSheetTakDikenali(cropId, onSelesai, pemicuEl) {

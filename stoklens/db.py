@@ -263,6 +263,61 @@ def add_scan_item(con, scan_id, product_id, qty_terdeteksi, confidence_avg=None,
     con.commit()
 
 
+def pindahkan_hitungan_unknown(con, scan_id, product_id, jumlah=1):
+    """Pindahkan `jumlah` hitungan dari baris "belum dikenali" ke baris produk.
+
+    Dipakai ketika pengguna memberi nama pada crop tak dikenali. Tanpa ini,
+    crop yang sudah dinamai tetap terhitung sebagai "belum dikenali" di scan
+    yang sedang dilihat, dan `terapkan_opname()` yang cuma membaca baris
+    ber-product_id tidak akan memasukkan barang itu ke buku stok sama sekali.
+
+    Return jumlah yang benar-benar dipindah; 0 kalau baris unknown sudah habis
+    (mis. dinamai dua kali dari dua tab, atau crop tersimpan lebih banyak dari
+    hitungan unknown karena cap `maks_unknown`).
+
+    confidence_avg baris tujuan sengaja TIDAK diisi: angka itu artinya keyakinan
+    model, sedangkan hitungan yang masuk lewat sini datang dari mata manusia.
+    Menuliskan 1,0 di situ akan terbaca sebagai model yang sangat yakin, padahal
+    modelnya justru gagal mengenali barang ini.
+
+    Satu transaksi: kalau baris tujuan gagal ditulis, pengurangan di baris
+    unknown ikut dibatalkan, supaya hitungannya tidak pernah bocor.
+    """
+    row = con.execute(
+        "SELECT id, qty_terdeteksi FROM scan_items"
+        " WHERE scan_id=? AND product_id IS NULL",
+        (scan_id,),
+    ).fetchone()
+    if row is None or row["qty_terdeteksi"] <= 0:
+        return 0
+    n = min(jumlah, row["qty_terdeteksi"])
+    sisa = row["qty_terdeteksi"] - n
+    try:
+        if sisa == 0:
+            con.execute("DELETE FROM scan_items WHERE id=?", (row["id"],))
+        else:
+            con.execute(
+                "UPDATE scan_items SET qty_terdeteksi=? WHERE id=?",
+                (sisa, row["id"]),
+            )
+        cur = con.execute(
+            "UPDATE scan_items SET qty_terdeteksi = qty_terdeteksi + ?"
+            " WHERE scan_id=? AND product_id=?",
+            (n, scan_id, product_id),
+        )
+        if cur.rowcount == 0:
+            con.execute(
+                "INSERT INTO scan_items(scan_id, product_id, qty_terdeteksi,"
+                " confidence_avg) VALUES(?,?,?,NULL)",
+                (scan_id, product_id, n),
+            )
+        con.commit()
+    except Exception:
+        con.rollback()
+        raise
+    return n
+
+
 def get_report_rows(con, scan_id):
     """Baris siap dipakai report.build_report (hanya item yang match produk)."""
     stock = get_stock_map(con)
