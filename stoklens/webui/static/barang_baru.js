@@ -89,7 +89,7 @@ async function kirimForm(ev) {
   fd.append("qty_awal", String(isNaN(qtyAwal) ? 0 : qtyAwal));
   if (!isNaN(hargaJual)) fd.append("harga_jual", String(hargaJual));
   fd.append("stok_minimum", String(isNaN(stokMinimum) ? 0 : stokMinimum));
-  fotoFiles.forEach((f) => fd.append("fotos", f));
+  (await kecilkanSemua(fotoFiles)).forEach((f) => fd.append("fotos", f));
 
   try {
     await api("/products", { method: "POST", body: fd });
