@@ -267,7 +267,7 @@ def create_app(db_path=None, embedder=None, photo_detector=None):
     @app.post("/api/scans-foto")
     async def api_scan_foto(fotos: list[UploadFile], lokasi_rak: str = Form(None),
                             guided_product_id: int = Form(None),
-                            read_expiry: bool = Form(True)):
+                            read_expiry: bool = Form(False)):
         from .photo import scan_photos
         # Kedua batas dicek SEBELUM decode — lihat MAKS_* di atas. Jumlah dicek
         # duluan karena len(fotos) tersedia tanpa membaca satu byte pun. Catatan:

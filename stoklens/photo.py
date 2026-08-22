@@ -71,7 +71,7 @@ def _yolo_detector(model_path=None):
 
 
 def scan_photos(con, embedder, images, detector=None, match_threshold=AMBANG_BAWAAN,
-                guided_product_id=None, lokasi_rak=None, read_expiry=True,
+                guided_product_id=None, lokasi_rak=None, read_expiry=False,
                 simpan_unknown=True, maks_unknown=30, dir_crops=None):
     """Opname dari kumpulan foto; return scan_id (scans.tipe = 'foto').
 
@@ -115,6 +115,11 @@ def scan_photos(con, embedder, images, detector=None, match_threshold=AMBANG_BAW
 
     counts = aggregate_detections(detections)
 
+    # read_expiry bawaannya False sejak 22 Agu 2026: diukur pada foto warung
+    # asli, OCR menemukan tanggal kedaluwarsa pada 0 dari 64 potongan, resolusi
+    # penuh sekalipun. Tanggalnya dicetak tipis di belakang/bawah/lipatan
+    # kemasan, sedangkan sisi yang menghadap rak tidak membawanya sama sekali.
+    # Menyalakannya hanya menambah beberapa detik per foto untuk hasil nol.
     expiry_per_product = defaultdict(list)
     if read_expiry:
         from .ocr import read_text

@@ -73,7 +73,9 @@ async function kirimScanFoto() {
   if (lokasi) fd.append("lokasi_rak", lokasi);
   const guided = document.getElementById("select-guided").value;
   if (guided) fd.append("guided_product_id", guided);
-  fd.append("read_expiry", "true");
+  /* read_expiry sengaja tidak dikirim: bawaan server sekarang mati. OCR
+     tanggal kedaluwarsa diukur menemukan 0 dari 64 potongan pada foto rak,
+     jadi menyalakannya hanya memperlambat scan tanpa hasil. */
 
   let hasil;
   try {
