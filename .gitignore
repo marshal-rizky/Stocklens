@@ -31,3 +31,6 @@ data/
 Thumbs.db
 .idea/
 .vscode/
+
+# Cadangan DB manual (stoklens.db.cadangan-<tanggal>)
+stoklens.db.cadangan-*
