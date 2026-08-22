@@ -8,7 +8,8 @@
 > - Periksa ulang tidak ada jejak institusi: nama kampus, email kampus, logo,
 >   template. Termasuk nama folder yang terlihat di tangkapan layar.
 > - Batas **20 halaman** di luar cover, daftar pustaka, dan lampiran.
->   Versi ini 15 halaman badan + 1 halaman lampiran.
+>   Versi ini 18 halaman badan, plus daftar pustaka dan lampiran yang tidak
+>   dihitung.
 > - Cek plagiarisme.
 
 ---
@@ -31,11 +32,24 @@ Abimanyu · Muhammad Bhre Zidane Pribadi · Muhammad Noby Ghazali
 
 ### 2.1 Masalah
 
-Warung Madura dan toko kelontong kecil menyimpan ratusan SKU dalam ruang sempit,
-tetapi hampir tidak pernah melakukan stock opname. Alasannya bukan kemalasan,
-melainkan biaya: menghitung manual satu warung memakan waktu berjam-jam dan
-harus dilakukan saat toko tutup. Akibatnya pemilik tidak pernah tahu dua angka
-yang menentukan kelangsungan usahanya:
+Toko kelontong tradisional adalah bentuk ritel paling banyak di Indonesia:
+**3,94 juta unit, setara 98,78% dari seluruh ritel** [1]. Jumlah itu sedang
+menyusut. Menurut APKLI, yang tersisa hingga akhir 2025 sekitar **3,9 juta unit,
+turun dari 6,1 juta pada 2007** [2]. Lebih dari dua juta warung tutup dalam
+delapan belas tahun, sebagian besar kalah bersaing dengan ritel modern.
+
+Salah satu yang membedakan ritel modern bukan modalnya, melainkan bahwa mereka
+**tahu angka stoknya**. Ritel modern mengukur kehilangan yang tidak tercatat
+sebagai penjualan, dan di Amerika Serikat angkanya rata-rata **1,6% dari
+penjualan**, atau 112,1 miliar dolar setahun [3]. Angka itu diketahui justru
+karena mereka menghitung. Warung tidak punya angka bandingannya sama sekali,
+bukan karena kehilangannya lebih kecil, melainkan karena tidak ada yang
+menghitungnya.
+
+Alasannya bukan kemalasan, melainkan biaya: menghitung ratusan SKU secara manual
+memakan waktu berjam-jam dan harus dilakukan saat toko tutup. Sejalan dengan itu,
+**77% UMKM Indonesia masih mencatat keuangan secara manual** [4]. Akibatnya
+pemilik tidak pernah tahu dua angka yang menentukan kelangsungan usahanya:
 
 1. **Berapa nilai rupiah barang yang ada di rak sekarang.**
 2. **Berapa banyak barang yang hilang** tanpa tercatat sebagai penjualan
@@ -648,6 +662,30 @@ Recall adalah angka yang membatasi akurasi opname, karena barang yang tidak
 terdeteksi tidak akan pernah terhitung.
 
 🔴 Angka uji lapangan di warung melengkapi proposal ini sebelum pengumpulan.
+
+---
+
+## Daftar Pustaka
+
+[1] Niaga.Asia, "Jumlah Toko Kelontong 3,94 Juta, Mendag: Setara 98,78 Persen
+Ritel", 11 November 2024, mengutip data Euromonitor 2022.
+https://www.niaga.asia/jumlah-toko-kelontong-394-juta-mendag-setara-9878-persen-ritel/
+
+[2] Bisnis Daily, "Jumlah Warung Kelontong Terus Menyusut, APKLI: Tersisa 3,9
+Juta Unit", 27 Februari 2026, mengutip Asosiasi Pedagang Kaki Lima Indonesia.
+https://bisnisdaily.com/read/serba-serbi-umkm/jumlah-warung-kelontong-terus-menyusut-apkli-tersisa-39-juta-unit
+
+[3] National Retail Federation, "National Retail Security Survey 2023",
+26 September 2023. Rata-rata *shrink rate* FY2022 sebesar 1,6% dari penjualan,
+setara 112,1 miliar dolar AS. https://nrf.com/research/national-retail-security-survey-2023
+
+[4] OCBC dan NielsenIQ, "Business Fitness Index 2024", dilaporkan Suara.com,
+26 November 2025. https://www.suara.com/bisnis/2025/11/26/074526/riset-77-persen-umkm-masih-lakukan-pencatatan-keuangan-secara-manual
+
+Catatan: rujukan [3] berasal dari ritel modern Amerika Serikat dan **tidak**
+dipakai sebagai estimasi kehilangan di warung Indonesia. Angka itu dikutip untuk
+menunjukkan bahwa besaran seperti itu hanya diketahui bila ada yang menghitung,
+dan warung tidak memilikinya.
 
 ---
 
