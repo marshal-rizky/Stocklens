@@ -154,21 +154,29 @@ def grafik_ambang_clip(keluar):
             markeredgecolor=SURFACE, markeredgewidth=2,
             label="Menolak barang yang belum didaftarkan")
 
-    ax.axvline(0.85, color=TINTA_2, linewidth=1, linestyle=(0, (4, 4)))
-    ax.annotate("dipilih: 0,85", (0.85, 0.06), textcoords="offset points",
+    # Dua garis: yang dipakai sekarang tegas, yang lama tipis sebagai jejak
+    # keputusan. Ambang turun ke 0,80 setelah diukur ulang memakai potongan
+    # hasil detektor pada foto rak asli, di mana 0,85 menolak produk terdaftar
+    # yang benar di skor 0,833 dan 0,741 sementara kandidat salah tertinggi
+    # hanya 0,613.
+    ax.axvline(0.85, color=GARIS, linewidth=1, linestyle=(0, (2, 3)))
+    ax.annotate("0,85 (lama)", (0.85, 0.06), textcoords="offset points",
+                xytext=(8, 0), ha="left", fontsize=8, color=TINTA_2)
+    ax.axvline(0.80, color=TINTA_2, linewidth=1, linestyle=(0, (4, 4)))
+    ax.annotate("dipakai: 0,80", (0.80, 0.06), textcoords="offset points",
                 xytext=(-8, 0), ha="right", fontsize=9, color=TINTA)
     # Label langsung hanya di titik keputusan, bukan di setiap titik.
-    ax.annotate("0,673", (0.85, 0.673), textcoords="offset points",
-                xytext=(10, -4), fontsize=9, color=TINTA)
-    ax.annotate("1,000", (0.85, 1.000), textcoords="offset points",
-                xytext=(10, -4), fontsize=9, color=TINTA)
+    ax.annotate("0,875", (0.80, 0.875), textcoords="offset points",
+                xytext=(-10, 6), ha="right", fontsize=9, color=TINTA)
+    ax.annotate("0,846", (0.80, 0.846), textcoords="offset points",
+                xytext=(-10, -14), ha="right", fontsize=9, color=TINTA)
 
     ax.set_xlabel("Ambang kemiripan CLIP", color=TINTA_2, fontsize=9)
     ax.set_ylabel("Proporsi benar", color=TINTA_2, fontsize=9)
     ax.set_ylim(0, 1.08)
     ax.set_xlim(0.68, 0.92)
     ax.set_title("Ambang mengerjakan dua tugas yang menginginkan arah berlawanan\n"
-                 "12 produk, 104 foto; rak warung didominasi barang yang belum didaftarkan",
+                 "12 produk, 104 foto pendaftaran; kurva ini batas atas, direvisi setelah uji foto rak",
                  color=TINTA, fontsize=11, loc="left", pad=12)
     _gaya(ax)
     leg = ax.legend(frameon=False, fontsize=9, loc="upper left",

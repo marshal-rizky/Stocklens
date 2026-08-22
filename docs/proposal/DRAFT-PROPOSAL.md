@@ -202,7 +202,7 @@ flowchart TB
     P2["YOLO11n mendeteksi kotak produk"]
     P3["Tiap kotak dipotong, lalu CLIP mengubahnya jadi vektor"]
     P4["Dicocokkan ke galeri, diambil similarity tertinggi"]
-    P5{"skor mencapai ambang 0,85?"}
+    P5{"skor mencapai ambang 0,80?"}
     P6["Ditandai sebagai produk yang bersangkutan"]
     P7["Ditandai belum dikenali, potongan dan vektornya disimpan"]
     P8["Diagregasi per produk, dengan rincian per foto"]
@@ -572,7 +572,7 @@ peringatan.
 
 | Parameter | Nilai berlaku | Gejala bila terlalu rendah | Gejala bila terlalu tinggi |
 |---|---|---|---|
-| Ambang pencocokan | **0,85** (diukur) | Barang asing disangka produk terdaftar | Banyak item "belum dikenali" |
+| Ambang pencocokan | **0,80** (diukur dua kali) | Barang asing disangka produk terdaftar | Banyak item "belum dikenali" |
 | Umur minimum track | 3 frame | Noise ikut terhitung | Barang yang sekilas terlihat terlewat |
 | Interval pengambilan embedding | tiap 5 frame | Lambat | Suara terlalu sedikit untuk memilih label |
 
@@ -596,14 +596,56 @@ Ambang mana yang terbaik bergantung pada komposisi rak:
 | Rasio barang asing : terdaftar | Ambang terbaik |
 |---|---|
 | 1 : 1 | 0,80 |
-| **3 : 1 (rak warung nyata)** | **0,85** |
+| 3 : 1 (rak warung nyata) | 0,85 |
 
 Warung mendaftarkan puluhan produk sementara raknya memuat ratusan barang,
-sehingga barang yang belum terdaftar jauh lebih banyak. **Keputusan: naik ke
-0,85.** Konsekuensinya diterima secara sadar: pengenalan produk terdaftar turun
-dari 0,933 ke 0,673, ditukar dengan kesalahan penamaan yang turun dari 33 kasus
-menjadi nol. Bagi pemilik warung, "belum dikenali" adalah barang yang tinggal
-diberi nama sekali; "salah nama" adalah angka rupiah yang salah tanpa ia sadari.
+sehingga barang yang belum terdaftar jauh lebih banyak. Keputusan waktu itu:
+naik ke 0,85, dengan konsekuensi yang diterima secara sadar. Pengenalan produk
+terdaftar turun dari 0,933 ke 0,673, ditukar dengan kesalahan penamaan yang
+turun dari 33 kasus menjadi nol. Bagi pemilik warung, "belum dikenali" adalah
+barang yang tinggal diberi nama sekali; "salah nama" adalah angka rupiah yang
+salah tanpa ia sadari.
+
+#### Pengukuran kedua membatalkan angka itu
+
+Seluruh tabel di atas dihitung dari **foto pendaftaran**: produk memenuhi
+bingkai, pencahayaan rata, tidak ada halangan. Catatan pengukuran pertama sudah
+menandai keterbatasan itu sebagai batas atas yang masih perlu diuji ulang
+memakai potongan yang benar-benar keluar dari detektor. Pengujian itu dijalankan
+pada satu foto rak lemari pendingin berisi 19 botol, tiga di antaranya sudah
+didaftarkan lewat alur pendaftaran normal:
+
+| Potongan | Skor tertinggi | Putusan pada 0,85 | Kenyataan |
+|---|---|---|---|
+| Mizone | 0,888 | dikenali | benar |
+| Teh pucuk | 0,833 | ditolak | **salah tolak** |
+| Mizone kedua | 0,741 | ditolak | **salah tolak** |
+| 16 botol asing | 0,613 tertinggi | ditolak | benar |
+
+Potongan yang keluar dari foto rak lebarnya hanya 63 sampai 110 piksel, miring,
+dan memantulkan cahaya kaca lemari pendingin. Skornya turun 0,05 sampai 0,11
+dibanding foto pendaftaran, cukup untuk melewati batas 0,85 dari sisi yang
+salah.
+
+Yang menentukan bukan dua salah tolak itu sendiri, melainkan **jarak antara
+0,613 dan 0,741**. Pemisahan antara produk terdaftar dan barang asing masih
+lebar dan sehat, jadi yang keliru adalah letak ambangnya, bukan kemampuan model
+membedakan. **Keputusan: turun ke 0,80**, yang pada foto uji ini mengenali dua
+dari tiga produk terdaftar tanpa satu pun salah label.
+
+Batasnya ditulis apa adanya: satu foto dengan tiga produk terdaftar tidak cukup
+untuk mengklaim angka recall, dan 16 barang asing tidak cukup untuk menaksir
+laju salah label pada 0,80. Yang dibuktikan hanya satu hal, yaitu bahwa 0,85
+menolak produk terdaftar yang benar ketika potongannya berasal dari rak.
+
+Pelajarannya bukan soal angka. Ambang pertama diukur dengan sungguh-sungguh,
+tetapi diukur pada distribusi yang salah, dan pengukuran yang teliti di atas
+data yang keliru tetap menghasilkan keputusan yang keliru. Karena itu ambang
+diperlakukan sebagai nilai yang harus diukur ulang setiap kali kondisi
+pengambilan gambar berubah, bukan sebagai konstanta yang sudah selesai. Uji
+lapangan berikutnya mengukurnya kembali pada rak dengan ratusan barang; bila di
+sana ada barang asing yang menembus 0,70, ambang tetap ini akan diganti ambang
+adaptif per produk.
 
 ### 5.4 Cara memverifikasi klaim
 
