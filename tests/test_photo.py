@@ -191,3 +191,26 @@ def test_scan_photos_gagal_simpan_crop_tidak_membatalkan_opname(tmp_path, monkey
     assert item_unknown["qty_terdeteksi"] == 1     # unknown tetap terhitung
     # cuma crop bonusnya yang hilang
     assert db.list_unknown_crops(con, sid) == []
+
+
+def test_ocr_kedaluwarsa_mati_secara_bawaan(monkeypatch):
+    """scan_photos tidak boleh menyentuh OCR kalau read_expiry tidak diminta.
+
+    Diukur 22 Agu 2026 pada foto warung asli: OCR menemukan tanggal kedaluwarsa
+    pada 0 dari 64 potongan, resolusi penuh sekalipun, karena tanggalnya dicetak
+    di sisi kemasan yang tidak menghadap rak. Menyalakannya hanya menambah
+    beberapa detik per foto untuk hasil nol. Uji ini mengunci defaultnya supaya
+    tidak diam-diam menyala lagi.
+    """
+    import stoklens.ocr as ocr_mod
+
+    def meledak(*_a, **_k):
+        raise AssertionError("OCR terpanggil padahal read_expiry tidak diminta")
+
+    monkeypatch.setattr(ocr_mod, "read_text", meledak)
+
+    con = db.connect(":memory:")
+    db.add_product(con, "Merah", 1000, np.array([1, 0], dtype=np.float32))
+    sid = scan_photos(con, FakeEmbedder(), [_fixture_image()],
+                      detector=fake_detector)
+    assert db.get_scan(con, sid)["tipe"] == "foto"
