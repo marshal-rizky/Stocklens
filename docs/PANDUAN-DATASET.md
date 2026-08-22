@@ -356,8 +356,35 @@ lekuk barang. Aman dipakai — dokumentasi Roboflow menyebutnya eksplisit:
 > *Object Detection supports Bounding Box, Polygon, and Mask (**converted to
 > bounding boxes**).*
 
-Mencampur kotak biasa dan poligon dalam satu proyek juga tidak masalah;
-keduanya berakhir sebagai kotak.
+Mencampur kotak biasa dan poligon dalam satu proyek juga tidak masalah **di
+sisi Roboflow**; keduanya berakhir sebagai kotak di sana.
+
+> ⚠️ **Tapi export YOLO-nya TIDAK aman kalau dicampur dalam satu foto, dan
+> gagalnya diam-diam.** Ekspor menulis koordinat poligon apa adanya, lalu
+> ultralytics memakai aturan `any(len(x) > 6)` **per berkas**: satu baris
+> poligon membuat seluruh baris kotak di berkas itu ikut dibaca sebagai
+> poligon, dan `cls cx cy w h` ditafsirkan sebagai dua titik `(cx, cy)` dan
+> `(w, h)`. Pusat dan ukuran diperlakukan sebagai dua sudut — kotaknya jadi
+> sampah. Tidak ada error; training selesai normal dan modelnya diam-diam
+> lebih buruk.
+>
+> Terukur pada gabungan export 22 Agustus 2026: **2.339 dari 11.730 anotasi
+> (20%)** akan rusak.
+>
+> Berkas yang isinya semua-kotak atau semua-poligon aman. Yang mematikan
+> justru kebiasaan wajar: poligon untuk kerupuk gantung, kotak untuk dus,
+> dalam satu foto.
+>
+> **Wajib jalankan sebelum training**, setelah mengunduh export:
+>
+> ```bash
+> python -m scripts.normalkan_label --sumber "<folder-export>"          # periksa
+> python -m scripts.normalkan_label --sumber "<folder-export>" --tulis  # terapkan
+> ```
+>
+> Setelah itu semua label 5 kolom dan cabang segmen di ultralytics tidak
+> pernah aktif. Ini juga berarti kamu **tetap boleh** memakai Smart Polygon
+> sebebasnya — asal langkah ini tidak dilewati.
 
 **Tapi seluruh kerapian poligonnya dibuang.** Yang tersimpan hanya kotak
 terkecil yang melingkupinya. Sisi ke-12 yang mengikuti lekuk bungkus tidak
