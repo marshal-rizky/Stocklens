@@ -4,13 +4,17 @@
 >
 > **Yang masih harus dibereskan sebelum submit:**
 >
-> - Isi angka uji lapangan di §6 dan §7 (bertanda 🔴). Jangan dikarang.
+> - Hapus blok ini sendiri sebelum mengirim.
 > - Periksa ulang tidak ada jejak institusi: nama kampus, email kampus, logo,
 >   template. Termasuk nama folder yang terlihat di tangkapan layar.
 > - Batas **20 halaman** di luar cover, daftar pustaka, dan lampiran.
->   Versi ini 18 halaman badan, plus daftar pustaka dan lampiran yang tidak
->   dihitung.
+>   Versi ini 19 halaman badan, plus daftar pustaka yang tidak dihitung.
+>   Sisa ruangnya tinggal satu halaman, jadi tambahan apa pun perlu diukur ulang.
 > - Cek plagiarisme.
+>
+> Angka uji lapangan §6.1 sudah terisi dari pengujian 22 Agustus. Kalau ada uji
+> kedua sebelum batas waktu, angka di §6.1 dan kalimat penutup §7 perlu
+> diperbarui bersama-sama.
 
 ---
 
@@ -665,14 +669,59 @@ Seluruh aplikasi berjalan lokal dengan satu perintah:
 docker compose up --build
 ```
 
-🔴 **Hasil uji lapangan**, diisi setelah pengujian di warung:
+### 6.1 Uji lapangan pertama di warung
+
+Diuji 22 Agustus 2026 pukul 18.28 sampai 18.40 WIB, dijalankan dari ponsel
+dengan aplikasi tetap berjalan di PC melalui terowongan HTTP.
 
 | Pengukuran | Hasil |
 |---|---|
-| Jumlah barang yang didaftarkan | ⟨…⟩ |
-| Akurasi hitungan dibanding hitung manual | ⟨…⟩ |
-| Waktu opname satu rak | ⟨…⟩ |
-| Tanggapan pemilik warung | ⟨…⟩ |
+| Produk didaftarkan di tempat | 4 |
+| Foto rak di-scan | 5 |
+| Objek terdeteksi | 90 |
+| Dikenali otomatis saat scan | 1, kemiripan 0,841 |
+| Dikenali setelah pengguna memberi nama | 1 |
+| Sisanya masuk antrean "belum dikenali" | 88 |
+| Jarak antar foto berurutan | 26 sampai 43 detik |
+| Menerapkan hasil ke buku stok | 15 detik |
+| Akurasi terhadap hitungan manual | tidak terukur, lihat di bawah |
+
+Satu pengenalan otomatis dari 90 deteksi adalah angka yang buruk bila dibaca
+sendirian, dan menyesatkan bila dibaca tanpa sebaran di bawah ini. Kami
+menghitung ulang kemiripan 82 potongan yang masih tertolak terhadap keempat
+galeri produk:
+
+| Kemiripan tertinggi | Jumlah potongan | Arti |
+|---|---|---|
+| di bawah 0,60 | 54 | barang yang memang tidak pernah didaftarkan |
+| 0,60 sampai 0,70 | 23 | barang lain, sebagian satu kategori |
+| 0,70 sampai 0,75 | 3 | nyaris, tertolak ambang |
+| 0,80 ke atas | 2 | lihat paragraf berikut |
+
+Enam puluh enam persen penolakan terjadi pada barang yang skornya di bawah
+0,60, yaitu barang yang memang bukan produk terdaftar. Uji ini mendaftarkan 4
+produk lalu memotret rak berisi puluhan jenis barang, sehingga sebagian besar
+penolakan adalah perilaku yang benar. Yang benar-benar hilang karena ambang
+hanya 3 potongan di rentang 0,70 sampai 0,75.
+
+Dua potongan bernilai 0,898 dan 0,872 tetap di antrean, dan sebabnya bukan
+ambang: keduanya berasal dari foto lain, sedangkan pencocokan ulang setelah
+penamaan hanya menyapu foto dalam opname yang sama. Opname berikutnya akan
+mengenalinya karena galeri sudah diperkaya, sementara antrean lama sengaja tidak
+ditinjau ulang supaya laporan yang sudah dibukukan tidak berubah belakangan.
+
+**Yang tidak kami ukur, dan itu kesalahan prosedur, bukan keterbatasan sistem.**
+Tidak ada hitungan manual sebagai pembanding, sehingga akurasi hitungan tidak
+dapat dinyatakan sebagai angka. Kesan di lokasi adalah barang kecil pada rak
+padat terlewat, tetapi kesan bukan pengukuran, dan kami tidak menuliskannya
+sebagai temuan. Uji berikutnya menghitung satu rak secara manual lebih dulu.
+
+Jalur perbaikan-diri di §4.5 terpakai dua kali di lokasi, dan berakhir berbeda
+sesuai rancangan. Pada opname yang belum dibukukan, potongan yang diberi nama
+membuat hitungannya berpindah ke produknya. Pada opname yang sudah dibukukan,
+penamaan tetap memperkaya galeri tetapi hitungan lamanya tidak diubah, karena
+laporan yang sudah masuk buku stok tidak boleh berubah di belakang punggung
+pemiliknya.
 
 ---
 
@@ -694,16 +743,23 @@ Tiga hal yang kami anggap paling menentukan:
    kondisi pemakaian nyata.
 3. **Keputusan berbasis analisis, termasuk yang dikoreksi.** Beberapa keputusan
    penting justru merupakan pembatalan rencana awal setelah analisis menunjukkan
-   rencana itu keliru: ambang pencocokan yang dinaikkan setelah diukur, dan
-   panduan pelabelan internal yang dikoreksi setelah ditemukan merusak 20%
-   anotasi tanpa memunculkan galat.
+   rencana itu keliru: pembacaan tanggal kedaluwarsa yang dicabut setelah
+   menemukan 0 dari 64, panduan pelabelan internal yang dikoreksi setelah
+   ditemukan merusak 20% anotasi tanpa memunculkan galat, dan ambang pencocokan
+   yang dinaikkan berdasarkan pengukuran lalu diturunkan lagi ketika pengukuran
+   kedua memakai data yang lebih benar.
 
 Fine-tune dua tahap sudah selesai dan terukur pada warung yang seluruhnya
 ditahan dari data latih: **mAP50 0,304 → 0,827** dan **recall 0,279 → 0,787**.
 Recall adalah angka yang membatasi akurasi opname, karena barang yang tidak
 terdeteksi tidak akan pernah terhitung.
 
-🔴 Angka uji lapangan di warung melengkapi proposal ini sebelum pengumpulan.
+Uji lapangan pertama dilaporkan apa adanya di §6.1, termasuk bagian yang gagal
+dan satu pengukuran yang luput kami ambil. Arahnya jelas: yang membatasi
+sekarang bukan arsitektur atau ambang, melainkan jumlah produk terdaftar dan
+keragaman data latih pada rak padat. Pengumpulan gelombang berikutnya sedang
+berjalan, dan pengujian berikutnya menyertakan hitungan manual sebagai
+pembanding sehingga akurasi dapat dinyatakan sebagai angka, bukan kesan.
 
 ---
 
