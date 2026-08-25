@@ -1,22 +1,29 @@
-# DRAFT PROPOSAL: StokLens
+# Daftar Tautan
 
-> **STATUS: DRAFT UNTUK DITINJAU. Belum siap dikirim.**
->
-> **Yang masih harus dibereskan sebelum submit:**
->
-> - Hapus blok ini sendiri sebelum mengirim.
-> - Periksa ulang tidak ada jejak institusi: nama kampus, email kampus, logo,
->   template. Termasuk nama folder yang terlihat di tangkapan layar.
-> - Batas **20 halaman** di luar cover, daftar pustaka, dan lampiran.
->   Versi ini 19 halaman badan, plus daftar pustaka yang tidak dihitung.
->   Sisa ruangnya tinggal satu halaman, jadi tambahan apa pun perlu diukur ulang.
-> - Cek plagiarisme.
->
-> Angka uji lapangan §6.1 sudah terisi dari pengujian 22 Agustus. Kalau ada uji
-> kedua sebelum batas waktu, angka di §6.1 dan kalimat penutup §7 perlu
-> diperbarui bersama-sama.
+**Nama tim:** The Goyzalis 2.0
 
----
+**Judul proyek:** StokLens, Stock Opname Otomatis Berbasis Visi Komputer untuk
+Warung dan Toko Kelontong
+
+**Tema:** Smart Logistics
+
+| Keperluan | Tautan |
+|---|---|
+| Repositori GitHub | https://github.com/marshal-rizky/Stocklens |
+| Video Proof of Work | https://www.youtube.com/watch?v=igz4EEkHlPI |
+| Video Promosi Inovasi | ⟨TAUTAN VIDEO PROMOSI⟩ |
+
+Bobot detektor hasil pelatihan tidak disimpan di dalam repositori karena
+ukurannya, dan tanpa bobot itu aplikasi berjalan dengan model COCO bawaan yang
+memberi nol kotak pada foto rak. Berkasnya tersedia di:
+
+⟨TAUTAN BOBOT MODEL⟩
+
+Cara mengarahkannya ada di README bagian "Menukar bobot detektor".
+
+<div style="page-break-after: always"></div>
+
+# StokLens
 
 ## 1. Nama Tim dan Judul Proyek
 
@@ -672,7 +679,11 @@ docker compose up --build
 ### 6.1 Uji lapangan pertama di warung
 
 Diuji 22 Agustus 2026 pukul 18.28 sampai 18.40 WIB, dijalankan dari ponsel
-dengan aplikasi tetap berjalan di PC melalui terowongan HTTP.
+dengan aplikasi tetap berjalan di PC. Terowongan HTTP dipakai hanya untuk
+meneruskan permintaan dari ponsel ke PC itu; deteksi, pencocokan, dan basis
+datanya tetap sepenuhnya di mesin sendiri, sehingga klaim pemrosesan lokal di
+§2.2 tidak berubah oleh cara pengujian ini. Ambang pencocokan yang berlaku saat
+itu 0,80.
 
 | Pengukuran | Hasil |
 |---|---|
@@ -687,9 +698,13 @@ dengan aplikasi tetap berjalan di PC melalui terowongan HTTP.
 | Akurasi terhadap hitungan manual | tidak terukur, lihat di bawah |
 
 Satu pengenalan otomatis dari 90 deteksi adalah angka yang buruk bila dibaca
-sendirian, dan menyesatkan bila dibaca tanpa sebaran di bawah ini. Kami
-menghitung ulang kemiripan 82 potongan yang masih tertolak terhadap keempat
-galeri produk:
+sendirian, dan menyesatkan bila dibaca tanpa sebaran di bawah ini.
+
+Dari 88 deteksi yang tertolak, potongannya tersimpan untuk 84; selisih 4 itu
+batas yang memang dipasang, yaitu maksimal 30 potongan per opname agar antrean
+tidak membanjiri disk. Dua di antaranya diberi nama pengguna di lokasi,
+menyisakan 82 yang kemiripannya dihitung ulang terhadap keempat galeri. Angka di
+bawah mencerminkan galeri sesudah dua penamaan itu, bukan saat scan berlangsung:
 
 | Kemiripan tertinggi | Jumlah potongan | Arti |
 |---|---|---|
@@ -698,17 +713,16 @@ galeri produk:
 | 0,70 sampai 0,75 | 3 | nyaris, tertolak ambang |
 | 0,80 ke atas | 2 | lihat paragraf berikut |
 
-Enam puluh enam persen penolakan terjadi pada barang yang skornya di bawah
-0,60, yaitu barang yang memang bukan produk terdaftar. Uji ini mendaftarkan 4
-produk lalu memotret rak berisi puluhan jenis barang, sehingga sebagian besar
-penolakan adalah perilaku yang benar. Yang benar-benar hilang karena ambang
-hanya 3 potongan di rentang 0,70 sampai 0,75.
+Enam puluh enam persen penolakan terjadi pada barang berskor di bawah 0,60,
+yaitu barang yang memang bukan produk terdaftar. Uji ini mendaftarkan 4 produk
+lalu memotret rak berisi puluhan jenis barang, sehingga sebagian besar penolakan
+adalah perilaku yang benar. Yang benar-benar hilang karena ambang hanya 3
+potongan di rentang 0,70 sampai 0,75.
 
-Dua potongan bernilai 0,898 dan 0,872 tetap di antrean, dan sebabnya bukan
-ambang: keduanya berasal dari foto lain, sedangkan pencocokan ulang setelah
-penamaan hanya menyapu foto dalam opname yang sama. Opname berikutnya akan
-mengenalinya karena galeri sudah diperkaya, sementara antrean lama sengaja tidak
-ditinjau ulang supaya laporan yang sudah dibukukan tidak berubah belakangan.
+Dua potongan bernilai 0,898 dan 0,872 tetap di antrean bukan karena ambang,
+melainkan karena keduanya berasal dari foto lain sedangkan penyapuan setelah
+penamaan dibatasi pada opname yang sama. Opname berikutnya akan mengenalinya
+karena galeri sudah diperkaya.
 
 **Yang tidak kami ukur, dan itu kesalahan prosedur, bukan keterbatasan sistem.**
 Tidak ada hitungan manual sebagai pembanding, sehingga akurasi hitungan tidak
@@ -716,12 +730,11 @@ dapat dinyatakan sebagai angka. Kesan di lokasi adalah barang kecil pada rak
 padat terlewat, tetapi kesan bukan pengukuran, dan kami tidak menuliskannya
 sebagai temuan. Uji berikutnya menghitung satu rak secara manual lebih dulu.
 
-Jalur perbaikan-diri di §4.5 terpakai dua kali di lokasi, dan berakhir berbeda
-sesuai rancangan. Pada opname yang belum dibukukan, potongan yang diberi nama
-membuat hitungannya berpindah ke produknya. Pada opname yang sudah dibukukan,
-penamaan tetap memperkaya galeri tetapi hitungan lamanya tidak diubah, karena
-laporan yang sudah masuk buku stok tidak boleh berubah di belakang punggung
-pemiliknya.
+Jalur perbaikan-diri di §4.5 terpakai dua kali di lokasi dan berakhir berbeda
+sesuai rancangan: pada opname yang belum dibukukan hitungannya berpindah ke
+produk yang baru dinamai, sedangkan pada opname yang sudah dibukukan galerinya
+tetap diperkaya tetapi hitungan lamanya tidak diubah, karena laporan yang sudah
+masuk buku stok tidak boleh berubah di belakang punggung pemiliknya.
 
 ---
 
