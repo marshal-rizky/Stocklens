@@ -13,13 +13,14 @@ Warung dan Toko Kelontong
 | Video Proof of Work | https://www.youtube.com/watch?v=igz4EEkHlPI |
 | Video Promosi Inovasi | https://www.youtube.com/watch?v=LYg2WpKdfFU |
 
-Bobot detektor hasil pelatihan tidak disimpan di dalam repositori karena
-ukurannya, dan tanpa bobot itu aplikasi berjalan dengan model COCO bawaan yang
-memberi nol kotak pada foto rak. Berkasnya tersedia di:
+Bobot detektor hasil pelatihan tidak disimpan di dalam repositori, dan tanpa
+bobot itu aplikasi berjalan memakai model COCO bawaan yang memberi nol kotak
+pada foto rak. Berkasnya (5,4 MB) dilampirkan pada rilis:
 
-⟨TAUTAN BOBOT MODEL⟩
+https://github.com/marshal-rizky/Stocklens/releases/tag/bobot-v1
 
-Cara mengarahkannya ada di README bagian "Menukar bobot detektor".
+Cara mengarahkannya ada di README bagian "Menukar bobot detektor". Aplikasi
+tidak memerlukan berkas `.env` maupun kredensial apa pun untuk pengujian lokal.
 
 <div style="page-break-after: always"></div>
 
