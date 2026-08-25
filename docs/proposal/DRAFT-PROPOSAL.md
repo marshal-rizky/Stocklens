@@ -11,7 +11,7 @@ Warung dan Toko Kelontong
 |---|---|
 | Repositori GitHub | https://github.com/marshal-rizky/Stocklens |
 | Video Proof of Work | https://www.youtube.com/watch?v=igz4EEkHlPI |
-| Video Promosi Inovasi | ⟨TAUTAN VIDEO PROMOSI⟩ |
+| Video Promosi Inovasi | https://www.youtube.com/watch?v=LYg2WpKdfFU |
 
 Bobot detektor hasil pelatihan tidak disimpan di dalam repositori karena
 ukurannya, dan tanpa bobot itu aplikasi berjalan dengan model COCO bawaan yang
